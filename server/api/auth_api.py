@@ -47,10 +47,26 @@ def get_current_developer(authorization: Optional[str] = Header(None), db: Sessi
     
     token = authorization.replace("Bearer ", "").strip()
     payload = decode_access_token(token)
-    if not payload or not payload.get("id"):
+    if not payload:
         raise HTTPException(status_code=401, detail="Invalid or expired token")
     
-    dev = db.query(Developer).filter(Developer.id == payload["id"]).first()
+    dev = None
+    # 1. Try finding by numeric/string id
+    dev_id = payload.get("id")
+    if dev_id:
+        try:
+            dev = db.query(Developer).filter(Developer.id == int(dev_id)).first()
+        except Exception:
+            pass
+    
+    # 2. Try finding by owner_id
+    if not dev and payload.get("owner_id"):
+        dev = db.query(Developer).filter(Developer.owner_id == payload["owner_id"]).first()
+        
+    # 3. Try finding by sub / username
+    if not dev and payload.get("sub"):
+        dev = db.query(Developer).filter(Developer.username == payload["sub"]).first()
+        
     if not dev:
         raise HTTPException(status_code=401, detail="Account workspace not found")
     return dev
@@ -364,7 +380,7 @@ async def discord_oauth_callback(code: str, db: Session = Depends(get_db)):
 
     discord_user = user_res.json()
     discord_id = discord_user.get("id")
-    discord_username = discord_user.get("username")
+    discord_username = discord_user.get("global_name") or discord_user.get("username")
     discord_email = discord_user.get("email") or f"{discord_username}@discord.joystauth.cc"
     
     avatar_hash = discord_user.get("avatar")

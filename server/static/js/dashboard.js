@@ -3,14 +3,17 @@ let currentAppId = null;
 let appsList = [];
 let devOwnerId = localStorage.getItem("dev_owner_id") || "Loading...";
 let devUsername = localStorage.getItem("dev_username") || "Developer";
-let authToken = localStorage.getItem("auth_admin_token");
 
-if (!authToken && window.location.pathname.includes("/dashboard")) {
+function getAuthToken() {
+    return localStorage.getItem("auth_admin_token") || "";
+}
+
+if (!getAuthToken() && window.location.pathname.includes("/dashboard")) {
     window.location.href = "/login";
 }
 
 document.addEventListener("DOMContentLoaded", () => {
-    if (authToken && window.location.pathname.includes("/dashboard")) {
+    if (getAuthToken() && window.location.pathname.includes("/dashboard")) {
         initDashboard();
     }
 });
@@ -18,15 +21,21 @@ document.addEventListener("DOMContentLoaded", () => {
 function getHeaders() {
     return {
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${authToken}`
+        "Authorization": `Bearer ${getAuthToken()}`
     };
 }
 
 async function apiFetch(url, options = {}) {
+    const token = getAuthToken();
+    if (!token && window.location.pathname.includes("/dashboard")) {
+        window.location.href = "/login";
+        return null;
+    }
     options.headers = { ...getHeaders(), ...(options.headers || {}) };
     try {
         const res = await fetch(url, options);
         if (res.status === 401) {
+            console.warn("Unauthorized API call to:", url);
             localStorage.removeItem("auth_admin_token");
             window.location.href = "/login";
             return null;
@@ -170,8 +179,12 @@ function setupNavigation() {
     const appSelect = document.getElementById("header-app-select");
     if (appSelect) {
         appSelect.addEventListener("change", (e) => {
-            currentAppId = parseInt(e.target.value);
-            localStorage.setItem("selected_app_id", currentAppId);
+            currentAppId = e.target.value ? parseInt(e.target.value) : null;
+            if (currentAppId) {
+                localStorage.setItem("selected_app_id", currentAppId);
+            } else {
+                localStorage.removeItem("selected_app_id");
+            }
             updateBannerCredentials();
             loadActiveTab();
             updateSdkSnippets();
@@ -270,6 +283,7 @@ async function loadApps() {
     if (appsList.length === 0) {
         select.innerHTML = `<option value="">No Apps Created</option>`;
         currentAppId = null;
+        localStorage.removeItem("selected_app_id");
         updateBannerCredentials();
         return;
     }
@@ -286,19 +300,20 @@ async function loadApps() {
         currentAppId = savedAppId;
     } else {
         currentAppId = appsList[0].id;
+        localStorage.setItem("selected_app_id", currentAppId);
     }
     select.value = currentAppId;
 
     select.onchange = (e) => {
-        currentAppId = parseInt(e.target.value);
-        localStorage.setItem("selected_app_id", currentAppId);
+        currentAppId = e.target.value ? parseInt(e.target.value) : null;
+        if (currentAppId) {
+            localStorage.setItem("selected_app_id", currentAppId);
+        } else {
+            localStorage.removeItem("selected_app_id");
+        }
         updateBannerCredentials();
         loadGlobalStats();
-        if (currentTab === 'licenses') loadLicenses();
-        if (currentTab === 'users') loadUsers();
-        if (currentTab === 'blacklists') loadBlacklists();
-        if (currentTab === 'tiers') loadTiers();
-        if (currentTab === 'sdk') updateSdkSnippets();
+        loadActiveTab();
     };
 
     updateBannerCredentials();
