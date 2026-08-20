@@ -63,14 +63,17 @@ async def developer_register(data: DeveloperRegisterRequest, db: Session = Depen
     if len(data.password) < 6:
         raise HTTPException(status_code=400, detail="Password must be at least 6 characters")
     
+    email = data.email.strip() if data.email else ""
+    if not email or "@" not in email or "." not in email:
+        raise HTTPException(status_code=400, detail="A valid, real Email Address is strictly required to register.")
+
+    existing_email = db.query(Developer).filter(Developer.email == email).first()
+    if existing_email:
+        raise HTTPException(status_code=400, detail="This email address is already registered. Please sign in.")
+
     existing = db.query(Developer).filter(Developer.username == username).first()
     if existing:
         raise HTTPException(status_code=400, detail="Username is already taken")
-    
-    if data.email:
-        existing_email = db.query(Developer).filter(Developer.email == data.email.strip()).first()
-        if existing_email:
-            raise HTTPException(status_code=400, detail="Email is already registered")
 
     # Plan Determination
     assigned_plan = "Free"
@@ -308,6 +311,133 @@ async def google_callback_redirect():
                 }
                 window.location.href = "/login?error=google_failed";
             })();
+        </script>
+@router.get("/discord/login")
+async def discord_oauth_login():
+    """Redirect developer to official Discord OAuth authorization portal."""
+    import urllib.parse
+    from ..config import DISCORD_CLIENT_ID, DISCORD_REDIRECT_URI
+    params = {
+        "client_id": DISCORD_CLIENT_ID,
+        "redirect_uri": DISCORD_REDIRECT_URI,
+        "response_type": "code",
+        "scope": "identify email guilds.join",
+        "prompt": "consent"
+    }
+    discord_auth_url = f"https://discord.com/oauth2/authorize?{urllib.parse.urlencode(params)}"
+    return HTMLResponse(f"<script>window.location.href = '{discord_auth_url}';</script>")
+
+@router.get("/discord/callback")
+async def discord_oauth_callback(code: str, db: Session = Depends(get_db)):
+    """Exchange Discord OAuth code, create/login account, auto-join official server."""
+    import requests
+    from ..config import DISCORD_CLIENT_ID, DISCORD_CLIENT_SECRET, DISCORD_REDIRECT_URI, DISCORD_GUILD_ID, DISCORD_BOT_TOKEN
+    
+    # 1. Exchange code for access token
+    token_url = "https://discord.com/api/v10/oauth2/token"
+    token_data = {
+        "client_id": DISCORD_CLIENT_ID,
+        "client_secret": DISCORD_CLIENT_SECRET,
+        "grant_type": "authorization_code",
+        "code": code,
+        "redirect_uri": DISCORD_REDIRECT_URI
+    }
+    headers = {"Content-Type": "application/x-www-form-urlencoded"}
+    token_res = requests.post(token_url, data=token_data, headers=headers)
+    if token_res.status_code != 200:
+        return HTMLResponse("<script>window.location.href='/login?error=discord_failed';</script>")
+
+    token_json = token_res.json()
+    discord_access_token = token_json.get("access_token")
+
+    # 2. Get Discord User Profile
+    user_url = "https://discord.com/api/v10/users/@me"
+    user_headers = {"Authorization": f"Bearer {discord_access_token}"}
+    user_res = requests.get(user_url, headers=user_headers)
+    if user_res.status_code != 200:
+        return HTMLResponse("<script>window.location.href='/login?error=discord_user_failed';</script>")
+
+    discord_user = user_res.json()
+    discord_id = discord_user.get("id")
+    discord_username = discord_user.get("username")
+    discord_email = discord_user.get("email") or f"{discord_username}@discord.joystauth.cc"
+
+    # 3. Auto-join user to official Discord Server if configured
+    if DISCORD_GUILD_ID and DISCORD_BOT_TOKEN:
+        try:
+            join_url = f"https://discord.com/api/v10/guilds/{DISCORD_GUILD_ID}/members/{discord_id}"
+            join_headers = {
+                "Authorization": f"Bot {DISCORD_BOT_TOKEN}",
+                "Content-Type": "application/json"
+            }
+            join_body = {"access_token": discord_access_token}
+            requests.put(join_url, json=join_body, headers=join_headers, timeout=3)
+        except Exception:
+            pass
+
+    # 4. Find or Create Developer Account
+    dev = db.query(Developer).filter(Developer.email == discord_email).first()
+    if not dev:
+        dev = db.query(Developer).filter(Developer.username == discord_username).first()
+
+    if not dev:
+        clean_username = "".join(c for c in discord_username if c.isalnum() or c in ("_", "-"))[:24]
+        if len(clean_username) < 3:
+            clean_username = "dev_" + generate_random_token(6)
+
+        username = clean_username
+        counter = 1
+        while db.query(Developer).filter(Developer.username == username).first():
+            username = f"{clean_username}_{counter}"
+            counter += 1
+
+        owner_id = "joyst_" + generate_random_token(12)
+        while db.query(Developer).filter(Developer.owner_id == owner_id).first():
+            owner_id = "joyst_" + generate_random_token(12)
+
+        random_pass = generate_random_token(32)
+        dev = Developer(
+            username=username,
+            email=discord_email,
+            password_hash=hash_password(random_pass),
+            owner_id=owner_id,
+            plan="Free",
+            max_apps=3,
+            max_users_per_app=1000
+        )
+        db.add(dev)
+        db.commit()
+        db.refresh(dev)
+
+    jwt_token = create_access_token({
+        "sub": dev.username,
+        "id": dev.id,
+        "owner_id": dev.owner_id,
+        "role": "developer"
+    })
+
+    return HTMLResponse(f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Connecting Discord Account...</title>
+        <style>
+            body {{ background: #060204; color: #fff; font-family: -apple-system, BlinkMacSystemFont, sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; }}
+            .loader {{ width: 44px; height: 44px; border: 3px solid rgba(88, 101, 242, 0.2); border-top-color: #5865F2; border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 16px auto; }}
+            @keyframes spin {{ to {{ transform: rotate(360deg); }} }}
+        </style>
+    </head>
+    <body>
+        <div style="text-align: center;">
+            <div class="loader"></div>
+            <h3 style="margin: 0; font-size: 16px; font-weight: 700;">Welcome, {dev.username}!</h3>
+            <p style="font-size: 13px; color: #94a3b8; margin-top: 6px;">Opening your Developer Workspace...</p>
+        </div>
+        <script>
+            localStorage.setItem("auth_admin_token", "{jwt_token}");
+            localStorage.setItem("dev_owner_id", "{dev.owner_id}");
+            localStorage.setItem("dev_username", "{dev.username}");
+            window.location.href = "/dashboard";
         </script>
     </body>
     </html>

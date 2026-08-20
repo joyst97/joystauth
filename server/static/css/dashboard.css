@@ -1700,3 +1700,163 @@ code, pre, .mono {
     animation: continuousIconFloat 3.5s ease-in-out infinite;
 }
 
+/* ========================================================
+   GLOBAL TOP FROSTED GLASS DYNAMIC ISLAND TOAST SYSTEM
+   ======================================================== */
+#toast-container {
+    position: fixed;
+    top: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 9999999;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    pointer-events: none;
+    width: auto;
+    max-width: 90vw;
+}
+
+.toast {
+    background: rgba(12, 3, 7, 0.88);
+    backdrop-filter: blur(28px) saturate(190%);
+    -webkit-backdrop-filter: blur(28px) saturate(190%);
+    border-radius: 9999px;
+    padding: 11px 26px;
+    font-size: 13.5px;
+    font-weight: 700;
+    letter-spacing: 0.2px;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.9), inset 0 1px 0 rgba(255, 255, 255, 0.18);
+    transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+    animation: dynamicIslandDrop 0.38s cubic-bezier(0.16, 1, 0.3, 1);
+    pointer-events: auto;
+    white-space: nowrap;
+}
+
+.toast-success {
+    border: 1px solid rgba(16, 185, 129, 0.6);
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.9), 0 0 35px rgba(16, 185, 129, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+.toast-error {
+    border: 1px solid rgba(239, 68, 68, 0.6);
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.9), 0 0 35px rgba(239, 68, 68, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+.toast-info {
+    border: 1px solid rgba(244, 63, 94, 0.6);
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.9), 0 0 35px rgba(244, 63, 94, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+@keyframes dynamicIslandDrop {
+    0% {
+        opacity: 0;
+        transform: translateY(-35px) scale(0.9);
+    }
+    100% {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+/* ========================================================
+   ULTRA-RESPONSIVE MOBILE STYLES (iOS & Android Optimized)
+   ======================================================== */
+@media (max-width: 768px) {
+    html, body {
+        overflow-x: hidden !important;
+        width: 100% !important;
+    }
+    
+    .landing-nav {
+        padding: 12px 16px !important;
+    }
+    
+    .landing-nav .nav-links {
+        display: none !important;
+    }
+    
+    .hero-container {
+        padding: 40px 16px 60px !important;
+    }
+    
+    .hero-title {
+        font-size: 30px !important;
+        line-height: 1.25 !important;
+        letter-spacing: -0.5px !important;
+    }
+    
+    .hero-subtitle {
+        font-size: 14px !important;
+        line-height: 1.6 !important;
+        padding: 0 8px !important;
+    }
+    
+    .hero-cta-group {
+        flex-direction: column !important;
+        width: 100% !important;
+        gap: 12px !important;
+    }
+    
+    .hero-cta-group .btn {
+        width: 100% !important;
+        justify-content: center !important;
+    }
+    
+    .hero-stats-row {
+        flex-wrap: wrap !important;
+        gap: 16px !important;
+        justify-content: center !important;
+    }
+    
+    .stat-metric {
+        flex: 1 1 40% !important;
+        text-align: center !important;
+    }
+    
+    .grid-2, .grid-3, .grid-4, .features-grid, .pricing-grid, .pipeline-grid {
+        grid-template-columns: 1fr !important;
+        gap: 16px !important;
+    }
+    
+    .auth-card {
+        width: 92% !important;
+        max-width: 420px !important;
+        padding: 28px 20px !important;
+        margin: 20px auto !important;
+    }
+    
+    #toast-container {
+        left: 16px !important;
+        right: 16px !important;
+        bottom: 20px !important;
+    }
+    
+    .toast {
+        width: 100% !important;
+        justify-content: center !important;
+    }
+}
+
+@media (max-width: 480px) {
+    .hero-title {
+        font-size: 26px !important;
+    }
+    
+    .hero-badge {
+        font-size: 11px !important;
+        padding: 6px 12px !important;
+    }
+    
+    .card-icon-pod {
+        width: 40px !important;
+        height: 40px !important;
+    }
+}
+
+
