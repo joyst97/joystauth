@@ -403,13 +403,22 @@ async def discord_oauth_callback(code: str, db: Session = Depends(get_db)):
             pass
 
     # 4. Find or Create Developer Account
-    dev = db.query(Developer).filter(Developer.email == discord_email).first()
+    dev = None
+    if discord_id:
+        dev = db.query(Developer).filter(Developer.discord_id == str(discord_id)).first()
+    if not dev:
+        dev = db.query(Developer).filter(Developer.email == discord_email).first()
     if not dev:
         dev = db.query(Developer).filter(Developer.username == discord_username).first()
 
     if dev:
         # Update with real Discord username and details
         dev.username = discord_username
+        dev.discord_id = str(discord_id)
+        if dev.plan == "Free":
+            dev.plan = "Paid"
+            dev.max_apps = 999999
+            dev.max_users_per_app = 999999
         db.commit()
     else:
         clean_username = "".join(c for c in discord_username if c.isalnum() or c in ("_", "-"))[:24]
@@ -430,11 +439,12 @@ async def discord_oauth_callback(code: str, db: Session = Depends(get_db)):
         dev = Developer(
             username=discord_username,
             email=discord_email,
+            discord_id=str(discord_id),
             password_hash=hash_password(random_pass),
             owner_id=owner_id,
-            plan="Free",
-            max_apps=3,
-            max_users_per_app=1000
+            plan="Paid",
+            max_apps=999999,
+            max_users_per_app=999999
         )
         db.add(dev)
         db.commit()

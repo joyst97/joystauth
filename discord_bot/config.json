@@ -1,8 +1,7 @@
 {
-    "bot_token": "YOUR_DISCORD_BOT_TOKEN_HERE",
-    "admin_role_id": 0,
-    "api_base_url": "http://127.0.0.1:8000",
-    "admin_username": "admin",
-    "admin_password": "admin123",
-    "default_app_name": "DemoApp"
+    "token": "MTU0MDA1ODgwNTEzODg4MjczMA.GZUwUT.Po15OkvSVXrVXMlfzccw1-PPf5Ld7-7db5cHS8",
+    "api_url": "https://joystauth.cc",
+    "admin_token": "YOUR_JWT_ADMIN_TOKEN_HERE",
+    "default_app_id": 1,
+    "guild_id": null
 }

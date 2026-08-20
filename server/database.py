@@ -35,6 +35,7 @@ class Developer(Base):
     owner_id = Column(String(32), unique=True, index=True, nullable=False)
     api_key = Column(String(64), unique=True, index=True, nullable=True)
     plan = Column(String(20), default="Free") # Free, Developer, Enterprise
+    discord_id = Column(String(50), unique=True, index=True, nullable=True)
     max_apps = Column(Integer, default=3)
     max_users_per_app = Column(Integer, default=1000)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
@@ -220,6 +221,7 @@ def init_db():
                 pass
         
         run_alter("ALTER TABLE developers ADD COLUMN api_key VARCHAR(64)")
+        run_alter("ALTER TABLE developers ADD COLUMN discord_id VARCHAR(50)")
         run_alter("ALTER TABLE developers ADD COLUMN max_apps INTEGER DEFAULT 3")
         run_alter("ALTER TABLE developers ADD COLUMN max_users_per_app INTEGER DEFAULT 1000")
         run_alter("ALTER TABLE applications ADD COLUMN vpn_block_enabled BOOLEAN DEFAULT 0")

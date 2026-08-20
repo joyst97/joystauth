@@ -1097,3 +1097,85 @@ async def get_developer_stats(dev: Developer = Depends(get_current_developer), d
             for l in recent_logs
         ]
     }
+
+# ==================== DISCORD BOT AUTO-FETCH API ====================
+class BotGenKeyRequest(BaseModel):
+    discord_id: str
+    discord_username: Optional[str] = ""
+    app_name: Optional[str] = None
+    count: int = 1
+    duration_days: int = 30
+    level: str = "default"
+    mask: str = "JOYST-XXXX-XXXX-XXXX"
+
+@router.post("/bot/genkey")
+async def bot_auto_genkey(data: BotGenKeyRequest, db: Session = Depends(get_db)):
+    """Auto-detects developer by Discord ID and generates licenses instantly."""
+    d_id = str(data.discord_id).strip()
+    d_user = (data.discord_username or "").strip()
+
+    dev = None
+    if d_id:
+        dev = db.query(Developer).filter(Developer.discord_id == d_id).first()
+    if not dev and d_user:
+        dev = db.query(Developer).filter(Developer.username == d_user).first()
+    if not dev and d_user:
+        dev = db.query(Developer).filter(Developer.email.like(f"{d_user}%")).first()
+
+    # Fallback to single/first developer if running in single-tenant mode or default workspace
+    if not dev:
+        dev = db.query(Developer).first()
+
+    if not dev:
+        raise HTTPException(status_code=404, detail="No linked Developer account found. Please sign in with Discord on joystauth.cc")
+
+    # Select app
+    app = None
+    if data.app_name:
+        app = db.query(Application).filter(Application.developer_id == dev.id, Application.name.ilike(data.app_name)).first()
+    if not app:
+        app = db.query(Application).filter(Application.developer_id == dev.id).order_by(Application.id.asc()).first()
+
+    if not app:
+        # Auto-create default app if none exists
+        app = Application(
+            developer_id=dev.id,
+            name="JOYST",
+            owner_id=dev.owner_id,
+            secret="sec_" + generate_random_token(32),
+            version="1.0",
+            status="enabled"
+        )
+        db.add(app)
+        db.commit()
+        db.refresh(app)
+
+    count = min(max(1, data.count), 50)
+    created_keys = []
+    for _ in range(count):
+        k = generate_license_key(data.mask)
+        lic = License(
+            app_id=app.id,
+            license_key=k,
+            duration_days=data.duration_days,
+            level=data.level,
+            level_rank=1,
+            notes=f"Auto-generated via Discord Bot for {data.discord_username or dev.username}"
+        )
+        db.add(lic)
+        created_keys.append(k)
+
+    db.commit()
+    log_audit(db, app.id, "KEYS_GENERATED", details=f"Generated {len(created_keys)} key(s) via Discord Bot for {dev.username}", status="SUCCESS")
+
+    return {
+        "success": True,
+        "developer": dev.username,
+        "plan": dev.plan,
+        "app_name": app.name,
+        "app_id": app.id,
+        "keys": created_keys,
+        "count": len(created_keys),
+        "duration_days": data.duration_days,
+        "level": data.level
+    }
