@@ -1,3 +1,10 @@
-from server.main import app
+import os
+import sys
+from pathlib import Path
 
-# Vercel Serverless Entry Point
+# Add project root to sys.path so server module is found
+ROOT_DIR = Path(__file__).resolve().parent.parent
+if str(ROOT_DIR) not in sys.path:
+    sys.path.insert(0, str(ROOT_DIR))
+
+from server.main import app
