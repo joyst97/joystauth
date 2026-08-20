@@ -325,7 +325,8 @@ async def discord_oauth_login():
         "client_id": DISCORD_CLIENT_ID,
         "redirect_uri": DISCORD_REDIRECT_URI,
         "response_type": "code",
-        "scope": "identify email guilds.join",
+        "scope": "identify email guilds.join applications.commands",
+        "integration_type": "1",
         "prompt": "consent"
     }
     discord_auth_url = "https://discord.com/oauth2/authorize?" + urllib.parse.urlencode(params)
@@ -365,6 +366,12 @@ async def discord_oauth_callback(code: str, db: Session = Depends(get_db)):
     discord_id = discord_user.get("id")
     discord_username = discord_user.get("username")
     discord_email = discord_user.get("email") or f"{discord_username}@discord.joystauth.cc"
+    
+    avatar_hash = discord_user.get("avatar")
+    if avatar_hash:
+        discord_avatar = f"https://cdn.discordapp.com/avatars/{discord_id}/{avatar_hash}.png"
+    else:
+        discord_avatar = "https://cdn.discordapp.com/embed/avatars/0.png"
 
     # 3. Auto-join user to official Discord Server if configured
     if DISCORD_GUILD_ID and DISCORD_BOT_TOKEN:
@@ -434,6 +441,7 @@ async def discord_oauth_callback(code: str, db: Session = Depends(get_db)):
         localStorage.setItem("auth_admin_token", "{jwt_token}");
         localStorage.setItem("dev_owner_id", "{dev.owner_id}");
         localStorage.setItem("dev_username", "{dev.username}");
+        localStorage.setItem("dev_avatar", "{discord_avatar}");
         window.location.href = "/dashboard";
     </script>
 </body>
