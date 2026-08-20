@@ -312,6 +312,10 @@ async def google_callback_redirect():
                 window.location.href = "/login?error=google_failed";
             })();
         </script>
+    </body>
+    </html>
+    """)
+
 @router.get("/discord/login")
 async def discord_oauth_login():
     """Redirect developer to official Discord OAuth authorization portal."""
@@ -324,8 +328,8 @@ async def discord_oauth_login():
         "scope": "identify email guilds.join",
         "prompt": "consent"
     }
-    discord_auth_url = f"https://discord.com/oauth2/authorize?{urllib.parse.urlencode(params)}"
-    return HTMLResponse(f"<script>window.location.href = '{discord_auth_url}';</script>")
+    discord_auth_url = "https://discord.com/oauth2/authorize?" + urllib.parse.urlencode(params)
+    return HTMLResponse("<script>window.location.href = '" + discord_auth_url + "';</script>")
 
 @router.get("/discord/callback")
 async def discord_oauth_callback(code: str, db: Session = Depends(get_db)):
@@ -352,7 +356,7 @@ async def discord_oauth_callback(code: str, db: Session = Depends(get_db)):
 
     # 2. Get Discord User Profile
     user_url = "https://discord.com/api/v10/users/@me"
-    user_headers = {"Authorization": f"Bearer {discord_access_token}"}
+    user_headers = {"Authorization": "Bearer " + str(discord_access_token)}
     user_res = requests.get(user_url, headers=user_headers)
     if user_res.status_code != 200:
         return HTMLResponse("<script>window.location.href='/login?error=discord_user_failed';</script>")
@@ -367,7 +371,7 @@ async def discord_oauth_callback(code: str, db: Session = Depends(get_db)):
         try:
             join_url = f"https://discord.com/api/v10/guilds/{DISCORD_GUILD_ID}/members/{discord_id}"
             join_headers = {
-                "Authorization": f"Bot {DISCORD_BOT_TOKEN}",
+                "Authorization": "Bot " + str(DISCORD_BOT_TOKEN),
                 "Content-Type": "application/json"
             }
             join_body = {"access_token": discord_access_token}
@@ -416,32 +420,25 @@ async def discord_oauth_callback(code: str, db: Session = Depends(get_db)):
         "role": "developer"
     })
 
-    return HTMLResponse(f"""
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <title>Connecting Discord Account...</title>
-        <style>
-            body {{ background: #060204; color: #fff; font-family: -apple-system, BlinkMacSystemFont, sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; }}
-            .loader {{ width: 44px; height: 44px; border: 3px solid rgba(88, 101, 242, 0.2); border-top-color: #5865F2; border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 16px auto; }}
-            @keyframes spin {{ to {{ transform: rotate(360deg); }} }}
-        </style>
-    </head>
-    <body>
-        <div style="text-align: center;">
-            <div class="loader"></div>
-            <h3 style="margin: 0; font-size: 16px; font-weight: 700;">Welcome, {dev.username}!</h3>
-            <p style="font-size: 13px; color: #94a3b8; margin-top: 6px;">Opening your Developer Workspace...</p>
-        </div>
-        <script>
-            localStorage.setItem("auth_admin_token", "{jwt_token}");
-            localStorage.setItem("dev_owner_id", "{dev.owner_id}");
-            localStorage.setItem("dev_username", "{dev.username}");
-            window.location.href = "/dashboard";
-        </script>
-    </body>
-    </html>
-    """)
+    redirect_html = f"""<!DOCTYPE html>
+<html>
+<head>
+    <title>Connecting Discord Account...</title>
+</head>
+<body style="background:#060204;color:#fff;font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;">
+    <div style="text-align:center;">
+        <h3 style="margin:0;font-size:16px;">Welcome, {dev.username}!</h3>
+        <p style="font-size:13px;color:#94a3b8;margin-top:6px;">Opening your Developer Workspace...</p>
+    </div>
+    <script>
+        localStorage.setItem("auth_admin_token", "{jwt_token}");
+        localStorage.setItem("dev_owner_id", "{dev.owner_id}");
+        localStorage.setItem("dev_username", "{dev.username}");
+        window.location.href = "/dashboard";
+    </script>
+</body>
+</html>"""
+    return HTMLResponse(redirect_html)
 
 @router.get("/me")
 async def get_me(authorization: Optional[str] = Header(None), dev: Developer = Depends(get_current_developer), db: Session = Depends(get_db)):
