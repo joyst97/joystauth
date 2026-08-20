@@ -391,7 +391,11 @@ async def discord_oauth_callback(code: str, db: Session = Depends(get_db)):
     if not dev:
         dev = db.query(Developer).filter(Developer.username == discord_username).first()
 
-    if not dev:
+    if dev:
+        # Update with real Discord username and details
+        dev.username = discord_username
+        db.commit()
+    else:
         clean_username = "".join(c for c in discord_username if c.isalnum() or c in ("_", "-"))[:24]
         if len(clean_username) < 3:
             clean_username = "dev_" + generate_random_token(6)
@@ -408,7 +412,7 @@ async def discord_oauth_callback(code: str, db: Session = Depends(get_db)):
 
         random_pass = generate_random_token(32)
         dev = Developer(
-            username=username,
+            username=discord_username,
             email=discord_email,
             password_hash=hash_password(random_pass),
             owner_id=owner_id,

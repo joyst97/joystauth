@@ -82,9 +82,17 @@ async function loadUserProfile() {
         const avatarEl = document.getElementById("dev-avatar");
         const planBadge = document.getElementById("header-plan-badge");
 
+        const savedAvatar = localStorage.getItem("dev_avatar");
         if (nameEl) nameEl.textContent = devUsername;
         if (ownerEl) ownerEl.innerHTML = `<span class="badge-dot" style="background: #10b981;"></span> Server Online`;
-        if (avatarEl) avatarEl.textContent = devUsername.charAt(0).toUpperCase();
+        if (avatarEl) {
+            if (savedAvatar && savedAvatar.startsWith("http")) {
+                avatarEl.innerHTML = `<img src="${savedAvatar}" alt="DP" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover; box-shadow: 0 0 10px rgba(88, 101, 242, 0.6);">`;
+                avatarEl.style.background = "transparent";
+            } else {
+                avatarEl.textContent = devUsername.charAt(0).toUpperCase();
+            }
+        }
         const activePlan = data.plan || 'Free';
         window.currentUserPlan = activePlan;
         if (planBadge) planBadge.textContent = `${activePlan} Plan`;
@@ -154,9 +162,7 @@ function setupNavigation() {
     const logoutBtn = document.getElementById("btn-logout");
     if (logoutBtn) {
         logoutBtn.addEventListener("click", () => {
-            localStorage.removeItem("auth_admin_token");
-            localStorage.removeItem("dev_owner_id");
-            localStorage.removeItem("dev_username");
+            localStorage.clear();
             window.location.href = "/login";
         });
     }
