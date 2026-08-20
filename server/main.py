@@ -49,7 +49,10 @@ app.include_router(reseller_router)
 
 @app.on_event("startup")
 async def on_startup():
-    init_db()
+    try:
+        init_db()
+    except Exception as e:
+        print(f"[JOYST] Database init notice: {e}")
     print("=======================================================")
     print("[JOYST CORPORATION] Platform is LIVE on http://localhost:8000")
     print("[+] Public Landing Page: http://localhost:8000")
