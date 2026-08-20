@@ -66,6 +66,47 @@
             pointer-events: none;
             z-index: 1;
         }
+        #toast-container {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            z-index: 999999;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            pointer-events: none;
+        }
+        .toast {
+            background: rgba(14, 4, 8, 0.95);
+            backdrop-filter: blur(20px);
+            border-radius: 12px;
+            padding: 12px 22px;
+            font-size: 13.5px;
+            font-weight: 700;
+            color: #fff;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.85);
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            animation: toastSlideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .toast-success {
+            border: 1px solid #10b981;
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.85), 0 0 25px rgba(16, 185, 129, 0.25);
+        }
+        .toast-error {
+            border: 1px solid #ef4444;
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.85), 0 0 25px rgba(239, 68, 68, 0.25);
+        }
+        .toast-info {
+            border: 1px solid #6366f1;
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.85), 0 0 25px rgba(99, 102, 241, 0.25);
+        }
+        @keyframes toastSlideIn {
+            from { opacity: 0; transform: translateY(20px) scale(0.95); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
         #google-signup-btn-container iframe {
             margin: 0 auto !important;
             border-radius: 10px !important;
@@ -84,7 +125,7 @@
 
         <!-- Official Google Sign Up Container -->
         <div id="google-signup-btn-container" style="margin-bottom: 20px; display: flex; justify-content: center; width: 100%;">
-            <button type="button" id="fallback-google-btn" onclick="handleGoogleSignInClick()" class="btn btn-secondary" style="width: 100%; justify-content: center; padding: 12px; font-size: 13.5px; font-weight: 700; gap: 10px; border-radius: 10px; cursor: pointer;">
+            <button type="button" id="fallback-google-btn" onclick="handleGoogleSignUpClick()" class="btn btn-secondary" style="width: 100%; justify-content: center; padding: 12px; font-size: 13.5px; font-weight: 700; gap: 10px; border-radius: 10px; cursor: pointer;">
                 <svg width="18" height="18" viewBox="0 0 24 24">
                     <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
                     <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
@@ -97,24 +138,24 @@
 
         <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 22px;">
             <div style="flex: 1; height: 1px; background: rgba(255, 255, 255, 0.1);"></div>
-            <span style="font-size: 11px; font-weight: 800; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">Or register with details</span>
+            <span style="font-size: 11px; font-weight: 800; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">Or register with credentials</span>
             <div style="flex: 1; height: 1px; background: rgba(255, 255, 255, 0.1);"></div>
         </div>
 
         <form id="register-form">
             <div class="form-group">
                 <label>Developer Username</label>
-                <input type="text" id="reg-username" class="form-control" placeholder="e.g. AlexDev" required autofocus minlength="3">
+                <input type="text" id="reg-username" class="form-control" placeholder="Choose a username" required autofocus>
             </div>
 
             <div class="form-group">
-                <label>Email Address (Optional)</label>
-                <input type="email" id="reg-email" class="form-control" placeholder="developer@example.com">
+                <label>Email Address <span style="font-size: 11px; color: var(--text-muted); font-weight: 500;">(Optional)</span></label>
+                <input type="email" id="reg-email" class="form-control" placeholder="dev@example.com">
             </div>
 
             <div class="form-group">
                 <label>Password</label>
-                <input type="password" id="reg-password" class="form-control" placeholder="••••••••" required minlength="6">
+                <input type="password" id="reg-password" class="form-control" placeholder="Minimum 6 characters" required minlength="6">
             </div>
 
             <div class="form-group" style="margin-bottom: 24px;">
@@ -141,16 +182,18 @@
     <script>
         const GOOGLE_CLIENT_ID = "1029635040070-o00five90cn8ur7fhu4u5jnp8cbcdrla.apps.googleusercontent.com";
 
-        function showToast(message, type = "info") {
+        function showToast(message, type = "success") {
             const container = document.getElementById("toast-container");
+            container.innerHTML = "";
             const toast = document.createElement("div");
             toast.className = `toast toast-${type}`;
-            toast.innerHTML = `<span>${type === 'success' ? '✅' : '❌'}</span> <span>${message}</span>`;
+            const icon = type === 'success' ? '✅' : (type === 'error' ? '🚫' : '⚡');
+            toast.innerHTML = `<span style="font-size: 16px;">${icon}</span> <span>${message}</span>`;
             container.appendChild(toast);
             setTimeout(() => {
                 toast.style.opacity = "0";
                 setTimeout(() => toast.remove(), 300);
-            }, 3500);
+            }, 3000);
         }
 
         let tokenClient;
@@ -164,7 +207,6 @@
                         prompt: "select_account",
                         callback: async (tokenResponse) => {
                             if (tokenResponse && tokenResponse.access_token) {
-                                showToast("Authenticating with Google...", "info");
                                 try {
                                     const userInfoRes = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
                                         headers: { Authorization: `Bearer ${tokenResponse.access_token}` }
@@ -180,10 +222,10 @@
                                         localStorage.setItem("auth_admin_token", data.access_token);
                                         localStorage.setItem("dev_owner_id", data.owner_id);
                                         localStorage.setItem("dev_username", data.username);
-                                        showToast("Google Account Authenticated! Opening Dashboard...", "success");
+                                        showToast("Account Ready! Welcome to Joyst Auth", "success");
                                         setTimeout(() => {
                                             window.location.href = data.redirect_url || "/dashboard";
-                                        }, 500);
+                                        }, 400);
                                     } else {
                                         showToast(data.detail || "Google authentication failed", "error");
                                     }

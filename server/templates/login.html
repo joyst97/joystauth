@@ -66,9 +66,46 @@
             pointer-events: none;
             z-index: 1;
         }
-        #google-signin-btn-container iframe {
-            margin: 0 auto !important;
-            border-radius: 10px !important;
+        #toast-container {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            z-index: 999999;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            pointer-events: none;
+        }
+        .toast {
+            background: rgba(14, 4, 8, 0.95);
+            backdrop-filter: blur(20px);
+            border-radius: 12px;
+            padding: 12px 22px;
+            font-size: 13.5px;
+            font-weight: 700;
+            color: #fff;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.85);
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            animation: toastSlideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .toast-success {
+            border: 1px solid #10b981;
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.85), 0 0 25px rgba(16, 185, 129, 0.25);
+        }
+        .toast-error {
+            border: 1px solid #ef4444;
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.85), 0 0 25px rgba(239, 68, 68, 0.25);
+        }
+        .toast-info {
+            border: 1px solid #6366f1;
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.85), 0 0 25px rgba(99, 102, 241, 0.25);
+        }
+        @keyframes toastSlideIn {
+            from { opacity: 0; transform: translateY(20px) scale(0.95); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
         }
     </style>
 </head>
@@ -131,16 +168,18 @@
     <script>
         const GOOGLE_CLIENT_ID = "1029635040070-o00five90cn8ur7fhu4u5jnp8cbcdrla.apps.googleusercontent.com";
 
-        function showToast(message, type = "info") {
+        function showToast(message, type = "success") {
             const container = document.getElementById("toast-container");
+            container.innerHTML = "";
             const toast = document.createElement("div");
             toast.className = `toast toast-${type}`;
-            toast.innerHTML = `<span>${type === 'success' ? '✅' : '❌'}</span> <span>${message}</span>`;
+            const icon = type === 'success' ? '✅' : (type === 'error' ? '🚫' : '⚡');
+            toast.innerHTML = `<span style="font-size: 16px;">${icon}</span> <span>${message}</span>`;
             container.appendChild(toast);
             setTimeout(() => {
                 toast.style.opacity = "0";
                 setTimeout(() => toast.remove(), 300);
-            }, 3500);
+            }, 3000);
         }
 
         let tokenClient;
@@ -154,7 +193,6 @@
                         prompt: "select_account",
                         callback: async (tokenResponse) => {
                             if (tokenResponse && tokenResponse.access_token) {
-                                showToast("Authenticating with Google...", "info");
                                 try {
                                     const userInfoRes = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
                                         headers: { Authorization: `Bearer ${tokenResponse.access_token}` }
@@ -170,10 +208,10 @@
                                         localStorage.setItem("auth_admin_token", data.access_token);
                                         localStorage.setItem("dev_owner_id", data.owner_id);
                                         localStorage.setItem("dev_username", data.username);
-                                        showToast("Google Account Authenticated! Opening Dashboard...", "success");
+                                        showToast("Login Successful! Welcome to Joyst Auth", "success");
                                         setTimeout(() => {
                                             window.location.href = data.redirect_url || "/dashboard";
-                                        }, 500);
+                                        }, 400);
                                     } else {
                                         showToast(data.detail || "Google authentication failed", "error");
                                     }
