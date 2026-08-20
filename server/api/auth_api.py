@@ -27,10 +27,10 @@ class GoogleAuthRequest(BaseModel):
 @router.get("/google/config")
 async def get_google_config():
     import os
-    client_id = os.getenv("GOOGLE_CLIENT_ID", "")
+    client_id = os.getenv("GOOGLE_CLIENT_ID", "1029635040070-o00five90cn8ur7fhu4u5jnp8cbcdrla.apps.googleusercontent.com")
     return {
         "client_id": client_id,
-        "is_configured": bool(client_id and client_id.endswith(".apps.googleusercontent.com"))
+        "is_configured": True
     }
 
 class ChangePasswordRequest(BaseModel):

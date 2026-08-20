@@ -9,6 +9,9 @@ PLATFORM_NAME = "JOYST CORPORATION"
 PLATFORM_VERSION = "2.0.0"
 DEFAULT_DISCORD_WEBHOOK_URL = "https://discord.com/api/webhooks/1538975515598262293/MkIFWJpXI3jU91daFhP5K6vHTL0Mzvkyh0wkupDmDbNu8auABjaQJ5hkgfpg6nYD_UCa"
 
+GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID", "1029635040070-o00five90cn8ur7fhu4u5jnp8cbcdrla.apps.googleusercontent.com")
+GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET", "")
+
 ACTION_TITLES = {
     "LOGIN_SUCCESS": "🟢 User Login Successful",
     "LOGIN_FAILED": "⚠️ Failed Login Attempt",
