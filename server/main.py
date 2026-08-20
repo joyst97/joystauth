@@ -31,10 +31,13 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 STATIC_DIR = os.path.join(BASE_DIR, "static")
 TEMPLATES_DIR = os.path.join(BASE_DIR, "templates")
 
-os.makedirs(STATIC_DIR, exist_ok=True)
-os.makedirs(os.path.join(STATIC_DIR, "css"), exist_ok=True)
-os.makedirs(os.path.join(STATIC_DIR, "js"), exist_ok=True)
-os.makedirs(TEMPLATES_DIR, exist_ok=True)
+try:
+    os.makedirs(STATIC_DIR, exist_ok=True)
+    os.makedirs(os.path.join(STATIC_DIR, "css"), exist_ok=True)
+    os.makedirs(os.path.join(STATIC_DIR, "js"), exist_ok=True)
+    os.makedirs(TEMPLATES_DIR, exist_ok=True)
+except Exception:
+    pass
 
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 

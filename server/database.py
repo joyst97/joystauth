@@ -6,6 +6,18 @@ from sqlalchemy.orm import sessionmaker, relationship
 
 DATABASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DATABASE_FILE = os.path.join(DATABASE_DIR, "joyst_corp.db")
+
+# Vercel Serverless read-only filesystem support
+if os.environ.get("VERCEL") or os.environ.get("AWS_LAMBDA_FUNCTION_NAME"):
+    import shutil
+    TMP_DB = "/tmp/joyst_corp.db"
+    if os.path.exists(DATABASE_FILE) and not os.path.exists(TMP_DB):
+        try:
+            shutil.copyfile(DATABASE_FILE, TMP_DB)
+        except Exception:
+            pass
+    DATABASE_FILE = TMP_DB
+
 SQLALCHEMY_DATABASE_URL = f"sqlite:///{DATABASE_FILE}"
 
 engine = create_engine(
