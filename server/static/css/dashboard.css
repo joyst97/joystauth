@@ -1819,44 +1819,97 @@ code, pre, .mono {
         text-align: center !important;
     }
     
-    .grid-2, .grid-3, .grid-4, .features-grid, .pricing-grid, .pipeline-grid {
+    .landing-nav {
+        padding: 12px 16px !important;
+    }
+    .landing-nav .nav-menu {
+        display: none !important;
+    }
+    .landing-nav .brand-title span {
+        display: none !important;
+    }
+    
+    .hero-centered-wrapper {
+        padding: 100px 16px 40px 16px !important;
+    }
+    .hero-heading-centered {
+        font-size: 27px !important;
+        line-height: 1.28 !important;
+        letter-spacing: -0.5px !important;
+        margin-bottom: 16px !important;
+        word-break: break-word !important;
+    }
+    .hero-subtext-centered {
+        font-size: 13.5px !important;
+        line-height: 1.65 !important;
+        margin-bottom: 24px !important;
+        padding: 0 4px !important;
+    }
+    .hero-actions-centered {
+        flex-direction: column !important;
+        width: 100% !important;
+        gap: 12px !important;
+        margin-bottom: 36px !important;
+    }
+    .hero-actions-centered .btn {
+        width: 100% !important;
+        justify-content: center !important;
+        padding: 14px 20px !important;
+        font-size: 14px !important;
+    }
+    
+    .hero-feature-matrix, .pipeline-grid, .footer-grid, .grid-2, .grid-3, .grid-4, .features-grid, .pricing-grid {
         grid-template-columns: 1fr !important;
         gap: 16px !important;
+        width: 100% !important;
+    }
+    
+    .hero-matrix-card, .pipeline-step, .interactive-widget-card {
+        padding: 18px !important;
+    }
+    
+    .mega-footer {
+        padding: 40px 20px 24px 20px !important;
     }
     
     .auth-card {
         width: 92% !important;
-        max-width: 420px !important;
-        padding: 28px 20px !important;
+        max-width: 400px !important;
+        padding: 24px 18px !important;
         margin: 20px auto !important;
     }
     
     #toast-container {
-        left: 16px !important;
-        right: 16px !important;
-        bottom: 20px !important;
+        top: 16px !important;
+        left: 50% !important;
+        transform: translateX(-50%) !important;
+        width: 90% !important;
+        max-width: 360px !important;
     }
     
     .toast {
         width: 100% !important;
         justify-content: center !important;
+        font-size: 12.5px !important;
+        padding: 10px 16px !important;
     }
 }
 
 @media (max-width: 480px) {
-    .hero-title {
-        font-size: 26px !important;
+    .hero-heading-centered {
+        font-size: 24px !important;
     }
-    
-    .hero-badge {
+    .glowing-pill {
         font-size: 11px !important;
         padding: 6px 12px !important;
     }
-    
-    .card-icon-pod {
-        width: 40px !important;
-        height: 40px !important;
-    }
 }
+
+/* Global Mobile Anti-Overflow */
+html, body {
+    overflow-x: hidden !important;
+    max-width: 100vw !important;
+}
+
 
 
