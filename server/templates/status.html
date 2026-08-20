@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>System Status | JOYST CORPORATION AUTH</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/dashboard.css">
+</head>
+<body>
+    <div class="cyber-grid-overlay"></div>
+    <div class="noise-overlay"></div>
+    <canvas id="bg-particles"></canvas>
+
+    <!-- Top Navigation Bar -->
+    <nav class="landing-nav">
+        <a href="/" class="brand-wrap">
+            <div class="brand-badge-icon">⚡</div>
+            <div class="brand-title">
+                JOYST CORPORATION AUTH
+                <span>Enterprise Licensing Infrastructure</span>
+            </div>
+        </a>
+
+        <ul class="nav-menu">
+            <li><a href="/features">Features</a></li>
+            <li><a href="/pricing">Pricing</a></li>
+            <li><a href="/docs">Documentation</a></li>
+            <li><a href="/discord">Discord Bot</a></li>
+            <li><a href="/status" style="color: #fff;">System Status</a></li>
+        </ul>
+
+        <div style="display: flex; align-items: center; gap: 14px;">
+            <a href="/login" class="btn btn-secondary btn-sm">Sign In</a>
+            <a href="/register" class="btn btn-primary btn-sm">Create Account</a>
+        </div>
+    </nav>
+
+    <!-- Header -->
+    <section style="max-width: 1000px; margin: 0 auto; padding: 130px 32px 30px 32px; text-align: center; position: relative; z-index: 10;">
+        <div class="glowing-pill" style="margin-bottom: 16px;">
+            <span class="badge-dot" style="background: #10b981;"></span> All Systems Operational
+        </div>
+        <h1 style="font-size: 42px; font-weight: 900; letter-spacing: -1px; color: #fff; margin-bottom: 12px;">
+            Live System & Gateway Status
+        </h1>
+        <p style="font-size: 15px; color: var(--text-secondary);">
+            Real-time health status of Joyst Corporation Auth global API clusters and cryptographic endpoints.
+        </p>
+    </section>
+
+    <!-- Status Cards -->
+    <section style="max-width: 1000px; margin: 0 auto; padding: 10px 32px 80px 32px; position: relative; z-index: 10;">
+        <div class="glass-panel" style="padding: 0; overflow: hidden; margin-bottom: 24px;">
+            <div style="padding: 20px 28px; border-bottom: 1px solid var(--border-glass); display: flex; align-items: center; justify-content: space-between;">
+                <div>
+                    <strong style="color: #fff; font-size: 15px; display: block;">Client Authentication Gateway (AES-256)</strong>
+                    <span style="font-size: 12px; color: var(--text-muted);">POST /api/v1/client/gateway</span>
+                </div>
+                <span class="badge badge-success"><span class="badge-dot"></span> 100% Operational</span>
+            </div>
+
+            <div style="padding: 20px 28px; border-bottom: 1px solid var(--border-glass); display: flex; align-items: center; justify-content: space-between;">
+                <div>
+                    <strong style="color: #fff; font-size: 15px; display: block;">Handshake Key Exchange Node</strong>
+                    <span style="font-size: 12px; color: var(--text-muted);">POST /api/v1/client/init</span>
+                </div>
+                <span class="badge badge-success"><span class="badge-dot"></span> 100% Operational</span>
+            </div>
+
+            <div style="padding: 20px 28px; border-bottom: 1px solid var(--border-glass); display: flex; align-items: center; justify-content: space-between;">
+                <div>
+                    <strong style="color: #fff; font-size: 15px; display: block;">Developer Admin & SaaS Management API</strong>
+                    <span style="font-size: 12px; color: var(--text-muted);">GET /api/v1/admin/*</span>
+                </div>
+                <span class="badge badge-success"><span class="badge-dot"></span> 100% Operational</span>
+            </div>
+
+            <div style="padding: 20px 28px; display: flex; align-items: center; justify-content: space-between;">
+                <div>
+                    <strong style="color: #fff; font-size: 15px; display: block;">Discord Bot Controller Webhook Bridge</strong>
+                    <span style="font-size: 12px; color: var(--text-muted);">Discord API Gateway v10</span>
+                </div>
+                <span class="badge badge-success"><span class="badge-dot"></span> 100% Operational</span>
+            </div>
+        </div>
+
+        <div class="glass-panel" style="padding: 24px 28px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px;">
+            <div>
+                <span style="font-size: 12px; color: var(--text-muted); font-weight: 800; text-transform: uppercase;">SERVER REGION</span>
+                <div style="font-size: 15px; color: #fff; font-weight: 800; margin-top: 4px;">Local Edge Node (Host: 127.0.0.1:8000)</div>
+            </div>
+            <div>
+                <span style="font-size: 12px; color: var(--text-muted); font-weight: 800; text-transform: uppercase;">AVERAGE LATENCY</span>
+                <div style="font-size: 15px; color: #34d399; font-weight: 800; margin-top: 4px;">&lt; 5ms Response Time</div>
+            </div>
+            <div>
+                <span style="font-size: 12px; color: var(--text-muted); font-weight: 800; text-transform: uppercase;">UPTIME (30 DAYS)</span>
+                <div style="font-size: 15px; color: #38bdf8; font-weight: 800; margin-top: 4px;">99.99%</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer style="border-top: 1px solid var(--border-glass); background: rgba(2, 6, 23, 0.85); backdrop-filter: blur(20px); padding: 36px 48px; display: flex; align-items: center; justify-content: space-between; color: var(--text-muted); font-size: 13px; position: relative; z-index: 10; flex-wrap: wrap; gap: 20px;">
+        <div style="display: flex; align-items: center; gap: 10px;">
+            <strong style="color: #fff;">JOYST CORPORATION AUTH</strong> &copy; 2026. All rights reserved.
+        </div>
+        <div style="display: flex; gap: 24px; flex-wrap: wrap;">
+            <a href="/features" style="color: var(--text-muted); text-decoration: none;">Features</a>
+            <a href="/pricing" style="color: var(--text-muted); text-decoration: none;">Pricing</a>
+            <a href="/docs" style="color: var(--text-muted); text-decoration: none;">Documentation</a>
+            <a href="/status" style="color: var(--text-muted); text-decoration: none;">System Status</a>
+            <a href="/login" style="color: var(--text-muted); text-decoration: none;">Sign In</a>
+            <a href="/register" style="color: var(--text-muted); text-decoration: none;">Create Account</a>
+        </div>
+    </footer>
+
+    <script src="/static/js/particles.js"></script>
+    <script src="/static/js/reactbits.js"></script>
+</body>
+</html>

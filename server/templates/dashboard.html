@@ -1,0 +1,1259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JOYST CORPORATION AUTH | Developer Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/dashboard.css">
+    <style>
+        .quick-actions-bar {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-bottom: 24px;
+        }
+        .quick-action-btn {
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-sm);
+            padding: 8px 16px;
+            font-size: 12.5px;
+            font-weight: 700;
+            color: var(--text-secondary);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: 0.2s;
+        }
+        .quick-action-btn:hover {
+            color: #fff;
+            background: rgba(99, 102, 241, 0.15);
+            border-color: var(--border-glow);
+        }
+        .plans-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 24px;
+            margin-top: 20px;
+        }
+        .plan-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-lg);
+            padding: 32px 24px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            position: relative;
+        }
+        .plan-card.active-plan {
+            border-color: var(--brand-indigo);
+            box-shadow: 0 0 30px rgba(99, 102, 241, 0.3);
+        }
+        .redeem-card {
+            background: rgba(99, 102, 241, 0.08);
+            border: 1px solid var(--border-glow);
+            border-radius: var(--radius-lg);
+            padding: 24px;
+            margin-top: 28px;
+            max-width: 600px;
+        }
+    </style>
+</head>
+<body>
+    <!-- ReactBits Background Layers -->
+    <div class="aurora-orb-1"></div>
+    <div class="aurora-orb-2"></div>
+    <div class="cyber-grid-overlay"></div>
+    <div class="noise-overlay"></div>
+    <canvas id="bg-particles"></canvas>
+
+    <div class="app-container">
+        <!-- Modern Sidebar -->
+        <aside class="sidebar">
+            <div class="brand-logo">
+                <img src="/static/img/joyst_logo.png" alt="JOYST" style="width: 38px; height: 38px; border-radius: 50%; object-fit: cover; box-shadow: 0 0 15px rgba(225, 29, 72, 0.6); border: 1.5px solid rgba(244, 63, 94, 0.5);">
+                <div class="brand-text">
+                    <h1>JOYST AUTH</h1>
+                    <span>Developer Console</span>
+                </div>
+            </div>
+
+            <ul class="nav-links">
+                <li class="nav-item active" data-tab="overview">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+                    <span>Overview</span>
+                </li>
+                <li class="nav-item" data-tab="licenses">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                    <span>License Keys</span>
+                </li>
+                <li class="nav-item" data-tab="users">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+                    <span>Users & HWID</span>
+                </li>
+                <li class="nav-item" data-tab="tiers">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+                    <span>Subscriptions / Ranks</span>
+                </li>
+                <li class="nav-item" data-tab="blacklists">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="10"></circle><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"></line></svg>
+                    <span>Blacklists</span>
+                </li>
+                <li class="nav-item" data-tab="resellers">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="8.5" cy="7" r="4"></circle><line x1="20" y1="8" x2="20" y2="14"></line><line x1="23" y1="11" x2="17" y2="11"></line></svg>
+                    <span>Resellers</span>
+                </li>
+                <li class="nav-item" data-tab="webhooks">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M22 17H2a3 3 0 0 0 3-3V9a7 7 0 0 1 14 0v5a3 3 0 0 0 3 3zm-8.27 4a2 2 0 0 1-3.46 0"></path></svg>
+                    <span>Discord Bot & Logs</span>
+                </li>
+                <li class="nav-item" data-tab="apps">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>
+                    <span>App Settings</span>
+                </li>
+                <li class="nav-item" data-tab="logs">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
+                    <span>Activity Logs</span>
+                </li>
+                <li class="nav-item" data-tab="sdk">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>
+                    <span>SDK Studio</span>
+                </li>
+                <li class="nav-item" data-tab="settings">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+                    <span>Plans & Account</span>
+                </li>
+            </ul>
+
+            <div class="sidebar-footer">
+                <div class="user-profile">
+                    <div class="user-avatar" id="dev-avatar" style="background: linear-gradient(135deg, #38bdf8, #818cf8); font-weight: 800;">D</div>
+                    <div class="user-info">
+                        <div class="username" id="dev-display-name" style="font-weight: 800; color: #fff;">Developer</div>
+                        <div class="role" id="dev-owner-id-label" style="display: flex; align-items: center; gap: 5px; color: #10b981; font-weight: 700; font-size: 11px;">
+                            <span class="badge-dot" style="background: #10b981;"></span> Server Online
+                        </div>
+                    </div>
+                </div>
+                <button class="btn-logout" id="btn-logout" title="Logout">
+                    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+                </button>
+            </div>
+        </aside>
+
+        <!-- Main Content View -->
+        <main class="main-content">
+            <!-- Top Header Ribbon -->
+            <header class="top-header">
+                <div class="header-left">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <span style="font-size: 14px; font-weight: 800; color: #fff; letter-spacing: 0.5px;">JOYST CONSOLE</span>
+                    </div>
+                </div>
+                <div class="header-right" style="display: flex; align-items: center; gap: 12px;">
+                    <div class="glowing-pill" style="font-size: 11.5px; padding: 4px 14px;">
+                        <span class="badge-dot" style="background: #10b981;"></span>
+                        <span id="header-plan-badge">Free Plan</span>
+                    </div>
+                    <button class="btn btn-secondary btn-sm" onclick="openModal('modal-create-app')">
+                        <span>➕ New App</span>
+                    </button>
+                    <button class="btn btn-primary btn-sm" onclick="openModal('modal-generate-keys')">
+                        <span>⚡ Generate Key</span>
+                    </button>
+                </div>
+            </header>
+
+            <!-- 1. TAB: OVERVIEW -->
+            <section id="page-overview" class="page-container active">
+                <div class="page-header">
+                    <div class="page-title">
+                        <h2>Dashboard Overview</h2>
+                        <p>Live statistics, application parameters, and recent activity.</p>
+                    </div>
+                    <div style="display: flex; gap: 8px;">
+                        <button class="btn btn-secondary btn-sm" onclick="loadGlobalStats()">🔄 Refresh</button>
+                    </div>
+                </div>
+
+                <!-- Prominent Application Selector & Credentials Vault Box -->
+                <div class="app-credentials-banner spotlight-card" id="app-credentials-banner" style="background: var(--bg-surface); border: 1px solid rgba(225, 29, 72, 0.35); box-shadow: 0 12px 35px -10px rgba(225, 29, 72, 0.25); border-radius: 18px; padding: 26px 30px; margin-bottom: 26px;">
+                    <!-- Big App Selector Header -->
+                    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; margin-bottom: 20px; border-bottom: 1px solid var(--border-glass); padding-bottom: 18px;">
+                        <div style="display: flex; align-items: center; gap: 14px; flex-wrap: wrap;">
+                            <div style="width: 42px; height: 42px; border-radius: 12px; background: var(--gradient-primary); display: flex; align-items: center; justify-content: center; font-size: 22px; box-shadow: 0 0 20px rgba(225, 29, 72, 0.5);">⚡</div>
+                            <div>
+                                <span style="font-size: 11px; color: #ff4d79; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; display: block; margin-bottom: 4px;">ACTIVE APPLICATION</span>
+                                <div style="display: flex; align-items: center; gap: 10px;">
+                                    <select id="overview-app-select" style="background: #120408; color: #fff; border: 1.5px solid rgba(244, 63, 94, 0.5); padding: 9px 18px; border-radius: 10px; font-size: 16px; font-weight: 800; outline: none; cursor: pointer; min-width: 240px; box-shadow: 0 0 15px rgba(225, 29, 72, 0.2);">
+                                        <option>Loading Applications...</option>
+                                    </select>
+                                    <button class="btn btn-secondary btn-sm" onclick="openModal('modal-create-app')" title="Create New App">➕ New</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                            <span class="badge badge-cyan" id="banner-app-version" style="padding: 7px 14px; font-size: 13px; font-weight: 800;">v1.0</span>
+                            <span class="badge badge-success" style="padding: 7px 14px; font-size: 13px;"><span class="badge-dot"></span> Protected</span>
+                        </div>
+                    </div>
+
+                    <!-- Credentials & Token Grid -->
+                    <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 20px; align-items: center;">
+                        <div>
+                            <span style="font-size: 11.5px; color: var(--text-muted); font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px;">Master App Token (Client SDK Key)</span>
+                            <div class="cred-copy-box" style="margin-top: 8px; background: rgba(0,0,0,0.5); padding: 12px 16px; border-radius: 12px; border: 1px solid var(--border-glass); display: flex; justify-content: space-between; align-items: center; gap: 10px;">
+                                <span class="mono" id="banner-app-secret" style="color: #fff; font-size: 14px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">Loading...</span>
+                                <button class="btn btn-primary btn-sm" style="padding: 6px 14px; font-size: 12px; border-radius: 8px;" onclick="copyToClipboard(document.getElementById('banner-app-secret').textContent)">📋 Copy Token</button>
+                            </div>
+                        </div>
+                        <div style="background: rgba(0,0,0,0.35); padding: 14px 18px; border-radius: 12px; border: 1px solid var(--border-glass);">
+                            <div style="font-size: 11.5px; color: var(--text-muted); font-weight: 800; text-transform: uppercase;">Motherboard HWID Lock</div>
+                            <div style="font-size: 14px; color: #10b981; font-weight: 800; margin-top: 5px;">🔒 Locked to Motherboard</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Quick Action Bar -->
+                <div class="quick-actions-bar" style="margin-bottom: 24px;">
+                    <button class="quick-action-btn" onclick="openModal('modal-generate-keys')">⚡ Add License Key</button>
+                    <button class="quick-action-btn" onclick="openModal('modal-create-user-manual')">👤 Manual Add User</button>
+                    <button class="quick-action-btn" onclick="openModal('modal-create-blacklist')">🚫 Add Blacklist</button>
+                    <button class="quick-action-btn" onclick="switchTab('sdk')">💻 View SDK Snippets</button>
+                </div>
+
+                <!-- Spotlight Stats Grid -->
+                <div class="stats-grid">
+                    <div class="stat-card spotlight-card">
+                        <div class="stat-header">
+                            <span>Total Users</span>
+                            <div class="stat-icon">👥</div>
+                        </div>
+                        <div class="stat-number" id="stat-total-users">0</div>
+                        <div class="stat-footer">Registered clients</div>
+                    </div>
+
+                    <div class="stat-card spotlight-card">
+                        <div class="stat-header">
+                            <span>Unused Keys</span>
+                            <div class="stat-icon">🔑</div>
+                        </div>
+                        <div class="stat-number" id="stat-active-keys" style="color: #10b981;">0</div>
+                        <div class="stat-footer">Ready for activation</div>
+                    </div>
+
+                    <div class="stat-card spotlight-card">
+                        <div class="stat-header">
+                            <span>Logins Today</span>
+                            <div class="stat-icon">🚀</div>
+                        </div>
+                        <div class="stat-number" id="stat-logins-today" style="color: #38bdf8;">0</div>
+                        <div class="stat-footer">Authenticated sessions</div>
+                    </div>
+
+                    <div class="stat-card spotlight-card">
+                        <div class="stat-header">
+                            <span>HWID Mismatches</span>
+                            <div class="stat-icon">🛡️</div>
+                        </div>
+                        <div class="stat-number" id="stat-failed-attempts" style="color: #ef4444;">0</div>
+                        <div class="stat-footer">Blocked unauthorized devices</div>
+                    </div>
+                </div>
+
+                <!-- Recent Activity Feed -->
+                <div class="table-card spotlight-card" style="margin-top: 24px;">
+                    <div class="table-toolbar">
+                        <div>
+                            <h3 style="font-size: 15px; font-weight: 800; color: #fff;">Real-Time Activity & Security Stream</h3>
+                            <p style="font-size: 12px; color: var(--text-muted);">Instant audit feed of authentications, intruder blocks, and license validations.</p>
+                        </div>
+                        <button class="btn btn-secondary btn-sm" onclick="loadGlobalStats()">🔄 Refresh</button>
+                    </div>
+                    <div id="overview-recent-activity"></div>
+                </div>
+            </section>
+
+            <!-- 2. TAB: LICENSES -->
+            <section id="page-licenses" class="page-container">
+                <div class="page-header">
+                    <div class="page-title">
+                        <h2>License Keys Manager</h2>
+                        <p>Generate, manage, pause, and export subscription license keys.</p>
+                    </div>
+                    <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                        <button class="btn btn-danger btn-sm" onclick="bulkDeleteLicenses('used')">🗑️ Delete Used</button>
+                        <button class="btn btn-danger btn-sm" onclick="bulkDeleteLicenses('unused')">🗑️ Delete Unused</button>
+                        <button class="btn btn-secondary btn-sm" onclick="exportLicensesTxt()">📥 Export TXT</button>
+                        <button class="btn btn-primary btn-sm" onclick="openModal('modal-generate-keys')">➕ Generate Keys</button>
+                    </div>
+                </div>
+
+                <div class="table-card spotlight-card">
+                    <div class="table-toolbar">
+                        <div class="search-input-wrap">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                            <input type="text" id="license-search-input" class="search-input" placeholder="Search by key, user, notes..." oninput="loadLicenses()">
+                        </div>
+                        <div style="display: flex; gap: 8px;">
+                            <select id="license-status-filter" class="form-control" style="width: 140px; padding: 7px;" onchange="loadLicenses()">
+                                <option value="">All Statuses</option>
+                                <option value="unused">Unused Only</option>
+                                <option value="used">Used Only</option>
+                                <option value="paused">Paused Only</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>License Key</th>
+                                <th>Level / Rank</th>
+                                <th>Duration</th>
+                                <th>Status</th>
+                                <th>Used By</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="licenses-table-body"></tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- 3. TAB: USERS & HWID -->
+            <section id="page-users" class="page-container">
+                <div class="page-header">
+                    <div class="page-title">
+                        <h2>Users & HWID Management</h2>
+                        <p>Hardware ID binding, bulk HWID reset, expired purge, and account ban controls.</p>
+                    </div>
+                    <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
+                        <div class="dropdown-wrapper" style="position: relative; display: inline-block;">
+                            <button class="btn btn-danger btn-sm" onclick="toggleUsersBulkDeleteDropdown(event)" style="font-weight: 800; box-shadow: 0 4px 18px rgba(244, 63, 94, 0.35);">
+                                <span>🗑️ Bulk Delete ▾</span>
+                            </button>
+                            <div id="users-bulk-delete-dropdown" class="dropdown-menu-cyber" style="display: none; position: absolute; top: calc(100% + 6px); left: 0; min-width: 220px; background: rgba(18, 5, 10, 0.96); border: 1.5px solid rgba(244, 63, 94, 0.5); backdrop-filter: blur(24px); border-radius: 12px; padding: 6px; z-index: 1000; box-shadow: 0 10px 30px rgba(0,0,0,0.8), 0 0 20px rgba(225, 29, 72, 0.3);">
+                                <a href="javascript:void(0)" onclick="batchDeleteSelected(); closeAllDropdowns();" class="dropdown-item-cyber" style="display: flex; align-items: center; gap: 8px; padding: 10px 14px; color: #fff; font-size: 12.5px; font-weight: 700; border-radius: 8px; text-decoration: none;">
+                                    <span>🗑️ Delete Selected Users</span>
+                                </a>
+                                <a href="javascript:void(0)" onclick="bulkPurgeExpiredUsersSubmit(); closeAllDropdowns();" class="dropdown-item-cyber" style="display: flex; align-items: center; gap: 8px; padding: 10px 14px; color: #fda4af; font-size: 12.5px; font-weight: 700; border-radius: 8px; text-decoration: none;">
+                                    <span>🧹 Purge All Expired Users</span>
+                                </a>
+                                <a href="javascript:void(0)" onclick="bulkDeleteAllUsersInApp(); closeAllDropdowns();" class="dropdown-item-cyber" style="display: flex; align-items: center; gap: 8px; padding: 10px 14px; color: #ff2a5f; font-size: 12.5px; font-weight: 800; border-radius: 8px; text-decoration: none; border-top: 1px solid rgba(255,255,255,0.08); margin-top: 4px;">
+                                    <span>⚠️ Wipe ALL Users in App</span>
+                                </a>
+                            </div>
+                        </div>
+                        <button class="btn btn-secondary btn-sm" onclick="bulkResetAllHwidSubmit()" title="Reset HWID for all users in this app">🔄 Reset All HWIDs</button>
+                        <button class="btn btn-secondary btn-sm" onclick="openBulkExtendUsersModal()" title="Add days to all or selected users">⏳ Bulk Extend</button>
+                        <button class="btn btn-secondary btn-sm" onclick="exportUsersTxt()">📥 Export Users</button>
+                        <button class="btn btn-primary btn-sm" onclick="openModal('modal-create-user-manual')">👤 Add User Manually</button>
+                    </div>
+                </div>
+
+                <!-- Floating Batch Action Bar (Appears when users are checked) -->
+                <div id="users-batch-actions-bar" style="display: none; background: rgba(225, 29, 72, 0.15); border: 1.5px solid rgba(244, 63, 94, 0.5); border-radius: 12px; padding: 12px 20px; margin-bottom: 18px; justify-content: space-between; align-items: center; box-shadow: 0 0 25px rgba(225, 29, 72, 0.3);">
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <span style="font-size: 13.5px; font-weight: 800; color: #fff;">Selected: <span id="users-selected-count" style="color: #ff4d79;">0</span> Users</span>
+                    </div>
+                    <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                        <button class="btn btn-secondary btn-sm" onclick="batchResetHwidSelected()">🔒 Reset HWID Selected</button>
+                        <button class="btn btn-secondary btn-sm" onclick="batchExtendSelected()">⏳ Extend Selected</button>
+                        <button class="btn btn-danger btn-sm" onclick="batchBanSelected()">🚫 Ban Selected</button>
+                        <button class="btn btn-danger btn-sm" onclick="batchDeleteSelected()">🗑️ Delete Selected</button>
+                    </div>
+                </div>
+
+                <div class="table-card spotlight-card">
+                    <div class="table-toolbar">
+                        <div class="search-input-wrap">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                            <input type="text" id="user-search-input" class="search-input" placeholder="Search username, IP, HWID..." oninput="filterUsersTable()">
+                        </div>
+                        <div style="display: flex; gap: 8px;">
+                            <select id="user-status-filter" class="form-control" style="width: 150px; padding: 7px;" onchange="filterUsersTable()">
+                                <option value="all">All Users</option>
+                                <option value="active">Active Only</option>
+                                <option value="expired">Expired Only</option>
+                                <option value="banned">Banned Only</option>
+                                <option value="hwid_locked">HWID Locked</option>
+                                <option value="hwid_unlocked">HWID Reset/Empty</option>
+                            </select>
+                            <button class="btn btn-secondary btn-sm" onclick="loadUsers()">🔄 Refresh</button>
+                        </div>
+                    </div>
+
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th style="width: 40px; text-align: center;">
+                                    <input type="checkbox" id="users-select-all-chk" onchange="toggleSelectAllUsers(this)" style="width: 16px; height: 16px; accent-color: #ff2a5f; cursor: pointer;">
+                                </th>
+                                <th>User / IP Address</th>
+                                <th>HWID Status</th>
+                                <th>Rank (Level)</th>
+                                <th>Time Left / Expiry</th>
+                                <th>Status</th>
+                                <th>Control Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="users-table-body"></tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- 4. TAB: SUBSCRIPTIONS & TIERS -->
+            <section id="page-tiers" class="page-container">
+                <div class="page-header">
+                    <div class="page-title">
+                        <h2>Subscription Tiers & Ranks</h2>
+                        <p>Create subscription ranks (e.g. VIP, Standard, Beta Tester) with rank level hierarchy.</p>
+                    </div>
+                    <button class="btn btn-primary btn-sm" onclick="openModal('modal-create-tier')">
+                        <span>➕ Create Tier</span>
+                    </button>
+                </div>
+
+                <div class="table-card spotlight-card">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Rank Name</th>
+                                <th>Level Rank</th>
+                                <th>Description</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tiers-table-body"></tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- 7. TAB: BLACKLISTS -->
+            <section id="page-blacklists" class="page-container">
+                <div class="page-header">
+                    <div class="page-title">
+                        <h2>Blacklists (IP & Hardware ID)</h2>
+                        <p>Block offending IP addresses or hardware signatures from accessing your application.</p>
+                    </div>
+                    <button class="btn btn-danger btn-sm" onclick="openModal('modal-create-blacklist')">
+                        <span>🚫 Add Blacklist</span>
+                    </button>
+                </div>
+
+                <div class="table-card spotlight-card">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Type</th>
+                                <th>Blacklisted Value</th>
+                                <th>Reason</th>
+                                <th>Date Added</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="blacklists-table-body"></tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- 8. TAB: RESELLERS -->
+            <section id="page-resellers" class="page-container">
+                <!-- Locked Paywall State (For Free Plan Users) -->
+                <div id="resellers-locked-paywall" class="locked-feature-paywall">
+                    <div class="paywall-icon-bubble">🔒</div>
+                    <h2>Reseller Accounts (Paid Feature)</h2>
+                    <p>Multi-tenant reseller accounts with custom credit balances and license sub-distribution are exclusive to the Paid Pro Plan.</p>
+                    <div class="paywall-perks-grid">
+                        <div class="paywall-perk-item">💼 <span>Create Unlimited Sub-Resellers</span></div>
+                        <div class="paywall-perk-item">💳 <span>Custom Credit Balance System</span></div>
+                        <div class="paywall-perk-item">🔑 <span>Self-Service Reseller Portal Login</span></div>
+                        <div class="paywall-perk-item">⚡ <span>Granular App-Level Permissions</span></div>
+                    </div>
+                    <div class="paywall-actions">
+                        <button class="btn btn-primary" onclick="switchTab('settings')">🔑 Redeem Paid Plan Upgrade Key</button>
+                        <a href="/pricing" target="_blank" class="btn btn-secondary">💳 View Paid Plan ($19.99/mo)</a>
+                    </div>
+                </div>
+
+                <!-- Unlocked Content (For Paid Plan Users) -->
+                <div id="resellers-unlocked-content" style="display: none;">
+                    <div class="page-header">
+                        <div class="page-title">
+                            <h2>Reseller Management</h2>
+                            <p>Track reseller performance, adjust credit balances, and inspect generated keys.</p>
+                        </div>
+                        <button class="btn btn-primary btn-sm" onclick="openModal('modal-create-reseller')">
+                            <span>➕ Add Reseller</span>
+                        </button>
+                    </div>
+
+                    <div class="table-card spotlight-card">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Reseller Username</th>
+                                    <th>Credit Balance</th>
+                                    <th>Keys (Unused / Total)</th>
+                                    <th>Allowed Applications</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="resellers-table-body"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 9. TAB: WEBHOOKS -->
+            <section id="page-webhooks" class="page-container">
+                <!-- Locked Paywall State (For Free Plan Users) -->
+                <div id="webhooks-locked-paywall" class="locked-feature-paywall">
+                    <div class="paywall-icon-bubble">🔒</div>
+                    <h2>Discord Bot & Logs (Paid Feature)</h2>
+                    <p>Live Discord Bot automation, slash commands (`/genkeys`, `/resethwid`), and automated channel security telemetry logs are exclusive to the Paid Pro Plan.</p>
+                    <div class="paywall-perks-grid">
+                        <div class="paywall-perk-item">🤖 <span>Official Discord Bot Invite</span></div>
+                        <div class="paywall-perk-item">⚡ <span>Instant Slash Commands Support</span></div>
+                        <div class="paywall-perk-item">📢 <span>Real-time Registration & Login Logs</span></div>
+                        <div class="paywall-perk-item">🛡️ <span>Instant HWID Mismatch Intruder Alerts</span></div>
+                    </div>
+                    <div class="paywall-actions">
+                        <button class="btn btn-primary" onclick="switchTab('settings')">🔑 Redeem Paid Plan Upgrade Key</button>
+                        <a href="/pricing" target="_blank" class="btn btn-secondary">💳 View Paid Plan ($19.99/mo)</a>
+                    </div>
+                </div>
+
+                <!-- Unlocked Content (For Paid Plan Users) -->
+                <div id="webhooks-unlocked-content" style="display: none;">
+                    <div class="page-header">
+                        <div class="page-title">
+                            <h2>Discord Bot & Channel Audit Logs</h2>
+                            <p>Manage real-time Discord bot commands, invite link, and automated channel security log broadcasts.</p>
+                        </div>
+                    </div>
+
+                    <!-- Bot Invite Hero Banner -->
+                    <div class="stat-card spotlight-card" style="padding: 28px; margin-bottom: 24px; border-color: var(--border-glow); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 18px;">
+                        <div>
+                            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 6px;">
+                                <span style="font-size: 24px;">🤖</span>
+                                <h3 style="font-size: 18px; font-weight: 900; color: #fff;">JOYST CORPORATION Discord Bot</h3>
+                                <span class="badge badge-success"><span class="badge-dot"></span> Online</span>
+                            </div>
+                            <p style="font-size: 13.5px; color: var(--text-secondary); max-width: 600px;">
+                                Add the bot to your Discord server to enable `/genkeys`, `/resethwid`, `/userinfo`, and `/banuser` commands.
+                            </p>
+                        </div>
+                        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                            <a href="https://discord.com/api/oauth2/authorize?client_id=123456789012345678&permissions=8&scope=bot%20applications.commands" target="_blank" class="btn btn-primary">
+                                🔗 Invite Bot to Server
+                            </a>
+                            <button class="btn btn-secondary" onclick="copyBotInviteLink()">📋 Copy Invite Link</button>
+                        </div>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 24px;">
+                        <!-- Bot Status & Slash Commands -->
+                        <div class="stat-card spotlight-card" style="padding: 28px;">
+                            <h3 style="font-size: 16px; font-weight: 800; color: #fff; margin-bottom: 12px;">⚡ Slash Commands Reference</h3>
+                            <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 18px;">
+                                Run these directly in any channel where the bot has permission:
+                            </p>
+                            <div style="display: flex; flex-direction: column; gap: 10px; font-size: 12.5px;">
+                                <div style="background: rgba(0,0,0,0.4); padding: 10px 14px; border-radius: 8px; border: 1px solid var(--border-glass);">
+                                    <strong class="mono" style="color: #38bdf8;">/genkeys &lt;app&gt; &lt;days&gt; &lt;count&gt;</strong>
+                                    <div style="color: var(--text-muted); font-size: 11.5px; margin-top: 2px;">Generate license keys with instant delivery</div>
+                                </div>
+                                <div style="background: rgba(0,0,0,0.4); padding: 10px 14px; border-radius: 8px; border: 1px solid var(--border-glass);">
+                                    <strong class="mono" style="color: #38bdf8;">/resethwid &lt;app&gt; &lt;username&gt;</strong>
+                                    <div style="color: var(--text-muted); font-size: 11.5px; margin-top: 2px;">1-Click customer HWID lock reset</div>
+                                </div>
+                                <div style="background: rgba(0,0,0,0.4); padding: 10px 14px; border-radius: 8px; border: 1px solid var(--border-glass);">
+                                    <strong class="mono" style="color: #38bdf8;">/userinfo &lt;app&gt; &lt;username&gt;</strong>
+                                    <div style="color: var(--text-muted); font-size: 11.5px; margin-top: 2px;">Inspect subscription expiry and login IP</div>
+                                </div>
+                                <div style="background: rgba(0,0,0,0.4); padding: 10px 14px; border-radius: 8px; border: 1px solid var(--border-glass);">
+                                    <strong class="mono" style="color: #fb7185;">/banuser &lt;app&gt; &lt;username&gt;</strong>
+                                    <div style="color: var(--text-muted); font-size: 11.5px; margin-top: 2px;">Immediately revoke access for compromised users</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Channel Webhook Logger Setup -->
+                        <div class="stat-card spotlight-card" style="padding: 28px;">
+                            <h3 style="font-size: 16px; font-weight: 800; color: #fff; margin-bottom: 12px;">📢 Discord Channel Event Logger</h3>
+                            <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 16px;">
+                                Every registration, login, key generation, and HWID reset will be broadcast to this channel automatically:
+                            </p>
+                            
+                            <div class="form-group">
+                                <label>Discord Webhook URL</label>
+                                <input type="url" id="discord-webhook-url-input" class="form-control mono" placeholder="https://discord.com/api/webhooks/...">
+                            </div>
+
+                            <div style="display: flex; gap: 10px; margin-top: 18px;">
+                                <button class="btn btn-primary btn-sm" onclick="saveDiscordWebhookUrl()">💾 Save Webhook URL</button>
+                                <button class="btn btn-secondary btn-sm" onclick="sendTestWebhook()">🧪 Test Webhook Log</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 10. TAB: APPLICATIONS -->
+            <section id="page-apps" class="page-container">
+                <div class="page-header">
+                    <div class="page-title">
+                        <h2>Applications & Settings</h2>
+                        <p>Configure application parameters, HWID policies, VPN blockers, and maintenance modes.</p>
+                    </div>
+                    <button class="btn btn-primary btn-sm" onclick="openModal('modal-create-app')">
+                        <span>➕ Create Application</span>
+                    </button>
+                </div>
+
+                <div class="stats-grid" id="apps-grid-container"></div>
+            </section>
+
+            <!-- 11. TAB: AUDIT LOGS -->
+            <section id="page-logs" class="page-container">
+                <div class="page-header">
+                    <div class="page-title">
+                        <h2>Activity & Security Logs</h2>
+                        <p>Real-time log of client authentications, HWID mismatch blocks, and user actions.</p>
+                    </div>
+                    <button class="btn btn-danger btn-sm" onclick="clearAuditLogs()">🗑️ Clear Logs</button>
+                </div>
+
+                <div class="table-card spotlight-card">
+                    <div class="table-toolbar">
+                        <div class="search-input-wrap">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                            <input type="text" id="logs-search-input" class="search-input" placeholder="Search logs..." oninput="loadAuditLogs()">
+                        </div>
+                        <button class="btn btn-secondary btn-sm" onclick="loadAuditLogs()">🔄 Refresh</button>
+                    </div>
+
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Timestamp</th>
+                                <th>Action</th>
+                                <th>User</th>
+                                <th>IP Address</th>
+                                <th>HWID Hash</th>
+                                <th>Details</th>
+                            </tr>
+                        </thead>
+                        <tbody id="logs-table-body"></tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- 12. TAB: SDK CODE STUDIO -->
+            <section id="page-sdk" class="page-container">
+                <div class="page-header">
+                    <div class="page-title">
+                        <h2>SDK Studio & Complete A-Z Integration Hub</h2>
+                        <p>Everything you need to connect your software, game, or loader to Joyst Corporation Auth in minutes.</p>
+                    </div>
+                </div>
+
+                <!-- 3-Step Visual Quickstart Guide -->
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; margin-bottom: 24px;">
+                    <div class="stat-card spotlight-card" style="padding: 22px;">
+                        <div style="font-size: 22px; font-weight: 900; color: #ff2a5f; margin-bottom: 6px;">STEP 1</div>
+                        <h4 style="color: #fff; font-size: 15px; margin-bottom: 6px;">📁 1-Click Download SDK File</h4>
+                        <p style="font-size: 12.5px; color: var(--text-secondary); line-height: 1.5;">
+                            Download the 1-file standalone SDK below and place it directly into your project's root folder.
+                        </p>
+                    </div>
+                    <div class="stat-card spotlight-card" style="padding: 22px;">
+                        <div style="font-size: 22px; font-weight: 900; color: #ff2a5f; margin-bottom: 6px;">STEP 2</div>
+                        <h4 style="color: #fff; font-size: 15px; margin-bottom: 6px;">⚡ Pre-Filled Credentials</h4>
+                        <p style="font-size: 12.5px; color: var(--text-secondary); line-height: 1.5;">
+                            The code below is already automatically customized with your active Application parameters!
+                        </p>
+                    </div>
+                    <div class="stat-card spotlight-card" style="padding: 22px;">
+                        <div style="font-size: 22px; font-weight: 900; color: #ff2a5f; margin-bottom: 6px;">STEP 3</div>
+                        <h4 style="color: #fff; font-size: 15px; margin-bottom: 6px;">🛡️ Ultra-Safe Authentication</h4>
+                        <p style="font-size: 12.5px; color: var(--text-secondary); line-height: 1.5;">
+                            Call <code class="mono" style="color: #38bdf8;">auth.login()</code>. AES-256 encryption, HWID lock, & Discord logs happen 100% automatically!
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Dynamic Language Header & Download Bar -->
+                <div class="stat-card spotlight-card" style="padding: 22px 28px; margin-bottom: 24px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px; border-color: var(--border-glow);">
+                    <div style="display: flex; align-items: center; gap: 16px;">
+                        <span id="sdk-lang-icon" style="font-size: 32px;">⚡</span>
+                        <div>
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <strong id="sdk-lang-title" style="color: #fff; font-size: 16px;">C++ Windows Native SDK</strong>
+                                <span id="sdk-lang-badge" class="badge badge-cyan">Header-Only</span>
+                            </div>
+                            <div id="sdk-lang-desc" style="color: var(--text-secondary); font-size: 13px; margin-top: 2px;">File: <code class="mono" id="sdk-lang-filename" style="color: #38bdf8;">AuthClient.hpp</code> (Drop directly into Visual Studio project)</div>
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+                        <a id="sdk-dynamic-download-btn" href="/static/sdks/cpp/AuthClient.hpp" download="AuthClient.hpp" class="btn btn-primary">
+                            ⬇️ Download SDK File
+                        </a>
+                        <button class="btn btn-secondary" onclick="copyCurrentSdkSnippet()">📋 Copy Implementation Code</button>
+                    </div>
+                </div>
+
+                <!-- Live Code Studio Box -->
+                <div class="code-container spotlight-card">
+                    <div class="code-tabs" style="display: flex; justify-content: flex-start; align-items: center; flex-wrap: wrap; gap: 4px;">
+                        <button class="code-tab-btn active" data-lang="cpp" onclick="setSnippetLang('cpp')">⚡ C++ Windows</button>
+                        <button class="code-tab-btn" data-lang="python" onclick="setSnippetLang('python')">🐍 Python</button>
+                        <button class="code-tab-btn" data-lang="csharp" onclick="setSnippetLang('csharp')">🔷 C# (.NET / Unity)</button>
+                        <button class="code-tab-btn" data-lang="nodejs" onclick="setSnippetLang('nodejs')">🟢 Node.js / Electron</button>
+                        <button class="code-tab-btn" data-lang="java" onclick="setSnippetLang('java')">☕ Java</button>
+                        <button class="code-tab-btn" data-lang="rust" onclick="setSnippetLang('rust')">🦀 Rust</button>
+                    </div>
+                    <pre class="code-block" id="sdk-code-display"></pre>
+                </div>
+
+                <!-- Features & Methods Cheat Sheet -->
+                <div class="stat-card spotlight-card" style="padding: 24px; margin-top: 24px;">
+                    <h3 style="font-size: 16px; font-weight: 800; color: #fff; margin-bottom: 16px;">📚 SDK Methods & Capabilities Cheat Sheet</h3>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; font-size: 13px;">
+                        <div style="background: rgba(0,0,0,0.4); padding: 14px; border-radius: 10px; border: 1px solid var(--border-glass);">
+                            <strong class="mono" style="color: #38bdf8;">auth.login(user, pass)</strong>
+                            <div style="color: var(--text-secondary); margin-top: 4px;">Authenticates user credentials and validates motherboard HWID lock.</div>
+                        </div>
+                        <div style="background: rgba(0,0,0,0.4); padding: 14px; border-radius: 10px; border: 1px solid var(--border-glass);">
+                            <strong class="mono" style="color: #38bdf8;">auth.register(user, pass, key)</strong>
+                            <div style="color: var(--text-secondary); margin-top: 4px;">Creates new user account and binds the license key duration.</div>
+                        </div>
+                        <div style="background: rgba(0,0,0,0.4); padding: 14px; border-radius: 10px; border: 1px solid var(--border-glass);">
+                            <strong class="mono" style="color: #38bdf8;">auth.license(key)</strong>
+                            <div style="color: var(--text-secondary); margin-top: 4px;">Direct license key login without requiring username/password.</div>
+                        </div>
+                        <div style="background: rgba(0,0,0,0.4); padding: 14px; border-radius: 10px; border: 1px solid var(--border-glass);">
+                            <strong class="mono" style="color: #38bdf8;">auth.var("OFFSET_NAME")</strong>
+                            <div style="color: var(--text-secondary); margin-top: 4px;">Fetches encrypted cloud variable from server memory (Zero-Leak).</div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 13. TAB: PLANS & ACCOUNT -->
+            <section id="page-settings" class="page-container">
+                <div class="page-header">
+                    <div class="page-title">
+                        <h2>Developer Plans & Account</h2>
+                        <p>View your active subscription tier, redeem upgrade keys, or manage account password.</p>
+                    </div>
+                </div>
+
+                <!-- Plans Cards -->
+                <div class="plans-grid">
+                    <div class="plan-card spotlight-card" id="plan-card-free">
+                        <div>
+                            <span class="badge badge-purple" style="margin-bottom: 12px;">FREE TRIAL (DEFAULT)</span>
+                            <h3 style="font-size: 24px; font-weight: 900; color: #fff;">$0 <span style="font-size: 13px; color: var(--text-muted); font-weight: 500;">/ forever</span></h3>
+                            <ul style="list-style: none; margin: 20px 0; display: flex; flex-direction: column; gap: 10px; font-size: 13px; color: var(--text-secondary);">
+                                <li>✅ 3 Applications Max</li>
+                                <li>✅ 1,000 Users per application</li>
+                                <li>✅ Strict HWID Lock</li>
+                                <li>❌ Discord Bot Controller</li>
+                                <li>❌ Reseller Accounts</li>
+                            </ul>
+                        </div>
+                        <div id="plan-btn-container-free"></div>
+                    </div>
+
+                    <div class="plan-card spotlight-card" id="plan-card-paid" style="border-color: var(--border-glow);">
+                        <div>
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                                <span class="badge badge-success">PAID PRO PLAN</span>
+                                <span class="glowing-pill" style="font-size: 10px; padding: 2px 8px;">ALL UNLOCKED</span>
+                            </div>
+                            <h3 style="font-size: 24px; font-weight: 900; color: #fff;">$19.99 <span style="font-size: 13px; color: var(--text-muted); font-weight: 500;">/ month or key</span></h3>
+                            <ul style="list-style: none; margin: 20px 0; display: flex; flex-direction: column; gap: 10px; font-size: 13px; color: #fff;">
+                                <li>✅ <strong>Unlimited Applications</strong></li>
+                                <li>✅ <strong>Unlimited Users</strong></li>
+                                <li>✅ <strong>Discord Bot Automation</strong></li>
+                                <li>✅ <strong>Reseller Sub-Accounts</strong></li>
+                                <li>✅ <strong>CDN File Delivery</strong></li>
+                                <li>✅ <strong>Priority Support</strong></li>
+                            </ul>
+                        </div>
+                        <div id="plan-btn-container-paid"></div>
+                    </div>
+                </div>
+
+                <!-- Redeem Key Box -->
+                <div style="margin-top: 28px;">
+                    <div class="redeem-card spotlight-card" style="margin-top: 0; max-width: 600px;">
+                        <h3 style="font-size: 16px; font-weight: 800; color: #fff; margin-bottom: 10px;">🔑 Redeem Paid Plan Upgrade Key</h3>
+                        <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 18px;">Enter your purchased Paid Plan Key to unlock unlimited apps, Discord bot, and reseller tools:</p>
+                        <div style="display: flex; gap: 10px;">
+                            <input type="text" id="redeem-plan-key-input" class="form-control mono" placeholder="e.g. JOYST-PAID-XXXX-XXXX-XXXX">
+                            <button class="btn btn-primary" onclick="redeemPlanKeySubmit()">Redeem Key</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="stat-card spotlight-card" style="max-width: 600px; padding: 32px; margin-top: 32px;">
+                    <h3 style="font-size: 16px; font-weight: 800; color: #fff; margin-bottom: 20px;">Change Password</h3>
+                    <form id="form-change-password">
+                        <div class="form-group">
+                            <label>Current Password</label>
+                            <input type="password" id="current-password" class="form-control" required>
+                        </div>
+                        <div class="form-group" style="margin-bottom: 24px;">
+                            <label>New Password (Min. 6 Characters)</label>
+                            <input type="password" id="new-password" class="form-control" required minlength="6">
+                        </div>
+                        <button type="submit" class="btn btn-primary">Update Password</button>
+                    </form>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- ==================== MODALS ==================== -->
+
+    <!-- Purchase Plan Modal -->
+    <div id="modal-purchase-plan" class="modal-overlay">
+        <div class="modal-box">
+            <div class="modal-header">
+                <h3>💎 Purchase Plan Upgrade Key</h3>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p style="font-size: 13.5px; color: var(--text-secondary); line-height: 1.6; margin-bottom: 18px;">
+                    To upgrade your developer account, you can obtain an official Upgrade License Key via our Discord server or payment gateway.
+                </p>
+                <div style="background: rgba(0,0,0,0.4); border: 1px solid var(--border-subtle); border-radius: 10px; padding: 16px; margin-bottom: 18px;">
+                    <div style="font-size: 12px; color: var(--brand-sky); font-weight: 800; margin-bottom: 6px;">DISCORD SUPPORT & TICKET:</div>
+                    <div style="font-size: 13px; color: #fff;">Join the official Discord server and open an Upgrade Ticket:</div>
+                    <div class="mono" style="color: #34d399; margin-top: 4px;">discord.gg/joystcorporation</div>
+                </div>
+                <div style="font-size: 12px; color: var(--text-muted);">
+                    Once you receive your Upgrade Key, enter it in the <strong>Redeem Plan Upgrade Key</strong> box on your dashboard.
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary btn-sm" data-close-modal>Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Manual Create User Modal -->
+    <div id="modal-create-user-manual" class="modal-overlay">
+        <div class="modal-box">
+            <div class="modal-header">
+                <h3>👤 Add User Manually</h3>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Username</label>
+                    <input type="text" id="manual-user-name" class="form-control" placeholder="e.g. Client1" required>
+                </div>
+                <div class="form-group">
+                    <label>Password</label>
+                    <input type="password" id="manual-user-pass" class="form-control" placeholder="••••••••" required>
+                </div>
+                <div class="form-group">
+                    <label>Duration (Days) - Use -1 for Lifetime</label>
+                    <input type="number" id="manual-user-days" class="form-control" value="30">
+                </div>
+                <div class="form-group">
+                    <label>Subscription Tier</label>
+                    <input type="text" id="manual-user-tier" class="form-control" value="default">
+                </div>
+                <div class="form-group">
+                    <label>Hardware ID (Optional - Leave blank to lock on 1st login)</label>
+                    <input type="text" id="manual-user-hwid" class="form-control mono" placeholder="Auto-binds on first PC">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary btn-sm" data-close-modal>Cancel</button>
+                <button class="btn btn-primary btn-sm" onclick="submitManualUser()">Create User</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Generate Keys Modal -->
+    <div id="modal-generate-keys" class="modal-overlay">
+        <div class="modal-box">
+            <div class="modal-header">
+                <h3>⚡ Generate License Keys</h3>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Number of Keys (1 to 500)</label>
+                    <input type="number" id="gen-count" class="form-control" value="1" min="1" max="500">
+                </div>
+                <div class="form-group">
+                    <label>Duration (Days) - Use -1 for Lifetime</label>
+                    <input type="number" id="gen-duration" class="form-control" value="30">
+                </div>
+                <div class="form-group">
+                    <label>Subscription Level / Rank</label>
+                    <input type="text" id="gen-level" class="form-control" value="default">
+                </div>
+                <div class="form-group">
+                    <label>Key Mask Pattern</label>
+                    <input type="text" id="gen-mask" class="form-control mono" value="JOYST-XXXX-XXXX-XXXX">
+                </div>
+                <div class="form-group">
+                    <label>Notes / Batch Tag (Optional)</label>
+                    <input type="text" id="gen-notes" class="form-control" placeholder="e.g. Reseller Batch 1">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary btn-sm" data-close-modal>Cancel</button>
+                <button class="btn btn-primary btn-sm" onclick="generateKeysSubmit()">Generate Now</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- View Generated Keys Modal -->
+    <div id="modal-view-generated" class="modal-overlay">
+        <div class="modal-box">
+            <div class="modal-header">
+                <h3>🔑 Generated Keys</h3>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 10px;">Copy your keys below:</p>
+                <textarea id="generated-keys-output" class="form-control mono" style="height: 180px; resize: none;" readonly></textarea>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary btn-sm" onclick="copyToClipboard(document.getElementById('generated-keys-output').value)">📋 Copy All</button>
+                <button class="btn btn-primary btn-sm" data-close-modal>Done</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Create App Modal -->
+    <div id="modal-create-app" class="modal-overlay">
+        <div class="modal-box">
+            <div class="modal-header">
+                <h3>📦 Create New Application</h3>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Application Name</label>
+                    <input type="text" id="new-app-name" class="form-control" placeholder="e.g. MySoftware" required>
+                </div>
+                <div class="form-group">
+                    <label>Version</label>
+                    <input type="text" id="new-app-version" class="form-control" value="1.0">
+                </div>
+                <div class="form-group">
+                    <label>Discord Webhook URL (Optional)</label>
+                    <input type="text" id="new-app-webhook" class="form-control" placeholder="https://discord.com/api/webhooks/...">
+                </div>
+                <div class="form-group" style="display: flex; align-items: center; gap: 10px; margin-top: 15px;">
+                    <input type="checkbox" id="new-app-hwid-lock" checked style="width: 18px; height: 18px; accent-color: var(--brand-indigo);">
+                    <label for="new-app-hwid-lock" style="margin-bottom: 0; cursor: pointer;">Enable Strict HWID Lock by default</label>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary btn-sm" data-close-modal>Cancel</button>
+                <button class="btn btn-primary btn-sm" onclick="createAppSubmit()">Create App</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Create Variable Modal -->
+    <div id="modal-create-variable" class="modal-overlay">
+        <div class="modal-box">
+            <div class="modal-header">
+                <h3>☁️ Create Cloud Variable</h3>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Variable Key</label>
+                    <input type="text" id="var-name" class="form-control mono" placeholder="e.g. CHEAT_OFFSET / SERVER_IP">
+                </div>
+                <div class="form-group">
+                    <label>Value</label>
+                    <textarea id="var-value" class="form-control mono" style="height: 100px;" placeholder="String, URL, or configuration data..."></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary btn-sm" data-close-modal>Cancel</button>
+                <button class="btn btn-primary btn-sm" onclick="createVariableSubmit()">Save Variable</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Create Tier Modal -->
+    <div id="modal-create-tier" class="modal-overlay">
+        <div class="modal-box">
+            <div class="modal-header">
+                <h3>⭐ Create Subscription Tier</h3>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Tier / Rank Name</label>
+                    <input type="text" id="tier-name" class="form-control" placeholder="e.g. VIP / Premium">
+                </div>
+                <div class="form-group">
+                    <label>Level Rank (Number)</label>
+                    <input type="number" id="tier-level" class="form-control" value="2">
+                </div>
+                <div class="form-group">
+                    <label>Description</label>
+                    <input type="text" id="tier-desc" class="form-control" placeholder="e.g. VIP Access">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary btn-sm" data-close-modal>Cancel</button>
+                <button class="btn btn-primary btn-sm" onclick="createTierSubmit()">Create Tier</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Create File Modal -->
+    <div id="modal-create-file" class="modal-overlay">
+        <div class="modal-box">
+            <div class="modal-header">
+                <h3>📁 Add CDN File</h3>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>File ID (Used in SDK)</label>
+                    <input type="text" id="file-id-input" class="form-control mono" placeholder="e.g. 123456 or loader_bin">
+                </div>
+                <div class="form-group">
+                    <label>File Name</label>
+                    <input type="text" id="file-name-input" class="form-control" placeholder="e.g. Loader.exe">
+                </div>
+                <div class="form-group">
+                    <label>Download Direct URL</label>
+                    <input type="text" id="file-url-input" class="form-control" placeholder="https://cdn.example.com/loader.exe">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary btn-sm" data-close-modal>Cancel</button>
+                <button class="btn btn-primary btn-sm" onclick="createFileSubmit()">Add File</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Create Blacklist Modal -->
+    <div id="modal-create-blacklist" class="modal-overlay">
+        <div class="modal-box">
+            <div class="modal-header">
+                <h3>🚫 Add Blacklist Entry</h3>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Type</label>
+                    <select id="bl-type" class="form-control">
+                        <option value="ip">IP Address</option>
+                        <option value="hwid">Hardware ID (HWID)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Blacklist Value</label>
+                    <input type="text" id="bl-data" class="form-control mono" placeholder="IP address or HWID hash">
+                </div>
+                <div class="form-group">
+                    <label>Reason</label>
+                    <input type="text" id="bl-reason" class="form-control" value="Unauthorized tampering">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary btn-sm" data-close-modal>Cancel</button>
+                <button class="btn btn-danger btn-sm" onclick="createBlacklistSubmit()">Block Now</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Create Reseller Modal -->
+    <div id="modal-create-reseller" class="modal-overlay">
+        <div class="modal-box">
+            <div class="modal-header">
+                <h3>👥 Create Reseller Account</h3>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Reseller Username</label>
+                    <input type="text" id="reseller-user" class="form-control" placeholder="e.g. BestReseller" required>
+                </div>
+                <div class="form-group">
+                    <label>Password</label>
+                    <input type="password" id="reseller-pass" class="form-control" placeholder="••••••••" required>
+                </div>
+                <div class="form-group">
+                    <label>Allowed Application Access (Select Multiple or All)</label>
+                    <div id="reseller-apps-checkbox-list" style="background: rgba(0,0,0,0.4); border: 1px solid var(--border-glass); border-radius: 10px; padding: 12px 14px; max-height: 160px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px;">
+                        <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; margin: 0;">
+                            <input type="checkbox" id="reseller-app-all" checked onchange="toggleAllResellerApps(this)" style="width: 16px; height: 16px; accent-color: #ff2a5f;">
+                            <span style="font-weight: 800; color: #ff4d79;">🌐 All Applications (Global Access)</span>
+                        </label>
+                        <div id="reseller-individual-apps" style="display: flex; flex-direction: column; gap: 8px; margin-top: 4px; padding-left: 10px; border-left: 2px solid rgba(225, 29, 72, 0.3);"></div>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Initial Key Credits Balance</label>
+                    <input type="number" id="reseller-balance" class="form-control" value="50" min="1">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary btn-sm" data-close-modal>Cancel</button>
+                <button class="btn btn-primary btn-sm" onclick="createResellerSubmit()">Create Reseller</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Extend User Modal -->
+    <div id="modal-extend-user" class="modal-overlay">
+        <div class="modal-box">
+            <div class="modal-header">
+                <h3>⏳ Extend Subscription</h3>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p style="font-size: 13px; margin-bottom: 12px;">Extend subscription for: <strong id="extend-username-label" style="color: #fff;"></strong></p>
+                <div class="form-group">
+                    <label>Days to Add</label>
+                    <input type="number" id="extend-days-input" class="form-control" value="30" min="1">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary btn-sm" data-close-modal>Cancel</button>
+                <button class="btn btn-primary btn-sm" onclick="submitExtendUser()">Add Days</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Manage Reseller Credits Modal -->
+    <div id="modal-manage-reseller-credits" class="modal-overlay">
+        <div class="modal-box">
+            <div class="modal-header">
+                <h3>🪙 Adjust Reseller Credits</h3>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p style="font-size: 13px; margin-bottom: 14px;">Reseller: <strong id="credits-reseller-username" style="color: #ff4d79;"></strong> (Current: <span id="credits-reseller-current" style="color: #10b981; font-weight: 800;">0</span> Credits)</p>
+                <input type="hidden" id="credits-reseller-id">
+                
+                <div class="form-group">
+                    <label>Action</label>
+                    <select id="credits-operation" class="form-control" style="font-weight: 700;">
+                        <option value="add">➕ Add Credits (Increase Balance)</option>
+                        <option value="deduct">➖ Deduct Credits (Reduce Balance)</option>
+                        <option value="set">🎯 Set Exact Balance</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Amount of Credits</label>
+                    <input type="number" id="credits-amount" class="form-control" value="50" min="1" required>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary btn-sm" data-close-modal>Cancel</button>
+                <button class="btn btn-primary btn-sm" onclick="submitResellerCreditAdjustment()">Update Balance</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- View Reseller Generated Keys Modal -->
+    <div id="modal-view-reseller-keys" class="modal-overlay">
+        <div class="modal-box" style="max-width: 680px;">
+            <div class="modal-header">
+                <h3>🔍 Reseller Keys Audit</h3>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p style="font-size: 13px; margin-bottom: 14px;">Keys generated by reseller: <strong id="audit-reseller-username" style="color: #ff4d79;"></strong></p>
+                <div style="max-height: 280px; overflow-y: auto; border: 1px solid var(--border-glass); border-radius: 10px;">
+                    <table class="data-table" style="font-size: 12px;">
+                        <thead>
+                            <tr>
+                                <th>Key</th>
+                                <th>Duration</th>
+                                <th>Status</th>
+                                <th>Used By</th>
+                                <th>Date</th>
+                            </tr>
+                        </thead>
+                        <tbody id="reseller-keys-audit-tbody"></tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-primary btn-sm" data-close-modal>Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Reset Reseller Password Modal -->
+    <div id="modal-reset-reseller-pass" class="modal-overlay">
+        <div class="modal-box">
+            <div class="modal-header">
+                <h3>🔑 Reset Reseller Password</h3>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p style="font-size: 13px; margin-bottom: 14px;">Change password for: <strong id="reset-reseller-user-label" style="color: #ff4d79;"></strong></p>
+                <input type="hidden" id="reset-reseller-id-input">
+                <div class="form-group">
+                    <label>New Password</label>
+                    <input type="password" id="reset-reseller-new-pass" class="form-control" placeholder="Enter new password" required minlength="4">
+                </div>
+            </div>
+    <!-- Bulk Extend Users Modal -->
+    <div id="modal-bulk-extend-users" class="modal-overlay">
+        <div class="modal-box">
+            <div class="modal-header">
+                <h3>⏳ Bulk Extend User Subscriptions</h3>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p style="font-size: 13px; margin-bottom: 14px;">Add extra subscription days to users in the active application.</p>
+                <div class="form-group">
+                    <label>Target Scope</label>
+                    <select id="bulk-extend-scope" class="form-control" style="font-weight: 700;">
+                        <option value="selected">Selected Users Only</option>
+                        <option value="all">All Active Users in App</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Days to Add</label>
+                    <input type="number" id="bulk-extend-days-input" class="form-control" value="7" min="1" required>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary btn-sm" data-close-modal>Cancel</button>
+                <button class="btn btn-primary btn-sm" onclick="submitBulkExtendUsers()">Apply Extension</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast-container"></div>
+
+    <script src="/static/js/particles.js"></script>
+    <script src="/static/js/reactbits.js"></script>
+    <script src="/static/js/dashboard.js"></script>
+</body>
+</html>

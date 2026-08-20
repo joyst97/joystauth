@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SDK Documentation & Quickstart | JOYST CORPORATION AUTH</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/dashboard.css">
+    <style>
+        .docs-grid {
+            display: grid;
+            grid-template-columns: 260px 1fr;
+            gap: 36px;
+            max-width: 1380px;
+            margin: 0 auto;
+            padding: 110px 32px 80px 32px;
+            position: relative;
+            z-index: 10;
+        }
+        .docs-sidebar {
+            position: sticky;
+            top: 100px;
+            height: fit-content;
+        }
+        .docs-nav-link {
+            display: block;
+            padding: 8px 14px;
+            color: var(--text-secondary);
+            font-size: 13.5px;
+            font-weight: 700;
+            text-decoration: none;
+            border-radius: var(--radius-sm);
+            margin-bottom: 4px;
+            transition: 0.2s;
+        }
+        .docs-nav-link:hover, .docs-nav-link.active {
+            color: #fff;
+            background: rgba(99, 102, 241, 0.15);
+            border-left: 2px solid var(--brand-sky);
+        }
+        @media (max-width: 900px) {
+            .docs-grid { grid-template-columns: 1fr; }
+            .docs-sidebar { position: relative; top: 0; }
+        }
+    </style>
+</head>
+<body>
+    <div class="cyber-grid-overlay"></div>
+    <div class="noise-overlay"></div>
+    <canvas id="bg-particles"></canvas>
+
+    <!-- Top Navigation Bar -->
+    <nav class="landing-nav">
+        <a href="/" class="brand-wrap">
+            <div class="brand-badge-icon">⚡</div>
+            <div class="brand-title">
+                JOYST CORPORATION AUTH
+                <span>Enterprise Licensing Infrastructure</span>
+            </div>
+        </a>
+
+        <ul class="nav-menu">
+            <li><a href="/features">Features</a></li>
+            <li><a href="/pricing">Pricing</a></li>
+            <li><a href="/docs" style="color: #fff;">Documentation</a></li>
+            <li><a href="/discord">Discord Bot</a></li>
+            <li><a href="/status">System Status</a></li>
+        </ul>
+
+        <div style="display: flex; align-items: center; gap: 14px;">
+            <a href="/login" class="btn btn-secondary btn-sm">Sign In</a>
+            <a href="/register" class="btn btn-primary btn-sm">Create Account</a>
+        </div>
+    </nav>
+
+    <!-- Docs Layout -->
+    <div class="docs-grid">
+        <div class="docs-sidebar">
+            <div class="glass-panel" style="padding: 20px;">
+                <span style="font-size: 11px; font-weight: 800; color: var(--brand-sky); text-transform: uppercase; letter-spacing: 0.6px; display: block; margin-bottom: 12px;">LANGUAGES</span>
+                <a href="#python" class="docs-nav-link active">🐍 Python SDK</a>
+                <a href="#csharp" class="docs-nav-link">🔷 C# (.NET 8)</a>
+                <a href="#cpp" class="docs-nav-link">⚡ C++ Native</a>
+                <a href="#java" class="docs-nav-link">☕ Java SDK</a>
+                <a href="#rust" class="docs-nav-link">🦀 Rust SDK</a>
+                <a href="#api" class="docs-nav-link">🌐 Raw REST API</a>
+            </div>
+        </div>
+
+        <div>
+            <!-- Python Section -->
+            <div class="glass-panel" style="padding: 36px; margin-bottom: 28px;" id="python">
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
+                    <h2 style="font-size: 24px; font-weight: 900; color: #fff;">Python Client SDK</h2>
+                    <span class="badge badge-success">Official SDK</span>
+                </div>
+                <p style="font-size: 14px; color: var(--text-secondary); line-height: 1.6; margin-bottom: 18px;">
+                    Download <code>auth_client.py</code> from your dashboard and drop it into your project folder.
+                </p>
+                <pre class="mono" style="padding: 20px; background: rgba(2, 6, 23, 0.7); border: 1px solid var(--border-glass); border-radius: 10px; color: #cbd5e1; font-size: 13px; line-height: 1.6; overflow-x: auto;">
+from auth_client import api
+
+# 1. Initialize with your Application Credentials
+auth = api(
+    name="YourAppName",
+    ownerid="joyst_owner_id",
+    secret="your_app_secret",
+    version="1.0"
+)
+
+# 2. Login (Strict Hardware ID is automatically verified)
+if auth.login("gamer123", "password123"):
+    print(f"Logged in successfully! Welcome {auth.user_data.username}")
+    print(f"Subscription: {auth.user_data.subscription}")
+    print(f"Expiry: {auth.user_data.expiry}")
+else:
+    print(f"Login failed: {auth.response.message}")
+
+# 3. Fetch Encrypted Cloud Variable
+cheat_offset = auth.var("aimbot_offset")
+print("Offset:", cheat_offset)</pre>
+            </div>
+
+            <!-- C# Section -->
+            <div class="glass-panel" style="padding: 36px; margin-bottom: 28px;" id="csharp">
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
+                    <h2 style="font-size: 24px; font-weight: 900; color: #fff;">C# (.NET 8) Client SDK</h2>
+                    <span class="badge badge-purple">Windows & Cross-Platform</span>
+                </div>
+                <pre class="mono" style="padding: 20px; background: rgba(2, 6, 23, 0.7); border: 1px solid var(--border-glass); border-radius: 10px; color: #cbd5e1; font-size: 13px; line-height: 1.6; overflow-x: auto;">
+using System;
+using System.Threading.Tasks;
+using JoystAuth;
+
+class Program {
+    static async Task Main() {
+        var auth = new api(
+            name: "YourAppName",
+            ownerid: "joyst_owner_id",
+            secret: "your_app_secret",
+            version: "1.0"
+        );
+
+        await auth.init();
+
+        if (await auth.login("gamer123", "password123")) {
+            Console.WriteLine($"Welcome {auth.user_data.username}!");
+        } else {
+            Console.WriteLine($"Access Denied: {auth.response.message}");
+        }
+    }
+}</pre>
+            </div>
+
+            <!-- C++ Section -->
+            <div class="glass-panel" style="padding: 36px; margin-bottom: 28px;" id="cpp">
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
+                    <h2 style="font-size: 24px; font-weight: 900; color: #fff;">C++ Windows Native SDK</h2>
+                    <span class="badge badge-cyan">WinINet / Anti-Reverse</span>
+                </div>
+                <pre class="mono" style="padding: 20px; background: rgba(2, 6, 23, 0.7); border: 1px solid var(--border-glass); border-radius: 10px; color: #cbd5e1; font-size: 13px; line-height: 1.6; overflow-x: auto;">
+#include "AuthClient.hpp"
+#include &lt;iostream&gt;
+
+int main() {
+    JoystAuth::api auth("YourAppName", "joyst_owner_id", "your_secret", "1.0");
+    auth.init();
+
+    if (auth.login("gamer123", "password123")) {
+        std::cout &lt;&lt; "Authenticated! HWID verified.\\n";
+    } else {
+        std::cout &lt;&lt; "Blocked: " &lt;&lt; auth.response.message &lt;&lt; "\\n";
+    }
+    return 0;
+}</pre>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer style="border-top: 1px solid var(--border-glass); background: rgba(2, 6, 23, 0.85); backdrop-filter: blur(20px); padding: 36px 48px; display: flex; align-items: center; justify-content: space-between; color: var(--text-muted); font-size: 13px; position: relative; z-index: 10; flex-wrap: wrap; gap: 20px;">
+        <div style="display: flex; align-items: center; gap: 10px;">
+            <strong style="color: #fff;">JOYST CORPORATION AUTH</strong> &copy; 2026. All rights reserved.
+        </div>
+        <div style="display: flex; gap: 24px; flex-wrap: wrap;">
+            <a href="/features" style="color: var(--text-muted); text-decoration: none;">Features</a>
+            <a href="/pricing" style="color: var(--text-muted); text-decoration: none;">Pricing</a>
+            <a href="/docs" style="color: var(--text-muted); text-decoration: none;">Documentation</a>
+            <a href="/status" style="color: var(--text-muted); text-decoration: none;">System Status</a>
+            <a href="/login" style="color: var(--text-muted); text-decoration: none;">Sign In</a>
+            <a href="/register" style="color: var(--text-muted); text-decoration: none;">Create Account</a>
+        </div>
+    </footer>
+
+    <script src="/static/js/particles.js"></script>
+    <script src="/static/js/reactbits.js"></script>
+</body>
+</html>

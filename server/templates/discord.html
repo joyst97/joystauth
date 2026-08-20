@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Discord Bot Integration | JOYST CORPORATION AUTH</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/dashboard.css">
+    <style>
+        .discord-mock-box {
+            background: #2b2d31;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 24px;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            color: #dbdee1;
+            font-size: 13.5px;
+        }
+        .discord-msg-row {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+        .discord-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: var(--gradient-primary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 900;
+            color: #fff;
+            flex-shrink: 0;
+        }
+        .discord-embed {
+            background: #1e1f22;
+            border-left: 4px solid #5865f2;
+            border-radius: 4px;
+            padding: 14px 18px;
+            margin-top: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div class="cyber-grid-overlay"></div>
+    <div class="noise-overlay"></div>
+    <canvas id="bg-particles"></canvas>
+
+    <!-- Top Navigation Bar -->
+    <nav class="landing-nav">
+        <a href="/" class="brand-wrap">
+            <div class="brand-badge-icon">⚡</div>
+            <div class="brand-title">
+                JOYST CORPORATION AUTH
+                <span>Enterprise Licensing Infrastructure</span>
+            </div>
+        </a>
+
+        <ul class="nav-menu">
+            <li><a href="/features">Features</a></li>
+            <li><a href="/pricing">Pricing</a></li>
+            <li><a href="/docs">Documentation</a></li>
+            <li><a href="/discord" style="color: #fff;">Discord Bot</a></li>
+            <li><a href="/status">System Status</a></li>
+        </ul>
+
+        <div style="display: flex; align-items: center; gap: 14px;">
+            <a href="/login" class="btn btn-secondary btn-sm">Sign In</a>
+            <a href="/register" class="btn btn-primary btn-sm">Create Account</a>
+        </div>
+    </nav>
+
+    <!-- Header -->
+    <section style="max-width: 1380px; margin: 0 auto; padding: 130px 32px 40px 32px; text-align: center; position: relative; z-index: 10;">
+        <div class="glowing-pill" style="margin-bottom: 16px;">
+            <span>🤖</span> Dedicated Discord Bot Platform
+        </div>
+        <h1 style="font-size: 48px; font-weight: 900; letter-spacing: -1.5px; color: #fff; margin-bottom: 16px;">
+            Manage Your Platform <span class="shiny-text">Directly in Discord</span>
+        </h1>
+        <p style="font-size: 16px; color: var(--text-secondary); max-width: 680px; margin: 0 auto;">
+            Automate software key generation, instant HWID resets, customer lookups, and account bans right from your Discord server channels.
+        </p>
+    </section>
+
+    <!-- Content Grid -->
+    <section style="max-width: 1380px; margin: 0 auto; padding: 20px 32px 80px 32px; position: relative; z-index: 10;">
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap: 40px; align-items: center;">
+            <div class="glass-panel" style="padding: 36px;">
+                <h3 style="font-size: 22px; font-weight: 900; color: #fff; margin-bottom: 16px;">Available Slash Commands</h3>
+                <div style="display: flex; flex-direction: column; gap: 14px;">
+                    <div style="padding: 12px 16px; background: rgba(0,0,0,0.3); border: 1px solid var(--border-glass); border-radius: 8px;">
+                        <strong style="color: var(--brand-sky); font-family: monospace;">/genkeys &lt;app&gt; &lt;days&gt; &lt;count&gt;</strong>
+                        <p style="font-size: 13px; color: var(--text-secondary); margin-top: 4px;">Generate custom license keys instantly and send them in an embed.</p>
+                    </div>
+                    <div style="padding: 12px 16px; background: rgba(0,0,0,0.3); border: 1px solid var(--border-glass); border-radius: 8px;">
+                        <strong style="color: var(--brand-sky); font-family: monospace;">/resethwid &lt;app&gt; &lt;username&gt;</strong>
+                        <p style="font-size: 13px; color: var(--text-secondary); margin-top: 4px;">1-Click HWID reset when a customer upgrades their PC hardware.</p>
+                    </div>
+                    <div style="padding: 12px 16px; background: rgba(0,0,0,0.3); border: 1px solid var(--border-glass); border-radius: 8px;">
+                        <strong style="color: var(--brand-sky); font-family: monospace;">/userinfo &lt;app&gt; &lt;username&gt;</strong>
+                        <p style="font-size: 13px; color: var(--text-secondary); margin-top: 4px;">Look up customer subscription expiry, rank, and IP history.</p>
+                    </div>
+                    <div style="padding: 12px 16px; background: rgba(0,0,0,0.3); border: 1px solid var(--border-glass); border-radius: 8px;">
+                        <strong style="color: var(--brand-rose); font-family: monospace;">/banuser &lt;app&gt; &lt;username&gt; &lt;reason&gt;</strong>
+                        <p style="font-size: 13px; color: var(--text-secondary); margin-top: 4px;">Instantly blacklist and revoke access for bad actors.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Discord Mock UI -->
+            <div class="discord-mock-box">
+                <div class="discord-msg-row">
+                    <div class="discord-avatar">J</div>
+                    <div>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <strong style="color: #fff; font-size: 14px;">JOYST BOT</strong>
+                            <span style="background: #5865f2; color: #fff; font-size: 10px; padding: 1px 4px; border-radius: 3px; font-weight: 700;">BOT</span>
+                            <span style="color: #949ba4; font-size: 11px;">Today at 11:24 PM</span>
+                        </div>
+                        <div class="discord-embed">
+                            <div style="font-weight: 800; color: #fff; margin-bottom: 6px;">⚡ Licenses Generated Successfully</div>
+                            <div style="font-size: 12.5px; color: #dbdee1; margin-bottom: 8px;">
+                                <strong>Application:</strong> SuperCheatPro<br>
+                                <strong>Duration:</strong> 30 Days (VIP Level 1)<br>
+                                <strong>Quantity:</strong> 3 Keys
+                            </div>
+                            <pre style="background: #111214; padding: 8px 12px; border-radius: 4px; font-family: monospace; font-size: 12px; color: #38bdf8;">PRO-8Z7M-ZPGP-8YGK
+PRO-DC5M-ZDYK-QQYP
+PRO-A6GH-J3GK-PBJG</pre>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div style="text-align: center; margin-top: 40px;">
+            <a href="/register" class="btn btn-primary" style="padding: 14px 36px; font-size: 15px;">Setup Discord Bot on Your Server &rarr;</a>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer style="border-top: 1px solid var(--border-glass); background: rgba(2, 6, 23, 0.85); backdrop-filter: blur(20px); padding: 36px 48px; display: flex; align-items: center; justify-content: space-between; color: var(--text-muted); font-size: 13px; position: relative; z-index: 10; flex-wrap: wrap; gap: 20px;">
+        <div style="display: flex; align-items: center; gap: 10px;">
+            <strong style="color: #fff;">JOYST CORPORATION AUTH</strong> &copy; 2026. All rights reserved.
+        </div>
+        <div style="display: flex; gap: 24px; flex-wrap: wrap;">
+            <a href="/features" style="color: var(--text-muted); text-decoration: none;">Features</a>
+            <a href="/pricing" style="color: var(--text-muted); text-decoration: none;">Pricing</a>
+            <a href="/docs" style="color: var(--text-muted); text-decoration: none;">Documentation</a>
+            <a href="/discord" style="color: var(--text-muted); text-decoration: none;">Discord Bot</a>
+            <a href="/status" style="color: var(--text-muted); text-decoration: none;">System Status</a>
+            <a href="/login" style="color: var(--text-muted); text-decoration: none;">Sign In</a>
+            <a href="/register" style="color: var(--text-muted); text-decoration: none;">Create Account</a>
+        </div>
+    </footer>
+
+    <script src="/static/js/particles.js"></script>
+    <script src="/static/js/reactbits.js"></script>
+</body>
+</html>

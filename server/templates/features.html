@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Features | JOYST CORPORATION AUTH</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/dashboard.css">
+</head>
+<body>
+    <div class="cyber-grid-overlay"></div>
+    <div class="noise-overlay"></div>
+    <canvas id="bg-particles"></canvas>
+
+    <!-- Top Navigation Bar -->
+    <nav class="landing-nav">
+        <a href="/" class="brand-wrap">
+            <div class="brand-badge-icon">⚡</div>
+            <div class="brand-title">
+                JOYST CORPORATION AUTH
+                <span>Enterprise Licensing Infrastructure</span>
+            </div>
+        </a>
+
+        <ul class="nav-menu">
+            <li><a href="/features" style="color: #fff;">Features</a></li>
+            <li><a href="/pricing">Pricing</a></li>
+            <li><a href="/docs">Documentation</a></li>
+            <li><a href="/discord">Discord Bot</a></li>
+            <li><a href="/status">System Status</a></li>
+        </ul>
+
+        <div style="display: flex; align-items: center; gap: 14px;">
+            <a href="/login" class="btn btn-secondary btn-sm">Sign In</a>
+            <a href="/register" class="btn btn-primary btn-sm">Create Account</a>
+        </div>
+    </nav>
+
+    <!-- Page Header -->
+    <section style="max-width: 1380px; margin: 0 auto; padding: 130px 32px 40px 32px; text-align: center; position: relative; z-index: 10;">
+        <div class="glowing-pill" style="margin-bottom: 16px;">
+            <span>⚡</span> Complete Security & Licensing Suite
+        </div>
+        <h1 style="font-size: 48px; font-weight: 900; letter-spacing: -1.5px; color: #fff; margin-bottom: 16px;">
+            Engineered for <span class="shiny-text">Uncompromising Security</span>
+        </h1>
+        <p style="font-size: 16px; color: var(--text-secondary); max-width: 680px; margin: 0 auto;">
+            Explore the core architectural pillars that protect your software against cracking, credential dumping, and unauthorized distribution.
+        </p>
+    </section>
+
+    <!-- Detailed Features Grid -->
+    <section style="max-width: 1380px; margin: 0 auto; padding: 20px 32px 80px 32px; position: relative; z-index: 10;">
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap: 28px;">
+            <div class="glass-panel spotlight-card" style="padding: 36px;">
+                <div style="font-size: 32px; margin-bottom: 16px;">💻</div>
+                <h3 style="font-size: 20px; font-weight: 800; color: #fff; margin-bottom: 10px;">Hardware ID (HWID) Locking</h3>
+                <p style="font-size: 14px; color: var(--text-secondary); line-height: 1.6;">
+                    The client SDK computes a cryptographic SHA-256 fingerprint from the physical motherboard UUID and CPU serial. Once registered, the user cannot share their credentials. Unauthorized PCs are instantly blocked with an HWID mismatch.
+                </p>
+            </div>
+
+            <div class="glass-panel spotlight-card" style="padding: 36px;">
+                <div style="font-size: 32px; margin-bottom: 16px;">🔒</div>
+                <h3 style="font-size: 20px; font-weight: 800; color: #fff; margin-bottom: 10px;">Dynamic AES-256 Session Crypto</h3>
+                <p style="font-size: 14px; color: var(--text-secondary); line-height: 1.6;">
+                    No static encryption keys. Every initialization handshake dynamically exchanges ephemeral AES-256 keys signed with HMAC-SHA256. Packet sniffing tools like Wireshark and Fiddler cannot inspect or tamper with authentication data.
+                </p>
+            </div>
+
+            <div class="glass-panel spotlight-card" style="padding: 36px;">
+                <div style="font-size: 32px; margin-bottom: 16px;">🤖</div>
+                <h3 style="font-size: 20px; font-weight: 800; color: #fff; margin-bottom: 10px;">Full Discord Bot Slash Command Suite</h3>
+                <p style="font-size: 14px; color: var(--text-secondary); line-height: 1.6;">
+                    Control your entire auth platform directly from Discord. Generate keys with <code>/genkeys</code>, reset hardware locks with <code>/resethwid</code>, check users with <code>/userinfo</code>, and ban malicious actors with <code>/banuser</code>.
+                </p>
+            </div>
+
+            <div class="glass-panel spotlight-card" style="padding: 36px;">
+                <div style="font-size: 32px; margin-bottom: 16px;">☁️</div>
+                <h3 style="font-size: 20px; font-weight: 800; color: #fff; margin-bottom: 10px;">Encrypted Cloud Variables & CDN</h3>
+                <p style="font-size: 14px; color: var(--text-secondary); line-height: 1.6;">
+                    Store critical game offsets, API tokens, and executable binary loaders securely on the cloud server. Client applications fetch them securely into memory without saving raw files to disk.
+                </p>
+            </div>
+
+            <div class="glass-panel spotlight-card" style="padding: 36px;">
+                <div style="font-size: 32px; margin-bottom: 16px;">🔑</div>
+                <h3 style="font-size: 20px; font-weight: 800; color: #fff; margin-bottom: 10px;">Pattern Key Generator & Subscriptions</h3>
+                <p style="font-size: 14px; color: var(--text-secondary); line-height: 1.6;">
+                    Create single or bulk license keys matching any custom mask format (e.g. <code>JOYST-XXXX-XXXX</code>). Assign custom validity durations (1 Day, 30 Days, 1 Year, Lifetime) and auto-increment subscription levels.
+                </p>
+            </div>
+
+            <div class="glass-panel spotlight-card" style="padding: 36px;">
+                <div style="font-size: 32px; margin-bottom: 16px;">🚫</div>
+                <h3 style="font-size: 20px; font-weight: 800; color: #fff; margin-bottom: 10px;">IP & HWID Blacklist Gateway Filter</h3>
+                <p style="font-size: 14px; color: var(--text-secondary); line-height: 1.6;">
+                    Instantly block malicious IP addresses or compromised hardware signatures at the edge gateway level before any database queries execute.
+                </p>
+            </div>
+        </div>
+
+        <div style="margin-top: 50px; text-align: center;">
+            <a href="/register" class="btn btn-primary" style="padding: 14px 36px; font-size: 15px;">Get Started Now &rarr;</a>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer style="border-top: 1px solid var(--border-glass); background: rgba(2, 6, 23, 0.85); backdrop-filter: blur(20px); padding: 36px 48px; display: flex; align-items: center; justify-content: space-between; color: var(--text-muted); font-size: 13px; position: relative; z-index: 10; flex-wrap: wrap; gap: 20px;">
+        <div style="display: flex; align-items: center; gap: 10px;">
+            <strong style="color: #fff;">JOYST CORPORATION AUTH</strong> &copy; 2026. All rights reserved.
+        </div>
+        <div style="display: flex; gap: 24px; flex-wrap: wrap;">
+            <a href="/features" style="color: var(--text-muted); text-decoration: none;">Features</a>
+            <a href="/pricing" style="color: var(--text-muted); text-decoration: none;">Pricing</a>
+            <a href="/docs" style="color: var(--text-muted); text-decoration: none;">Documentation</a>
+            <a href="/status" style="color: var(--text-muted); text-decoration: none;">System Status</a>
+            <a href="/login" style="color: var(--text-muted); text-decoration: none;">Sign In</a>
+            <a href="/register" style="color: var(--text-muted); text-decoration: none;">Create Account</a>
+        </div>
+    </footer>
+
+    <script src="/static/js/particles.js"></script>
+    <script src="/static/js/reactbits.js"></script>
+</body>
+</html>

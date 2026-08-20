@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pricing & Plans | JOYST CORPORATION AUTH</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/dashboard.css">
+    <style>
+        .pricing-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 36px;
+            max-width: 980px;
+            margin: 0 auto;
+        }
+        @media (max-width: 768px) {
+            .pricing-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <div class="cyber-grid-overlay"></div>
+    <div class="noise-overlay"></div>
+    <canvas id="bg-particles"></canvas>
+
+    <!-- Top Navigation Bar -->
+    <nav class="landing-nav">
+        <a href="/" class="brand-wrap">
+            <div class="brand-badge-icon">⚡</div>
+            <div class="brand-title">
+                JOYST CORPORATION AUTH
+                <span>Enterprise Licensing Infrastructure</span>
+            </div>
+        </a>
+
+        <ul class="nav-menu">
+            <li><a href="/features">Features</a></li>
+            <li><a href="/pricing" style="color: #fff;">Pricing</a></li>
+            <li><a href="/docs">Documentation</a></li>
+            <li><a href="/discord">Discord Bot</a></li>
+            <li><a href="/status">System Status</a></li>
+        </ul>
+
+        <div style="display: flex; align-items: center; gap: 14px;">
+            <a href="/login" class="btn btn-secondary btn-sm">Sign In</a>
+            <a href="/register" class="btn btn-primary btn-sm">Create Account</a>
+        </div>
+    </nav>
+
+    <!-- Page Header -->
+    <section style="max-width: 1380px; margin: 0 auto; padding: 130px 32px 40px 32px; text-align: center; position: relative; z-index: 10;">
+        <div class="glowing-pill" style="margin-bottom: 16px;">
+            <span>💎</span> Transparent Developer Pricing
+        </div>
+        <h1 style="font-size: 48px; font-weight: 900; letter-spacing: -1.5px; color: #fff; margin-bottom: 16px;">
+            Two Simple Plans. <span class="shiny-text">Zero Hidden Limits.</span>
+        </h1>
+        <p style="font-size: 16px; color: var(--text-secondary); max-width: 650px; margin: 0 auto;">
+            Every developer starts on the Free Trial automatically upon registration. Upgrade to the Paid Plan to unlock unlimited capacity, Discord Bot automation, and Reseller accounts.
+        </p>
+    </section>
+
+    <!-- Pricing Grid -->
+    <section style="max-width: 1380px; margin: 0 auto; padding: 20px 32px 80px 32px; position: relative; z-index: 10;">
+        <div class="pricing-grid">
+            <!-- Free Plan -->
+            <div class="glass-panel" style="padding: 40px; display: flex; flex-direction: column; justify-content: space-between;">
+                <div>
+                    <span class="badge badge-purple" style="margin-bottom: 20px;">FREE TRIAL (DEFAULT)</span>
+                    <h3 style="font-size: 42px; font-weight: 900; color: #fff; margin-bottom: 16px;">$0 <span style="font-size: 15px; color: var(--text-muted); font-weight: 500;">/ forever</span></h3>
+                    <p style="font-size: 14px; color: var(--text-secondary); margin-bottom: 28px; line-height: 1.6;">
+                        Automatically assigned on sign up. Perfect for testing, hobby software, and small scale tools.
+                    </p>
+
+                    <div style="font-size: 12px; font-weight: 800; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 16px;">Included Features</div>
+                    <ul style="list-style: none; display: flex; flex-direction: column; gap: 14px; font-size: 13.5px; color: var(--text-secondary); margin-bottom: 36px;">
+                        <li style="display: flex; align-items: center; gap: 10px;"><span style="color: #34d399;">✅</span> 3 Applications Max</li>
+                        <li style="display: flex; align-items: center; gap: 10px;"><span style="color: #34d399;">✅</span> 1,000 Total Users Per App</li>
+                        <li style="display: flex; align-items: center; gap: 10px;"><span style="color: #34d399;">✅</span> Strict Motherboard HWID Locking</li>
+                        <li style="display: flex; align-items: center; gap: 10px;"><span style="color: #34d399;">✅</span> Cloud Variables & Offsets</li>
+                        <li style="display: flex; align-items: center; gap: 10px;"><span style="color: #fb7185;">❌</span> Discord Bot Automation (Paid Only)</li>
+                        <li style="display: flex; align-items: center; gap: 10px;"><span style="color: #fb7185;">❌</span> Multi-Tenant Reseller Sub-Accounts</li>
+                    </ul>
+                </div>
+
+                <a href="/register" class="btn btn-secondary" style="width: 100%; padding: 14px;">Sign Up for Free Trial &rarr;</a>
+            </div>
+
+            <!-- Paid Plan -->
+            <div class="glass-panel" style="padding: 40px; border-color: var(--border-glow); display: flex; flex-direction: column; justify-content: space-between; box-shadow: var(--shadow-glass), var(--shadow-glow);">
+                <div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                        <span class="badge badge-success">PAID PRO PLAN</span>
+                        <span class="glowing-pill" style="font-size: 10.5px; padding: 3px 10px;">ALL UNLOCKED</span>
+                    </div>
+
+                    <h3 style="font-size: 42px; font-weight: 900; color: #fff; margin-bottom: 16px;">$19.99 <span style="font-size: 15px; color: var(--text-muted); font-weight: 500;">/ month or key</span></h3>
+                    <p style="font-size: 14px; color: var(--text-secondary); margin-bottom: 28px; line-height: 1.6;">
+                        For serious software distributors, game developers, and reseller networks needing unlimited scale.
+                    </p>
+
+                    <div style="font-size: 12px; font-weight: 800; color: var(--brand-sky); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 16px;">Everything in Free, plus:</div>
+                    <ul style="list-style: none; display: flex; flex-direction: column; gap: 14px; font-size: 13.5px; color: #fff; margin-bottom: 36px;">
+                        <li style="display: flex; align-items: center; gap: 10px;"><span style="color: #34d399;">✅</span> <strong>Unlimited Applications</strong></li>
+                        <li style="display: flex; align-items: center; gap: 10px;"><span style="color: #34d399;">✅</span> <strong>Unlimited Active Users</strong></li>
+                        <li style="display: flex; align-items: center; gap: 10px;"><span style="color: #34d399;">✅</span> <strong>Discord Bot Slash Command Suite</strong></li>
+                        <li style="display: flex; align-items: center; gap: 10px;"><span style="color: #34d399;">✅</span> <strong>Multi-Tenant Reseller Sub-Accounts</strong></li>
+                        <li style="display: flex; align-items: center; gap: 10px;"><span style="color: #34d399;">✅</span> <strong>Encrypted CDN Loader Distribution</strong></li>
+                        <li style="display: flex; align-items: center; gap: 10px;"><span style="color: #34d399;">✅</span> <strong>24/7 Priority Discord Support</strong></li>
+                    </ul>
+                </div>
+
+                <a href="/register" class="btn btn-primary" style="width: 100%; padding: 14px;">Redeem Paid Key / Upgrade &rarr;</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer style="border-top: 1px solid var(--border-glass); background: rgba(6, 2, 4, 0.94); backdrop-filter: blur(20px); padding: 36px 48px; display: flex; align-items: center; justify-content: space-between; color: var(--text-muted); font-size: 13px; position: relative; z-index: 10; flex-wrap: wrap; gap: 20px;">
+        <div style="display: flex; align-items: center; gap: 10px;">
+            <strong style="color: #fff;">JOYST CORPORATION AUTH</strong> &copy; 2026. All rights reserved.
+        </div>
+        <div style="display: flex; gap: 24px; flex-wrap: wrap;">
+            <a href="/features" style="color: var(--text-muted); text-decoration: none;">Features</a>
+            <a href="/pricing" style="color: var(--text-muted); text-decoration: none;">Pricing</a>
+            <a href="/docs" style="color: var(--text-muted); text-decoration: none;">Documentation</a>
+            <a href="/discord" style="color: var(--text-muted); text-decoration: none;">Discord Bot</a>
+            <a href="/status" style="color: var(--text-muted); text-decoration: none;">System Status</a>
+            <a href="/login" style="color: var(--text-muted); text-decoration: none;">Sign In</a>
+            <a href="/register" style="color: var(--text-muted); text-decoration: none;">Create Account</a>
+        </div>
+    </footer>
+
+    <script src="/static/js/particles.js"></script>
+    <script src="/static/js/reactbits.js"></script>
+</body>
+</html>

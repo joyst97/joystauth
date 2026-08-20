@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Joyst Corporation | Developer Authentication Portal</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/dashboard.css">
+    <!-- Official Google Identity Services SDK -->
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <style>
+        body {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            background: #07090e;
+            padding: 20px;
+        }
+        .auth-card {
+            width: 100%;
+            max-width: 420px;
+            background: var(--bg-card);
+            backdrop-filter: var(--glass-blur);
+            -webkit-backdrop-filter: var(--glass-blur);
+            border: 1px solid var(--border-highlight);
+            border-radius: var(--radius-lg);
+            padding: 38px;
+            box-shadow: var(--shadow-md), 0 0 40px rgba(99, 102, 241, 0.1);
+            position: relative;
+            z-index: 10;
+        }
+        .auth-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: var(--gradient-accent);
+            border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+        }
+        .auth-brand {
+            text-align: center;
+            margin-bottom: 24px;
+        }
+        .auth-brand h2 {
+            font-size: 20px;
+            font-weight: 800;
+            color: #fff;
+            letter-spacing: -0.5px;
+        }
+        .auth-brand p {
+            font-size: 13px;
+            color: var(--text-muted);
+            margin-top: 4px;
+        }
+        #bg-particles {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            pointer-events: none;
+            z-index: 1;
+        }
+        #google-signin-btn-container iframe {
+            margin: 0 auto !important;
+            border-radius: 10px !important;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="bg-particles"></canvas>
+
+    <div class="auth-card">
+        <div class="auth-brand">
+            <img src="/static/img/joyst_logo.png" alt="JOYST" style="width: 56px; height: 56px; border-radius: 50%; object-fit: cover; box-shadow: 0 0 25px rgba(225, 29, 72, 0.6); border: 2px solid rgba(244, 63, 94, 0.5); margin-bottom: 12px;">
+            <h2>JOYST CORPORATION</h2>
+            <p>Sign in to your Developer Workspace</p>
+        </div>
+
+        <!-- Official Google Sign In Container -->
+        <div id="google-signin-btn-container" style="margin-bottom: 20px; display: flex; justify-content: center; width: 100%;">
+            <button type="button" id="fallback-google-btn" onclick="handleGoogleSignInClick()" class="btn btn-secondary" style="width: 100%; justify-content: center; padding: 12px; font-size: 13.5px; font-weight: 700; gap: 10px; border-radius: 10px; cursor: pointer;">
+                <svg width="18" height="18" viewBox="0 0 24 24">
+                    <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                    <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                    <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
+                    <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
+                </svg>
+                <span>Continue with Google</span>
+            </button>
+        </div>
+
+        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 22px;">
+            <div style="flex: 1; height: 1px; background: rgba(255, 255, 255, 0.1);"></div>
+            <span style="font-size: 11px; font-weight: 800; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">Or sign in with username</span>
+            <div style="flex: 1; height: 1px; background: rgba(255, 255, 255, 0.1);"></div>
+        </div>
+
+        <form id="login-form">
+            <div class="form-group">
+                <label>Username</label>
+                <input type="text" id="login-username" class="form-control" placeholder="Your username" required autofocus>
+            </div>
+
+            <div class="form-group" style="margin-bottom: 24px;">
+                <label>Password</label>
+                <input type="password" id="login-password" class="form-control" placeholder="••••••••" required>
+            </div>
+
+            <button type="submit" id="btn-submit" class="btn btn-primary" style="width: 100%; justify-content: center; padding: 13px; font-size: 14px;">
+                Sign In to Portal
+            </button>
+        </form>
+
+        <div style="text-align: center; margin-top: 24px; font-size: 13px; color: var(--text-muted);">
+            Don't have an account yet? <a href="/register" style="color: #ff4d79; text-decoration: none; font-weight: 700;">Create one for free</a>
+        </div>
+        <div style="text-align: center; margin-top: 14px; font-size: 12px;">
+            <a href="/" style="color: var(--text-dim); text-decoration: none;">&larr; Back to Homepage</a>
+        </div>
+    </div>
+
+    <!-- Google OAuth Setup Modal (If Client ID is not registered yet) -->
+    <div id="google-setup-modal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); backdrop-filter: blur(18px); z-index: 9999; align-items: center; justify-content: center; padding: 20px;">
+        <div style="background: #14050a; border: 1px solid rgba(225, 29, 72, 0.4); border-radius: 18px; width: 100%; max-width: 480px; padding: 32px 28px; box-shadow: 0 24px 60px rgba(0,0,0,0.9); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #fff; position: relative;">
+            <button onclick="document.getElementById('google-setup-modal').style.display='none'" style="position: absolute; top: 16px; right: 16px; background: transparent; border: none; color: #9aa0a6; font-size: 22px; cursor: pointer; line-height: 1;">&times;</button>
+            
+            <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px;">
+                <svg width="28" height="28" viewBox="0 0 24 24">
+                    <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                    <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                    <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
+                    <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
+                </svg>
+                <h3 style="font-size: 18px; font-weight: 800; margin: 0; color: #fff;">Connect Real Google Cloud OAuth</h3>
+            </div>
+
+            <p style="font-size: 13px; color: var(--text-secondary); line-height: 1.6; margin-bottom: 18px;">
+                Google security requires your own <strong>Google Cloud Client ID</strong> so Google can verify your origin (<code class="mono" style="color: #38bdf8;">http://127.0.0.1:8000</code>).
+            </p>
+
+            <div style="background: rgba(0,0,0,0.5); padding: 14px 16px; border-radius: 10px; border: 1px solid var(--border-glass); margin-bottom: 20px; font-size: 12.5px; line-height: 1.6; color: #cbd5e1;">
+                <strong>Steps to get your Free Google Client ID:</strong><br>
+                1. Open <a href="https://console.cloud.google.com/apis/credentials" target="_blank" style="color: #ff4d79; text-decoration: underline; font-weight: 700;">Google Cloud Console &rarr; Credentials</a><br>
+                2. Click <strong>Create Credentials &rarr; OAuth Client ID</strong> (Web application)<br>
+                3. Add Authorized JavaScript Origin: <code class="mono" style="color: #34d399;">http://127.0.0.1:8000</code><br>
+                4. Paste your Client ID below:
+            </div>
+
+            <div class="form-group" style="margin-bottom: 20px;">
+                <label>Google OAuth 2.0 Client ID</label>
+                <input type="text" id="custom-google-client-id" class="form-control mono" placeholder="xxxx-xxxx.apps.googleusercontent.com" style="font-size: 12px;">
+            </div>
+
+            <div style="display: flex; gap: 12px; justify-content: flex-end;">
+                <button type="button" class="btn btn-secondary" onclick="document.getElementById('google-setup-modal').style.display='none'">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="saveCustomGoogleClientId()">Save & Activate Google</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast-container"></div>
+
+    <script src="/static/js/particles.js"></script>
+    <script>
+        function showToast(message, type = "info") {
+            const container = document.getElementById("toast-container");
+            const toast = document.createElement("div");
+            toast.className = `toast toast-${type}`;
+            toast.innerHTML = `<span>${type === 'success' ? '✅' : '❌'}</span> <span>${message}</span>`;
+            container.appendChild(toast);
+            setTimeout(() => {
+                toast.style.opacity = "0";
+                setTimeout(() => toast.remove(), 300);
+            }, 3500);
+        }
+
+        let activeGoogleClientId = "";
+
+        async function initGoogleServices() {
+            try {
+                const res = await fetch("/api/v1/auth/google/config");
+                const data = await res.json();
+                activeGoogleClientId = data.client_id || localStorage.getItem("custom_google_client_id") || "";
+
+                if (activeGoogleClientId && window.google && window.google.accounts && window.google.accounts.id) {
+                    google.accounts.id.initialize({
+                        client_id: activeGoogleClientId,
+                        callback: handleGoogleCredentialResponse,
+                        auto_select: false
+                    });
+
+                    const container = document.getElementById("google-signin-btn-container");
+                    if (container) {
+                        container.innerHTML = "";
+                        google.accounts.id.renderButton(container, {
+                            theme: "filled_black",
+                            size: "large",
+                            shape: "rectangular",
+                            width: container.offsetWidth || 340,
+                            text: "continue_with"
+                        });
+                    }
+
+                    // Prompt Google One-Tap
+                    google.accounts.id.prompt();
+                }
+            } catch (e) {
+                console.warn("Google GSI Init:", e);
+            }
+        }
+
+        window.addEventListener("load", () => {
+            setTimeout(initGoogleServices, 300);
+        });
+
+        function handleGoogleSignInClick() {
+            const storedId = localStorage.getItem("custom_google_client_id") || activeGoogleClientId;
+            if (!storedId) {
+                document.getElementById("google-setup-modal").style.display = "flex";
+            } else {
+                if (window.google && window.google.accounts && window.google.accounts.id) {
+                    google.accounts.id.prompt();
+                }
+            }
+        }
+
+        function saveCustomGoogleClientId() {
+            const input = document.getElementById("custom-google-client-id").value.trim();
+            if (!input || !input.includes(".apps.googleusercontent.com")) {
+                showToast("Please enter a valid Google Client ID ending in .apps.googleusercontent.com", "error");
+                return;
+            }
+            localStorage.setItem("custom_google_client_id", input);
+            activeGoogleClientId = input;
+            document.getElementById("google-setup-modal").style.display = "none";
+            showToast("Google Client ID saved! Initializing Google Sign-In...", "success");
+            initGoogleServices();
+        }
+
+        async function handleGoogleCredentialResponse(response) {
+            if (response && response.credential) {
+                showToast("Authenticating with Google Identity...", "info");
+                try {
+                    const res = await fetch("/api/v1/auth/google", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ credential: response.credential })
+                    });
+                    const data = await res.json();
+                    if (res.ok && data.access_token) {
+                        localStorage.setItem("auth_admin_token", data.access_token);
+                        localStorage.setItem("dev_owner_id", data.owner_id);
+                        localStorage.setItem("dev_username", data.username);
+                        showToast("Google Account Authenticated! Opening Dashboard...", "success");
+                        setTimeout(() => {
+                            window.location.href = data.redirect_url || "/dashboard";
+                        }, 500);
+                    } else {
+                        showToast(data.detail || "Google authentication failed", "error");
+                    }
+                } catch (err) {
+                    showToast("Connection failed: " + err.message, "error");
+                }
+            }
+        }
+
+        document.getElementById("login-form").addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const username = document.getElementById("login-username").value.trim();
+            const password = document.getElementById("login-password").value;
+            const btn = document.getElementById("btn-submit");
+
+            btn.disabled = true;
+            btn.textContent = "Signing In...";
+
+            try {
+                const res = await fetch("/api/v1/auth/login", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ username, password })
+                });
+                const data = await res.json();
+                if (res.ok && data.access_token) {
+                    if (data.role === "reseller") {
+                        localStorage.setItem("reseller_token", data.access_token);
+                        showToast("Reseller Account Authenticated! Opening Reseller Console...", "success");
+                        setTimeout(() => {
+                            window.location.href = data.redirect_url || "/reseller/dashboard";
+                        }, 500);
+                    } else {
+                        localStorage.setItem("auth_admin_token", data.access_token);
+                        localStorage.setItem("dev_owner_id", data.owner_id);
+                        localStorage.setItem("dev_username", data.username);
+                        showToast("Developer Workspace Authenticated! Opening Dashboard...", "success");
+                        setTimeout(() => {
+                            window.location.href = data.redirect_url || "/dashboard";
+                        }, 500);
+                    }
+                } else {
+                    showToast(data.detail || "Invalid username or password", "error");
+                    btn.disabled = false;
+                    btn.textContent = "Sign In to Portal";
+                }
+            } catch (err) {
+                showToast("Connection failed: " + err.message, "error");
+                btn.disabled = false;
+                btn.textContent = "Sign In to Portal";
+            }
+        });
+    </script>
+</body>
+</html>

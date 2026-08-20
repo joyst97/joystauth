@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Joyst Corporation | Auth & License Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/dashboard.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar">
+            <div class="brand-logo">
+                <div class="brand-icon">⚡</div>
+                <div class="brand-text">
+                    <h1>JOYST CORP</h1>
+                    <span>Auth & Licensing</span>
+                </div>
+            </div>
+
+            <ul class="nav-links">
+                <li class="nav-item active" data-tab="overview">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+                    <span>Overview</span>
+                </li>
+                <li class="nav-item" data-tab="licenses">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                    <span>Licenses</span>
+                </li>
+                <li class="nav-item" data-tab="users">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+                    <span>Users & HWID</span>
+                </li>
+                <li class="nav-item" data-tab="apps">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>
+                    <span>App Settings</span>
+                </li>
+                <li class="nav-item" data-tab="variables">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"></path></svg>
+                    <span>Cloud Variables</span>
+                </li>
+                <li class="nav-item" data-tab="logs">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
+                    <span>Security & IP Logs</span>
+                </li>
+                <li class="nav-item" data-tab="sdk">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>
+                    <span>SDK & API Setup</span>
+                </li>
+            </ul>
+
+            <div class="sidebar-footer">
+                <div class="user-profile">
+                    <div class="user-avatar">J</div>
+                    <div class="user-info">
+                        <div class="username" id="admin-display-name">Joyst Admin</div>
+                        <div class="role" id="admin-owner-id">Owner ID: Loading...</div>
+                    </div>
+                </div>
+                <button class="btn-logout" id="btn-logout" title="Logout">
+                    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+                </button>
+            </div>
+        </aside>
+
+        <!-- Main Content View -->
+        <main class="main-content">
+            <!-- Top Header -->
+            <header class="top-header">
+                <div class="header-left">
+                    <div class="app-selector-container">
+                        <span style="font-size: 11px; color: var(--text-muted); font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">APPLICATION:</span>
+                        <select id="header-app-select" class="app-select">
+                            <option>Loading apps...</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="header-right">
+                    <button class="btn btn-primary btn-sm" onclick="openModal('modal-generate-keys')">
+                        <span>⚡ Generate License</span>
+                    </button>
+                </div>
+            </header>
+
+            <!-- 1. TAB: OVERVIEW -->
+            <section id="page-overview" class="page-container active">
+                <div class="page-header">
+                    <div class="page-title">
+                        <h2>Joyst Corporation Telemetry</h2>
+                        <p>Real-time analytics, user distribution, and security monitoring.</p>
+                    </div>
+                </div>
+
+                <!-- App Parameters Banner -->
+                <div class="app-credentials-banner" id="app-credentials-banner">
+                    <div class="cred-item">
+                        <span class="cred-label">APPLICATION NAME:</span>
+                        <span class="cred-val" id="banner-app-name">JoystApp</span>
+                    </div>
+                    <div class="cred-item">
+                        <span class="cred-label">OWNER ID:</span>
+                        <div class="cred-copy-box">
+                            <span class="cred-val mono" id="banner-owner-id">Loading...</span>
+                            <button class="btn-copy-icon" onclick="copyToClipboard(document.getElementById('banner-owner-id').textContent)">📋</button>
+                        </div>
+                    </div>
+                    <div class="cred-item">
+                        <span class="cred-label">APP SECRET:</span>
+                        <div class="cred-copy-box">
+                            <span class="cred-val mono" id="banner-app-secret">Loading...</span>
+                            <button class="btn-copy-icon" onclick="copyToClipboard(document.getElementById('banner-app-secret').textContent)">📋</button>
+                        </div>
+                    </div>
+                    <div class="cred-item">
+                        <span class="cred-label">VERSION:</span>
+                        <span class="cred-val mono" id="banner-app-version">v1.0</span>
+                    </div>
+                </div>
+
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-header">
+                            <span>Total Users</span>
+                            <div class="stat-icon">👥</div>
+                        </div>
+                        <div class="stat-number" id="stat-total-users">0</div>
+                        <div class="stat-footer">Registered clients</div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-header">
+                            <span>Unused Keys</span>
+                            <div class="stat-icon">🔑</div>
+                        </div>
+                        <div class="stat-number" id="stat-active-keys" style="color: #10b981;">0</div>
+                        <div class="stat-footer">Ready for activation</div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-header">
+                            <span>Logins Today</span>
+                            <div class="stat-icon">🚀</div>
+                        </div>
+                        <div class="stat-number" id="stat-logins-today" style="color: #38bdf8;">0</div>
+                        <div class="stat-footer">Authenticated sessions</div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-header">
+                            <span>HWID Mismatches</span>
+                            <div class="stat-icon">🛡️</div>
+                        </div>
+                        <div class="stat-number" id="stat-failed-attempts" style="color: #ef4444;">0</div>
+                        <div class="stat-footer">Blocked device attempts</div>
+                    </div>
+                </div>
+
+                <!-- Recent Live Security Activity -->
+                <div class="table-card">
+                    <div class="table-toolbar">
+                        <div>
+                            <h3 style="font-size: 15px; font-weight: 700; color: #fff;">Live Security & Telemetry Stream</h3>
+                            <p style="font-size: 12px; color: var(--text-muted);">Real-time log of authorizations, HWID binds, and blocked requests.</p>
+                        </div>
+                        <button class="btn btn-secondary btn-sm" onclick="loadGlobalStats()">🔄 Refresh</button>
+                    </div>
+                    <div id="overview-recent-activity"></div>
+                </div>
+            </section>
+
+            <!-- 2. TAB: LICENSES -->
+            <section id="page-licenses" class="page-container">
+                <div class="page-header">
+                    <div class="page-title">
+                        <h2>License Keys</h2>
+                        <p>Create, manage, pause, and export subscription licenses.</p>
+                    </div>
+                    <button class="btn btn-primary" onclick="openModal('modal-generate-keys')">
+                        <span>➕ Generate Keys</span>
+                    </button>
+                </div>
+
+                <div class="table-card">
+                    <div class="table-toolbar">
+                        <div class="search-input-wrap">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                            <input type="text" id="license-search-input" class="search-input" placeholder="Search by key, username..." oninput="loadLicenses()">
+                        </div>
+                        <div style="display: flex; gap: 8px;">
+                            <select id="license-status-filter" class="form-control" style="width: 140px; padding: 7px;" onchange="loadLicenses()">
+                                <option value="">All Statuses</option>
+                                <option value="unused">Unused Only</option>
+                                <option value="used">Used Only</option>
+                                <option value="paused">Paused Only</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>License Key</th>
+                                <th>Level / Rank</th>
+                                <th>Duration</th>
+                                <th>Status</th>
+                                <th>Used By</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="licenses-table-body"></tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- 3. TAB: USERS & HWID -->
+            <section id="page-users" class="page-container">
+                <div class="page-header">
+                    <div class="page-title">
+                        <h2>Users & Hardware Locking</h2>
+                        <p>Strict HWID lock enforcement, 1-click HWID reset, subscription extension, and ban controls.</p>
+                    </div>
+                </div>
+
+                <div class="table-card">
+                    <div class="table-toolbar">
+                        <div class="search-input-wrap">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                            <input type="text" id="user-search-input" class="search-input" placeholder="Search user, IP, HWID..." oninput="loadUsers()">
+                        </div>
+                        <button class="btn btn-secondary btn-sm" onclick="loadUsers()">🔄 Refresh</button>
+                    </div>
+
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>User / IP Address</th>
+                                <th>HWID Status (Locked Machine)</th>
+                                <th>Level</th>
+                                <th>Time Left</th>
+                                <th>Status</th>
+                                <th>Control Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="users-table-body"></tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- 4. TAB: APPLICATIONS -->
+            <section id="page-apps" class="page-container">
+                <div class="page-header">
+                    <div class="page-title">
+                        <h2>Applications & Credentials</h2>
+                        <p>Create and manage applications, Owner IDs, Secrets, and HWID security policies.</p>
+                    </div>
+                    <button class="btn btn-primary" onclick="openModal('modal-create-app')">
+                        <span>➕ Create Application</span>
+                    </button>
+                </div>
+
+                <div class="stats-grid" id="apps-grid-container"></div>
+            </section>
+
+            <!-- 5. TAB: CLOUD VARIABLES -->
+            <section id="page-variables" class="page-container">
+                <div class="page-header">
+                    <div class="page-title">
+                        <h2>Cloud Variables</h2>
+                        <p>Securely store server-side strings and configurations fetched dynamically by clients.</p>
+                    </div>
+                    <button class="btn btn-primary" onclick="openModal('modal-create-variable')">
+                        <span>➕ Add Variable</span>
+                    </button>
+                </div>
+
+                <div class="table-card">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Variable Key</th>
+                                <th>Value</th>
+                                <th>Encryption</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="variables-table-body"></tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- 6. TAB: AUDIT & IP LOGS -->
+            <section id="page-logs" class="page-container">
+                <div class="page-header">
+                    <div class="page-title">
+                        <h2>Security & Audit Trail</h2>
+                        <p>Complete historical log of all login attempts, HWID mismatches, registration events, and bans.</p>
+                    </div>
+                </div>
+
+                <div class="table-card">
+                    <div class="table-toolbar">
+                        <div class="search-input-wrap">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                            <input type="text" id="logs-search-input" class="search-input" placeholder="Search logs..." oninput="loadAuditLogs()">
+                        </div>
+                        <button class="btn btn-secondary btn-sm" onclick="loadAuditLogs()">🔄 Refresh Logs</button>
+                    </div>
+
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Timestamp</th>
+                                <th>Action</th>
+                                <th>User</th>
+                                <th>IP Address</th>
+                                <th>HWID Hash</th>
+                                <th>Details</th>
+                            </tr>
+                        </thead>
+                        <tbody id="logs-table-body"></tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- 7. TAB: SDK & API DOCS -->
+            <section id="page-sdk" class="page-container">
+                <div class="page-header">
+                    <div class="page-title">
+                        <h2>Multi-Language SDK Setup</h2>
+                        <p>Copy-paste client integration code for C#, C++, Python, Java, and Rust with your active Application parameters.</p>
+                    </div>
+                </div>
+
+                <div class="code-container">
+                    <div class="code-tabs">
+                        <button class="code-tab-btn active" data-lang="python" onclick="setSnippetLang('python')">🐍 Python</button>
+                        <button class="code-tab-btn" data-lang="csharp" onclick="setSnippetLang('csharp')">🔷 C# (.NET)</button>
+                        <button class="code-tab-btn" data-lang="cpp" onclick="setSnippetLang('cpp')">⚡ C++</button>
+                        <button class="code-tab-btn" data-lang="java" onclick="setSnippetLang('java')">☕ Java</button>
+                        <button class="code-tab-btn" data-lang="rust" onclick="setSnippetLang('rust')">🦀 Rust</button>
+                    </div>
+                    <pre class="code-block" id="sdk-code-display"></pre>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- ==================== MODALS ==================== -->
+
+    <!-- Generate Keys Modal -->
+    <div id="modal-generate-keys" class="modal-overlay">
+        <div class="modal-box">
+            <div class="modal-header">
+                <h3>⚡ Generate License Keys</h3>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Number of Keys</label>
+                    <input type="number" id="gen-count" class="form-control" value="1" min="1" max="500">
+                </div>
+                <div class="form-group">
+                    <label>Duration (Days) - Use -1 for Lifetime</label>
+                    <input type="number" id="gen-duration" class="form-control" value="30">
+                </div>
+                <div class="form-group">
+                    <label>Subscription Level / Rank</label>
+                    <input type="text" id="gen-level" class="form-control" value="default">
+                </div>
+                <div class="form-group">
+                    <label>Key Mask (Pattern)</label>
+                    <input type="text" id="gen-mask" class="form-control mono" value="JOYST-XXXX-XXXX-XXXX">
+                </div>
+                <div class="form-group">
+                    <label>Notes / Batch Tag (Optional)</label>
+                    <input type="text" id="gen-notes" class="form-control" placeholder="e.g. Reseller batch">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" data-close-modal>Cancel</button>
+                <button class="btn btn-primary" onclick="generateKeysSubmit()">Generate Now</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- View Generated Keys Modal -->
+    <div id="modal-view-generated" class="modal-overlay">
+        <div class="modal-box">
+            <div class="modal-header">
+                <h3>🔑 Generated Keys</h3>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 10px;">Copy your keys below:</p>
+                <textarea id="generated-keys-output" class="form-control mono" style="height: 180px; resize: none;" readonly></textarea>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="copyToClipboard(document.getElementById('generated-keys-output').value)">📋 Copy All</button>
+                <button class="btn btn-primary" data-close-modal>Done</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Create App Modal -->
+    <div id="modal-create-app" class="modal-overlay">
+        <div class="modal-box">
+            <div class="modal-header">
+                <h3>📦 Create New Application</h3>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Application Name</label>
+                    <input type="text" id="new-app-name" class="form-control" placeholder="e.g. MySoftware">
+                </div>
+                <div class="form-group">
+                    <label>Version</label>
+                    <input type="text" id="new-app-version" class="form-control" value="1.0">
+                </div>
+                <div class="form-group">
+                    <label>Discord Webhook URL (Optional)</label>
+                    <input type="text" id="new-app-webhook" class="form-control" placeholder="https://discord.com/api/webhooks/...">
+                </div>
+                <div class="form-group" style="display: flex; align-items: center; gap: 10px; margin-top: 15px;">
+                    <input type="checkbox" id="new-app-hwid-lock" checked style="width: 18px; height: 18px; accent-color: var(--accent-indigo);">
+                    <label for="new-app-hwid-lock" style="margin-bottom: 0; cursor: pointer;">Enable Strict HWID Lock by default</label>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" data-close-modal>Cancel</button>
+                <button class="btn btn-primary" onclick="createAppSubmit()">Create App</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Create Variable Modal -->
+    <div id="modal-create-variable" class="modal-overlay">
+        <div class="modal-box">
+            <div class="modal-header">
+                <h3>☁️ Create Cloud Variable</h3>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Variable Key</label>
+                    <input type="text" id="var-name" class="form-control mono" placeholder="e.g. SECRET_OFFSET / SERVER_IP">
+                </div>
+                <div class="form-group">
+                    <label>Value</label>
+                    <textarea id="var-value" class="form-control mono" style="height: 100px;" placeholder="String or JSON data..."></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" data-close-modal>Cancel</button>
+                <button class="btn btn-primary" onclick="createVariableSubmit()">Save Variable</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Extend User Modal -->
+    <div id="modal-extend-user" class="modal-overlay">
+        <div class="modal-box">
+            <div class="modal-header">
+                <h3>⏳ Extend Subscription</h3>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p style="font-size: 13px; margin-bottom: 12px;">Extend subscription for: <strong id="extend-username-label" style="color: #fff;"></strong></p>
+                <div class="form-group">
+                    <label>Days to Add</label>
+                    <input type="number" id="extend-days-input" class="form-control" value="30" min="1">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" data-close-modal>Cancel</button>
+                <button class="btn btn-primary" onclick="submitExtendUser()">Add Days</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div id="toast-container"></div>
+
+    <script src="/static/js/dashboard.js"></script>
+</body>
+</html>

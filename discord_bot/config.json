@@ -1,0 +1,8 @@
+{
+    "bot_token": "YOUR_DISCORD_BOT_TOKEN_HERE",
+    "admin_role_id": 0,
+    "api_base_url": "http://127.0.0.1:8000",
+    "admin_username": "admin",
+    "admin_password": "admin123",
+    "default_app_name": "DemoApp"
+}
