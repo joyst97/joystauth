@@ -36,8 +36,11 @@ async function apiFetch(url, options = {}) {
         const res = await fetch(url, options);
         if (res.status === 401) {
             console.warn("Unauthorized API call to:", url);
-            localStorage.removeItem("auth_admin_token");
-            window.location.href = "/login";
+            // Only redirect if explicitly in /me validation
+            if (url.includes("/api/v1/auth/me")) {
+                localStorage.removeItem("auth_admin_token");
+                window.location.href = "/login";
+            }
             return null;
         }
         return await res.json();

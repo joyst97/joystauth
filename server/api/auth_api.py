@@ -66,6 +66,33 @@ def get_current_developer(authorization: Optional[str] = Header(None), db: Sessi
     # 3. Try finding by sub / username
     if not dev and payload.get("sub"):
         dev = db.query(Developer).filter(Developer.username == payload["sub"]).first()
+
+    # 4. Try finding by email
+    if not dev and payload.get("email"):
+        dev = db.query(Developer).filter(Developer.email == payload["email"]).first()
+
+    # 5. Fallback auto-recovery: If user was authenticated via JWT but database instance reset (e.g. Vercel serverless cold start), auto-recreate developer
+    if not dev and (payload.get("sub") or payload.get("owner_id")):
+        username = payload.get("sub") or "Developer"
+        owner_id = payload.get("owner_id") or ("joyst_" + generate_random_token(12))
+        email = payload.get("email")
+        
+        dev = Developer(
+            username=username,
+            email=email,
+            password_hash=hash_password(generate_random_token(32)),
+            owner_id=owner_id,
+            plan="Paid",
+            max_apps=999999,
+            max_users_per_app=999999
+        )
+        try:
+            db.add(dev)
+            db.commit()
+            db.refresh(dev)
+        except Exception:
+            db.rollback()
+            dev = db.query(Developer).filter(Developer.username == username).first()
         
     if not dev:
         raise HTTPException(status_code=401, detail="Account workspace not found")
