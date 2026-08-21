@@ -54,10 +54,10 @@
     <!-- Top Navigation Bar -->
     <nav class="landing-nav">
         <a href="/" class="brand-wrap">
-            <div class="brand-badge-icon">⚡</div>
+            <img src="/static/img/joyst_logo.png" alt="JOYST" style="width: 44px; height: 44px; border-radius: 50%; object-fit: cover; box-shadow: 0 0 20px rgba(225, 29, 72, 0.6); border: 1.5px solid rgba(244, 63, 94, 0.6);">
             <div class="brand-title">
-                JOYST CORPORATION AUTH
-                <span>Enterprise Licensing Infrastructure</span>
+                JOYST AUTH
+                <span>Next-Gen Software Protection & HWID Enclave</span>
             </div>
         </a>
 
@@ -78,68 +78,165 @@
     <!-- Docs Layout -->
     <div class="docs-grid">
         <div class="docs-sidebar">
-            <div class="glass-panel" style="padding: 20px;">
-                <span style="font-size: 11px; font-weight: 800; color: var(--brand-sky); text-transform: uppercase; letter-spacing: 0.6px; display: block; margin-bottom: 12px;">LANGUAGES</span>
-                <a href="#python" class="docs-nav-link active">🐍 Python SDK</a>
+            <div class="glass-panel" style="padding: 20px; position: sticky; top: 100px;">
+                <span style="font-size: 11px; font-weight: 800; color: var(--brand-sky); text-transform: uppercase; letter-spacing: 0.6px; display: block; margin-bottom: 12px;">OFFICIAL SDKS</span>
+                <a href="#cpp" class="docs-nav-link active">⚡ C++ Native</a>
+                <a href="#python" class="docs-nav-link">🐍 Python SDK</a>
                 <a href="#csharp" class="docs-nav-link">🔷 C# (.NET 8)</a>
-                <a href="#cpp" class="docs-nav-link">⚡ C++ Native</a>
                 <a href="#java" class="docs-nav-link">☕ Java SDK</a>
                 <a href="#rust" class="docs-nav-link">🦀 Rust SDK</a>
+                <a href="#nodejs" class="docs-nav-link">🟢 Node.js SDK</a>
                 <a href="#api" class="docs-nav-link">🌐 Raw REST API</a>
             </div>
         </div>
 
         <div>
+            <!-- C++ Windows Native SDK Section -->
+            <div class="glass-panel" style="padding: 36px; margin-bottom: 28px;" id="cpp">
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; flex-wrap: wrap; gap: 12px;">
+                    <div>
+                        <span style="font-size: 11px; font-weight: 800; color: #38bdf8; text-transform: uppercase; letter-spacing: 1px;">RECOMMENDED FOR GAME TOOLS & CHEATS</span>
+                        <h2 style="font-size: 26px; font-weight: 900; color: #fff; margin-top: 4px;">C++ Native Windows SDK</h2>
+                    </div>
+                    <div style="display: flex; gap: 10px;">
+                        <a href="/static/sdks/cpp/AuthClient.hpp" download="AuthClient.hpp" class="btn btn-primary btn-sm" style="box-shadow: 0 0 20px rgba(225, 29, 72, 0.4);">
+                            📥 Download AuthClient.hpp
+                        </a>
+                        <a href="/static/sdks/cpp/main.cpp" download="main.cpp" class="btn btn-secondary btn-sm">
+                            📄 Sample main.cpp
+                        </a>
+                    </div>
+                </div>
+                <div style="background: rgba(0,0,0,0.4); padding: 14px 18px; border-radius: 10px; border: 1px solid var(--border-glass); margin-bottom: 18px; font-size: 13px; color: #cbd5e1;">
+                    <strong style="color: #fff;">📦 Integration Steps:</strong>
+                    <ol style="margin-left: 20px; margin-top: 6px; display: flex; flex-direction: column; gap: 4px;">
+                        <li>Download <code>AuthClient.hpp</code> and paste it into your Visual Studio project directory.</li>
+                        <li>Include <code>#include "AuthClient.hpp"</code> at the top of your code.</li>
+                        <li>Link <code>wininet.lib</code> under <em>Project Properties &gt; Linker &gt; Input &gt; Additional Dependencies</em>.</li>
+                    </ol>
+                </div>
+                <div style="margin-bottom: 14px; font-weight: 700; font-size: 13px; color: #ff4d79;">Implementation Example (main.cpp):</div>
+                <pre class="mono" style="padding: 20px; background: rgba(2, 6, 23, 0.85); border: 1px solid var(--border-glass); border-radius: 12px; color: #cbd5e1; font-size: 13px; line-height: 1.6; overflow-x: auto;">
+#include "AuthClient.hpp"
+#include &lt;iostream&gt;
+
+int main() {
+    // 1. Initialize with your App Name and Master App Token
+    JoystAuth::api auth(
+        "MyApp",              // Application Name
+        "sec_77918750...",    // Master App Token from Dashboard
+        "1.0"                 // Version
+    );
+
+    // 2. Run Anti-Debug & Dynamic AES-256 Handshake
+    if (!auth.init()) {
+        std::cout &lt;&lt; "Initialization failed: " &lt;&lt; auth.response.message &lt;&lt; "\n";
+        return 1;
+    }
+
+    // 3. User Login with Motherboard HWID Lock
+    if (auth.login("gamer123", "password123")) {
+        std::cout &lt;&lt; "Login Successful! Welcome " &lt;&lt; auth.user_data.username &lt;&lt; "\n";
+        std::cout &lt;&lt; "Subscription Tier: " &lt;&lt; auth.user_data.subscription &lt;&lt; "\n";
+        std::cout &lt;&lt; "Expiry Date: " &lt;&lt; auth.user_data.expiry &lt;&lt; "\n";
+
+        // 4. Start 30-second Session Security Heartbeat Thread
+        auth.start_heartbeat(30);
+
+        // 5. Fetch Secure Encrypted Cloud Variable
+        std::string offset = auth.var("aimbot_offset");
+        std::cout &lt;&lt; "Secure Offset: " &lt;&lt; offset &lt;&lt; "\n";
+    } else {
+        std::cout &lt;&lt; "Access Denied: " &lt;&lt; auth.response.message &lt;&lt; "\n";
+    }
+
+    return 0;
+}</pre>
+            </div>
+
             <!-- Python Section -->
             <div class="glass-panel" style="padding: 36px; margin-bottom: 28px;" id="python">
-                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
-                    <h2 style="font-size: 24px; font-weight: 900; color: #fff;">Python Client SDK</h2>
-                    <span class="badge badge-success">Official SDK</span>
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; flex-wrap: wrap; gap: 12px;">
+                    <div>
+                        <span style="font-size: 11px; font-weight: 800; color: #10b981; text-transform: uppercase; letter-spacing: 1px;">FASTEST INTEGRATION</span>
+                        <h2 style="font-size: 26px; font-weight: 900; color: #fff; margin-top: 4px;">Python 3 Client SDK</h2>
+                    </div>
+                    <div style="display: flex; gap: 10px;">
+                        <a href="/static/sdks/python/auth_client.py" download="auth_client.py" class="btn btn-primary btn-sm">
+                            📥 Download auth_client.py
+                        </a>
+                        <a href="/static/sdks/python/demo_gui.py" download="demo_gui.py" class="btn btn-secondary btn-sm">
+                            📄 Sample demo_gui.py
+                        </a>
+                    </div>
                 </div>
-                <p style="font-size: 14px; color: var(--text-secondary); line-height: 1.6; margin-bottom: 18px;">
-                    Download <code>auth_client.py</code> from your dashboard and drop it into your project folder.
-                </p>
-                <pre class="mono" style="padding: 20px; background: rgba(2, 6, 23, 0.7); border: 1px solid var(--border-glass); border-radius: 10px; color: #cbd5e1; font-size: 13px; line-height: 1.6; overflow-x: auto;">
+                <div style="background: rgba(0,0,0,0.4); padding: 14px 18px; border-radius: 10px; border: 1px solid var(--border-glass); margin-bottom: 18px; font-size: 13px; color: #cbd5e1;">
+                    <strong style="color: #fff;">📦 Integration Steps:</strong>
+                    <ol style="margin-left: 20px; margin-top: 6px; display: flex; flex-direction: column; gap: 4px;">
+                        <li>Download <code>auth_client.py</code> into your project folder.</li>
+                        <li>Install standard requests: <code>pip install requests pycryptodome</code></li>
+                        <li>Import with <code>from auth_client import api</code>.</li>
+                    </ol>
+                </div>
+                <pre class="mono" style="padding: 20px; background: rgba(2, 6, 23, 0.85); border: 1px solid var(--border-glass); border-radius: 12px; color: #cbd5e1; font-size: 13px; line-height: 1.6; overflow-x: auto;">
 from auth_client import api
 
-# 1. Initialize with your Application Credentials
+# 1. Initialize with your App Name and Master App Token
 auth = api(
-    name="YourAppName",
-    ownerid="joyst_owner_id",
-    secret="your_app_secret",
+    name="MyApp",
+    token="sec_77918750...",
     version="1.0"
 )
 
-# 2. Login (Strict Hardware ID is automatically verified)
-if auth.login("gamer123", "password123"):
-    print(f"Logged in successfully! Welcome {auth.user_data.username}")
-    print(f"Subscription: {auth.user_data.subscription}")
-    print(f"Expiry: {auth.user_data.expiry}")
-else:
-    print(f"Login failed: {auth.response.message}")
+# 2. Authenticate User (or License Key)
+if auth.login("username123", "password123"):
+    print(f"Logged in as {auth.user_data.username}")
+    print(f"Plan: {auth.user_data.subscription}")
+    print(f"Expires: {auth.user_data.expiry}")
 
-# 3. Fetch Encrypted Cloud Variable
-cheat_offset = auth.var("aimbot_offset")
-print("Offset:", cheat_offset)</pre>
+    # 3. Start Background Watchdog Heartbeat
+    auth.start_heartbeat(interval_seconds=30)
+
+    # 4. Access Protected Cloud Variable
+    payload = auth.var("license_config")
+    print("Received Encrypted Payload:", payload)
+else:
+    print(f"Authentication Failed: {auth.response.message}")</pre>
             </div>
 
             <!-- C# Section -->
             <div class="glass-panel" style="padding: 36px; margin-bottom: 28px;" id="csharp">
-                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
-                    <h2 style="font-size: 24px; font-weight: 900; color: #fff;">C# (.NET 8) Client SDK</h2>
-                    <span class="badge badge-purple">Windows & Cross-Platform</span>
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; flex-wrap: wrap; gap: 12px;">
+                    <div>
+                        <span style="font-size: 11px; font-weight: 800; color: #a855f7; text-transform: uppercase; letter-spacing: 1px;">.NET 8 & UNITY</span>
+                        <h2 style="font-size: 26px; font-weight: 900; color: #fff; margin-top: 4px;">C# .NET Client SDK</h2>
+                    </div>
+                    <div style="display: flex; gap: 10px;">
+                        <a href="/static/sdks/csharp/AuthClient.cs" download="AuthClient.cs" class="btn btn-primary btn-sm">
+                            📥 Download AuthClient.cs
+                        </a>
+                        <a href="/static/sdks/csharp/Joyst_CSharp_Sample_Project.zip" download="Joyst_CSharp_Sample_Project.zip" class="btn btn-secondary btn-sm">
+                            📦 Sample Project (.zip)
+                        </a>
+                    </div>
                 </div>
-                <pre class="mono" style="padding: 20px; background: rgba(2, 6, 23, 0.7); border: 1px solid var(--border-glass); border-radius: 10px; color: #cbd5e1; font-size: 13px; line-height: 1.6; overflow-x: auto;">
+                <div style="background: rgba(0,0,0,0.4); padding: 14px 18px; border-radius: 10px; border: 1px solid var(--border-glass); margin-bottom: 18px; font-size: 13px; color: #cbd5e1;">
+                    <strong style="color: #fff;">📦 Integration Steps:</strong>
+                    <ol style="margin-left: 20px; margin-top: 6px; display: flex; flex-direction: column; gap: 4px;">
+                        <li>Download <code>AuthClient.cs</code> and add it into your C# (.NET 6/7/8 or Unity) project.</li>
+                        <li>Include <code>using JoystAuth;</code> at top.</li>
+                    </ol>
+                </div>
+                <pre class="mono" style="padding: 20px; background: rgba(2, 6, 23, 0.85); border: 1px solid var(--border-glass); border-radius: 12px; color: #cbd5e1; font-size: 13px; line-height: 1.6; overflow-x: auto;">
 using System;
 using System.Threading.Tasks;
 using JoystAuth;
 
 class Program {
-    static async Task Main() {
+    static async Task Main(string[] args) {
         var auth = new api(
-            name: "YourAppName",
-            ownerid: "joyst_owner_id",
-            secret: "your_app_secret",
+            name: "MyApp",
+            token: "sec_77918750...",
             version: "1.0"
         );
 
@@ -147,6 +244,8 @@ class Program {
 
         if (await auth.login("gamer123", "password123")) {
             Console.WriteLine($"Welcome {auth.user_data.username}!");
+            Console.WriteLine($"Expires: {auth.user_data.expiry}");
+            auth.start_heartbeat(30);
         } else {
             Console.WriteLine($"Access Denied: {auth.response.message}");
         }
@@ -154,26 +253,160 @@ class Program {
 }</pre>
             </div>
 
-            <!-- C++ Section -->
-            <div class="glass-panel" style="padding: 36px; margin-bottom: 28px;" id="cpp">
-                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
-                    <h2 style="font-size: 24px; font-weight: 900; color: #fff;">C++ Windows Native SDK</h2>
-                    <span class="badge badge-cyan">WinINet / Anti-Reverse</span>
+            <!-- Java SDK Section -->
+            <div class="glass-panel" style="padding: 36px; margin-bottom: 28px;" id="java">
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; flex-wrap: wrap; gap: 12px;">
+                    <div>
+                        <span style="font-size: 11px; font-weight: 800; color: #f59e0b; text-transform: uppercase; letter-spacing: 1px;">JAVA 17+ & MINECRAFT MODS</span>
+                        <h2 style="font-size: 26px; font-weight: 900; color: #fff; margin-top: 4px;">Java Client SDK</h2>
+                    </div>
+                    <a href="/static/sdks/java/AuthClient.java" download="AuthClient.java" class="btn btn-primary btn-sm">
+                        📥 Download AuthClient.java
+                    </a>
                 </div>
-                <pre class="mono" style="padding: 20px; background: rgba(2, 6, 23, 0.7); border: 1px solid var(--border-glass); border-radius: 10px; color: #cbd5e1; font-size: 13px; line-height: 1.6; overflow-x: auto;">
-#include "AuthClient.hpp"
-#include &lt;iostream&gt;
+                <div style="background: rgba(0,0,0,0.4); padding: 14px 18px; border-radius: 10px; border: 1px solid var(--border-glass); margin-bottom: 18px; font-size: 13px; color: #cbd5e1;">
+                    <strong style="color: #fff;">📦 Integration Steps:</strong>
+                    <ol style="margin-left: 20px; margin-top: 6px; display: flex; flex-direction: column; gap: 4px;">
+                        <li>Download <code>AuthClient.java</code> and put it under package <code>cc.joystauth</code>.</li>
+                        <li>Requires standard Java 17+ (No external Maven dependencies needed).</li>
+                    </ol>
+                </div>
+                <pre class="mono" style="padding: 20px; background: rgba(2, 6, 23, 0.85); border: 1px solid var(--border-glass); border-radius: 12px; color: #cbd5e1; font-size: 13px; line-height: 1.6; overflow-x: auto;">
+import cc.joystauth.api;
 
-int main() {
-    JoystAuth::api auth("YourAppName", "joyst_owner_id", "your_secret", "1.0");
-    auth.init();
+public class Main {
+    public static void main(String[] args) {
+        // 1. Initialize API Instance
+        api auth = new api("MyApp", "sec_77918750...", "1.0");
 
-    if (auth.login("gamer123", "password123")) {
-        std::cout &lt;&lt; "Authenticated! HWID verified.\\n";
-    } else {
-        std::cout &lt;&lt; "Blocked: " &lt;&lt; auth.response.message &lt;&lt; "\\n";
+        if (!auth.init()) {
+            System.err.println("Init failed: " + auth.response.message);
+            return;
+        }
+
+        // 2. Authenticate License Key or User
+        if (auth.license("JOYST-KEY-XXXX-YYYY")) {
+            System.out.println("Unlocked! Welcome " + auth.userData.username);
+            System.out.println("Valid until: " + auth.userData.expiry);
+            
+            // 3. Start Background Thread Pulse
+            auth.startHeartbeat(30);
+        } else {
+            System.out.println("Auth Error: " + auth.response.message);
+        }
     }
-    return 0;
+}</pre>
+            </div>
+
+            <!-- Rust SDK Section -->
+            <div class="glass-panel" style="padding: 36px; margin-bottom: 28px;" id="rust">
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; flex-wrap: wrap; gap: 12px;">
+                    <div>
+                        <span style="font-size: 11px; font-weight: 800; color: #ef4444; text-transform: uppercase; letter-spacing: 1px;">MEMORY-SAFE & SYSTEMS</span>
+                        <h2 style="font-size: 26px; font-weight: 900; color: #fff; margin-top: 4px;">Rust Client SDK (Cargo)</h2>
+                    </div>
+                    <div style="display: flex; gap: 10px;">
+                        <a href="/static/sdks/rust/src/main.rs" download="main.rs" class="btn btn-primary btn-sm">
+                            📥 Download main.rs
+                        </a>
+                        <a href="/static/sdks/rust/Cargo.toml" download="Cargo.toml" class="btn btn-secondary btn-sm">
+                            📄 Cargo.toml
+                        </a>
+                    </div>
+                </div>
+                <div style="background: rgba(0,0,0,0.4); padding: 14px 18px; border-radius: 10px; border: 1px solid var(--border-glass); margin-bottom: 18px; font-size: 13px; color: #cbd5e1;">
+                    <strong style="color: #fff;">📦 Integration Steps:</strong>
+                    <ol style="margin-left: 20px; margin-top: 6px; display: flex; flex-direction: column; gap: 4px;">
+                        <li>Add <code>tokio = { version = "1.0", features = ["full"] }</code> and <code>reqwest = { version = "0.11", features = ["json"] }</code> to your <code>Cargo.toml</code>.</li>
+                        <li>Copy sample <code>main.rs</code> to your <code>src/</code> folder and run <code>cargo run</code>.</li>
+                    </ol>
+                </div>
+                <pre class="mono" style="padding: 20px; background: rgba(2, 6, 23, 0.85); border: 1px solid var(--border-glass); border-radius: 12px; color: #cbd5e1; font-size: 13px; line-height: 1.6; overflow-x: auto;">
+use joyst_auth::JoystApi;
+
+#[tokio::main]
+async fn main() -> Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
+    // 1. Initialize API Client
+    let mut auth = JoystApi::new("MyApp", "sec_77918750...", "1.0");
+    auth.init().await?;
+
+    // 2. Login with HWID Binding
+    if auth.login("gamer123", "password123").await? {
+        println!("User Authenticated: {}", auth.user.username);
+        println!("Rank: {}", auth.user.subscription);
+        
+        // 3. Start Tokio Heartbeat Task
+        auth.start_heartbeat(30);
+    } else {
+        println!("Login Failed: {}", auth.last_error);
+    }
+
+    Ok(())
+}</pre>
+            </div>
+
+            <!-- Node.js Section -->
+            <div class="glass-panel" style="padding: 36px; margin-bottom: 28px;" id="nodejs">
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; flex-wrap: wrap; gap: 12px;">
+                    <div>
+                        <span style="font-size: 11px; font-weight: 800; color: #22c55e; text-transform: uppercase; letter-spacing: 1px;">JAVASCRIPT & ELECTRON</span>
+                        <h2 style="font-size: 26px; font-weight: 900; color: #fff; margin-top: 4px;">Node.js / Electron SDK</h2>
+                    </div>
+                    <a href="/static/sdks/nodejs/joyst_auth.js" download="joyst_auth.js" class="btn btn-primary btn-sm">
+                        📥 Download joyst_auth.js
+                    </a>
+                </div>
+                <div style="background: rgba(0,0,0,0.4); padding: 14px 18px; border-radius: 10px; border: 1px solid var(--border-glass); margin-bottom: 18px; font-size: 13px; color: #cbd5e1;">
+                    <strong style="color: #fff;">📦 Integration Steps:</strong>
+                    <ol style="margin-left: 20px; margin-top: 6px; display: flex; flex-direction: column; gap: 4px;">
+                        <li>Download <code>joyst_auth.js</code> into your Node.js/Electron project.</li>
+                        <li>Install <code>npm install axios crypto-js node-machine-id</code>.</li>
+                        <li>Import with <code>const { JoystAuth } = require('./joyst_auth');</code>.</li>
+                    </ol>
+                </div>
+                <pre class="mono" style="padding: 20px; background: rgba(2, 6, 23, 0.85); border: 1px solid var(--border-glass); border-radius: 12px; color: #cbd5e1; font-size: 13px; line-height: 1.6; overflow-x: auto;">
+const { JoystAuth } = require('./joyst_auth');
+
+const auth = new JoystAuth({
+    name: 'MyApp',
+    token: 'sec_77918750...',
+    version: '1.0'
+});
+
+async function start() {
+    await auth.init();
+    const success = await auth.login('gamer123', 'password123');
+    if (success) {
+        console.log(`Unlocked: ${auth.user.username}`);
+        auth.startHeartbeat(30);
+    }
+}
+start();</pre>
+            </div>
+
+            <!-- Raw REST API Section -->
+            <div class="glass-panel" style="padding: 36px; margin-bottom: 28px;" id="api">
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
+                    <div>
+                        <span style="font-size: 11px; font-weight: 800; color: #f59e0b; text-transform: uppercase; letter-spacing: 1px;">RAW CLIENT GATEWAY</span>
+                        <h2 style="font-size: 26px; font-weight: 900; color: #fff; margin-top: 4px;">Client REST API Handshake</h2>
+                    </div>
+                    <span class="badge badge-warning">HTTP POST Gateway</span>
+                </div>
+                <p style="font-size: 14px; color: var(--text-secondary); line-height: 1.7; margin-bottom: 18px;">
+                    Integrate directly from any language (Rust, Go, Java, Swift) via a single unified endpoint: <code>POST https://joystauth.cc/api/v1/client/gateway</code>
+                </p>
+                <pre class="mono" style="padding: 20px; background: rgba(2, 6, 23, 0.85); border: 1px solid var(--border-glass); border-radius: 12px; color: #cbd5e1; font-size: 13px; line-height: 1.6; overflow-x: auto;">
+POST /api/v1/client/gateway HTTP/1.1
+Host: joystauth.cc
+Content-Type: application/json
+
+{
+    "type": "login",
+    "app_token": "sec_77918750...",
+    "username": "gamer123",
+    "pass": "password123",
+    "hwid": "550e8400-e29b-41d4-a716-446655440000"
 }</pre>
             </div>
         </div>

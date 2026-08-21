@@ -131,11 +131,6 @@ async def list_apps(dev: Developer = Depends(get_current_developer), db: Session
     apps = db.query(Application).filter(Application.developer_id == dev.id).all()
     result = []
     for app in apps:
-        user_count = db.query(User).filter(User.app_id == app.id).count()
-        license_count = db.query(License).filter(License.app_id == app.id).count()
-        active_licenses = db.query(License).filter(License.app_id == app.id, License.status == "unused").count()
-        file_count = db.query(AppFile).filter(AppFile.app_id == app.id).count()
-        var_count = db.query(AppVariable).filter(AppVariable.app_id == app.id).count()
         result.append({
             "id": app.id,
             "name": app.name,
@@ -151,11 +146,11 @@ async def list_apps(dev: Developer = Depends(get_current_developer), db: Session
             "webhook_url": app.webhook_url,
             "created_at": app.created_at.isoformat(),
             "stats": {
-                "total_users": user_count,
-                "total_licenses": license_count,
-                "unused_licenses": active_licenses,
-                "total_files": file_count,
-                "total_vars": var_count
+                "total_users": 0,
+                "total_licenses": 0,
+                "unused_licenses": 0,
+                "total_files": 0,
+                "total_vars": 0
             }
         })
     return {"success": True, "owner_id": dev.owner_id, "apps": result}

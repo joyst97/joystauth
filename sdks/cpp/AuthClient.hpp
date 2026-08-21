@@ -104,7 +104,7 @@ namespace JoystAuth {
         user_data_class user_data;
         response_class response;
 
-        api(std::string name, std::string ownerid, std::string secret, std::string ver = "1.0", std::string server_url = "http://127.0.0.1:8000")
+        api(std::string name, std::string ownerid, std::string secret, std::string ver = "1.0", std::string server_url = "https://joystauth.cc")
             : name(name), ownerid(ownerid), secret(secret), version(ver), url(server_url) {
             hwid = GetHwid();
         }

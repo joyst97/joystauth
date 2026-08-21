@@ -1,4 +1,4 @@
-// Joyst Corporation Enterprise Developer Dashboard Controller
+// Joyst Corporation Developer Dashboard Controller
 let currentAppId = null;
 let appsList = [];
 let devOwnerId = localStorage.getItem("dev_owner_id") || "Loading...";
@@ -75,8 +75,19 @@ async function initDashboard() {
     setupNavigation();
     setupModals();
     setupChangePassword();
+
+    // 1. Instant Cache-First Paint (0.01s instant UI display)
+    const cachedApps = localStorage.getItem("cached_apps_list");
+    if (cachedApps) {
+        try {
+            appsList = JSON.parse(cachedApps);
+            renderAppsDropdowns();
+        } catch (e) {}
+    }
+
+    // 2. Fetch fresh data in parallel
     try {
-        await Promise.all([
+        awaitmise.all([
             loadUserProfile(),
             loadApps()
         ]);
@@ -117,7 +128,7 @@ async function loadUserProfile() {
 
         // Highlight active plan card
         document.querySelectorAll(".plan-card").forEach(c => c.classList.remove("active-plan"));
-        const isPaid = activePlan === "Paid" || activePlan === "Developer" || activePlan === "Enterprise";
+        const isPaid = activePlan === "Paid" || activePlan === "Developer" || activePlan === "Pro";
         if (isPaid) {
             document.getElementById("plan-card-paid")?.classList.add("active-plan");
         } else {
@@ -223,7 +234,7 @@ function loadActiveTab() {
 }
 
 function loadTabContent(tabId) {
-    const isPaid = (window.currentUserPlan === "Paid" || window.currentUserPlan === "Developer" || window.currentUserPlan === "Enterprise");
+    const isPaid = (window.currentUserPlan === "Paid" || window.currentUserPlan === "Developer" || window.currentUserPlan === "Pro");
 
     // Manage Resellers Locked vs Unlocked visibility
     const resLocked = document.getElementById("resellers-locked-paywall");
@@ -279,12 +290,7 @@ function loadTabContent(tabId) {
     }
 }
 
-// 1. Applications Loading
-async function loadApps() {
-    const data = await apiFetch("/api/v1/admin/apps");
-    if (!data || !data.success) return;
-
-    appsList = data.apps || [];
+function renderAppsDropdowns() {
     const selects = [document.getElementById("overview-app-select"), document.getElementById("header-app-select")].filter(Boolean);
     if (selects.length === 0) return;
 
@@ -304,7 +310,6 @@ async function loadApps() {
 
     if (appsList.length === 0) {
         currentAppId = null;
-        localStorage.removeItem("selected_app_id");
         updateBannerCredentials();
         return;
     }
@@ -316,7 +321,7 @@ async function loadApps() {
         currentAppId = appsList[0].id;
         localStorage.setItem("selected_app_id", currentAppId);
     }
-    
+
     selects.forEach(select => {
         select.value = currentAppId;
         select.onchange = (e) => {
@@ -334,6 +339,18 @@ async function loadApps() {
     });
 
     updateBannerCredentials();
+}
+
+// 1. Applications Loading
+async function loadApps() {
+    const data = await apiFetch("/api/v1/admin/apps");
+    if (!data || !data.success) return;
+
+    appsList = data.apps || [];
+    try {
+        localStorage.setItem("cached_apps_list", JSON.stringify(appsList));
+    } catch(e) {}
+    renderAppsDropdowns();
 }
 
 function updateBannerCredentials() {
@@ -357,6 +374,11 @@ function updateBannerCredentials() {
     if (nameEl) nameEl.textContent = app.name;
     if (secretEl) secretEl.textContent = app.secret;
     if (verEl) verEl.textContent = `v${app.version}`;
+
+    const ownerIdEl = document.getElementById("banner-dev-owner-id");
+    if (ownerIdEl) {
+        ownerIdEl.textContent = devOwnerId || "Loading...";
+    }
 
     const webhookInput = document.getElementById("discord-webhook-url-input");
     if (webhookInput && app.webhook_url) {
@@ -806,7 +828,7 @@ async function batchDeleteSelected() {
 async function batchBanSelected() {
     const selected = getSelectedUserIds();
     if (selected.length === 0) return;
-    const reason = prompt(`Enter reason for banning ${selected.length} user(s):`, "Violation of terms");
+    const reason =mpt(`Enter reason for banning ${selected.length} user(s):`, "Violation of terms");
     if (reason === null) return;
 
     const res = await apiFetch("/api/v1/admin/users/bulk-ban", {
@@ -906,7 +928,7 @@ async function resetUserHwid(userId, username) {
 
 async function toggleUserBan(userId, username, isCurrentlyBanned) {
     if (!isCurrentlyBanned) {
-        const reason = prompt(`Enter reason for banning '${username}':`, "Violation of terms");
+        const reason =mpt(`Enter reason for banning '${username}':`, "Violation of terms");
         if (reason === null) return;
         const res = await apiFetch(`/api/v1/admin/users/${userId}/toggle-ban`, {
             method: "POST",
@@ -1086,7 +1108,7 @@ async function loadFiles() {
             <td><strong class="mono" style="color: var(--brand-sky);">${f.file_id}</strong></td>
             <td><strong style="color: #fff;">${f.file_name}</strong></td>
             <td><a href="${f.file_url}" target="_blank" style="color: var(--brand-indigo); font-size: 12px; word-break: break-all;">${f.file_url}</a></td>
-            <td><span class="badge badge-success"><span class="badge-dot"></span> Protected</span></td>
+            <td><span class="badge badge-success"><span class="badge-dot"></span>tected</span></td>
             <td>
                 <button class="btn btn-danger btn-sm" onclick="deleteFile(${f.id})">🗑️ Delete</button>
             </td>
@@ -1581,7 +1603,7 @@ async function createAppSubmit() {
 }
 
 async function regenerateSecret(appId) {
-    if (!confirm("Regenerating the App Secret will disconnect all existing SDK clients until updated. Proceed?")) return;
+    if (!confirm("Regenerating the App Secret will disconnect all existing SDK clients until updated.ceed?")) return;
     const res = await apiFetch(`/api/v1/admin/apps/${appId}/regenerate-secret`, { method: "POST" });
     if (res && res.success) {
         showToast(res.message, "success");
@@ -1687,7 +1709,7 @@ using System;
 using System.Threading.Tasks;
 using JoystAuth;
 
-class Program
+classgram
 {
     static async Task Main(string[] args)
     {
@@ -1809,7 +1831,7 @@ const sdkLangMeta = {
         icon: "⚡",
         title: "C++ Windows Native SDK",
         badge: "Header-Only (Release)",
-        desc: "File: <code class='mono' style='color:#38bdf8;'>AuthClient.hpp</code> (Drop directly into Visual Studio project)",
+        desc: "File: <code class='mono' style='color:#38bdf8;'>AuthClient.hpp</code> (Drop directly into Visual Studioject)",
         downloadUrl: "/static/sdks/cpp/AuthClient.hpp",
         downloadName: "AuthClient.hpp"
     },
@@ -1817,7 +1839,7 @@ const sdkLangMeta = {
         icon: "🐍",
         title: "Python 3 Standalone SDK",
         badge: "1-File Script",
-        desc: "File: <code class='mono' style='color:#38bdf8;'>auth_client.py</code> (Place in Python project folder)",
+        desc: "File: <code class='mono' style='color:#38bdf8;'>auth_client.py</code> (Place in Pythonject folder)",
         downloadUrl: "/static/sdks/python/auth_client.py",
         downloadName: "auth_client.py"
     },

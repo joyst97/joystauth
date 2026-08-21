@@ -181,7 +181,7 @@
                     </div>
                 </div>
 
-                <!-- Prominent Application Selector & Credentials Vault Box -->
+                <!--minent Application Selector & Credentials Vault Box -->
                 <div class="app-credentials-banner spotlight-card" id="app-credentials-banner" style="background: var(--bg-surface); border: 1px solid rgba(225, 29, 72, 0.35); box-shadow: 0 12px 35px -10px rgba(225, 29, 72, 0.25); border-radius: 18px; padding: 26px 30px; margin-bottom: 26px;">
                     <!-- Big App Selector Header -->
                     <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; margin-bottom: 20px; border-bottom: 1px solid var(--border-glass); padding-bottom: 18px;">
@@ -200,22 +200,31 @@
 
                         <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
                             <span class="badge badge-cyan" id="banner-app-version" style="padding: 7px 14px; font-size: 13px; font-weight: 800;">v1.0</span>
-                            <span class="badge badge-success" style="padding: 7px 14px; font-size: 13px;"><span class="badge-dot"></span> Protected</span>
+                            <span class="badge badge-success" style="padding: 7px 14px; font-size: 13px;"><span class="badge-dot"></span>tected</span>
                         </div>
                     </div>
 
                     <!-- Credentials & Token Grid -->
-                    <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 20px; align-items: center;">
+                    <div style="display: grid; grid-template-columns: 1.5fr 1fr 1fr; gap: 18px; align-items: center;">
                         <div>
-                            <span style="font-size: 11.5px; color: var(--text-muted); font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px;">Master App Token (Client SDK Key)</span>
+                            <span style="font-size: 11.5px; color: var(--text-muted); font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px;">Master App Token (Secret)</span>
                             <div class="cred-copy-box" style="margin-top: 8px; background: rgba(0,0,0,0.5); padding: 12px 16px; border-radius: 12px; border: 1px solid var(--border-glass); display: flex; justify-content: space-between; align-items: center; gap: 10px;">
-                                <span class="mono" id="banner-app-secret" style="color: #fff; font-size: 14px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">Loading...</span>
-                                <button class="btn btn-primary btn-sm" style="padding: 6px 14px; font-size: 12px; border-radius: 8px;" onclick="copyToClipboard(document.getElementById('banner-app-secret').textContent)">📋 Copy Token</button>
+                                <span class="mono" id="banner-app-secret" style="color: #fff; font-size: 13.5px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">Loading...</span>
+                                <button class="btn btn-primary btn-sm" style="padding: 6px 12px; font-size: 11.5px; border-radius: 8px;" onclick="copyToClipboard(document.getElementById('banner-app-secret').textContent)">📋 Copy</button>
                             </div>
                         </div>
+
+                        <div>
+                            <span style="font-size: 11.5px; color: var(--text-muted); font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px;">Developer Owner ID</span>
+                            <div class="cred-copy-box" style="margin-top: 8px; background: rgba(0,0,0,0.5); padding: 12px 16px; border-radius: 12px; border: 1px solid var(--border-glass); display: flex; justify-content: space-between; align-items: center; gap: 10px;">
+                                <span class="mono" id="banner-dev-owner-id" style="color: #38bdf8; font-size: 13.5px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">Loading...</span>
+                                <button class="btn btn-secondary btn-sm" style="padding: 6px 12px; font-size: 11.5px; border-radius: 8px;" onclick="copyToClipboard(devOwnerId)">📋 Copy</button>
+                            </div>
+                        </div>
+
                         <div style="background: rgba(0,0,0,0.35); padding: 14px 18px; border-radius: 12px; border: 1px solid var(--border-glass);">
                             <div style="font-size: 11.5px; color: var(--text-muted); font-weight: 800; text-transform: uppercase;">Motherboard HWID Lock</div>
-                            <div style="font-size: 14px; color: #10b981; font-weight: 800; margin-top: 5px;">🔒 Locked to Motherboard</div>
+                            <div style="font-size: 13.5px; color: #10b981; font-weight: 800; margin-top: 5px;">🔒 Locked to Motherboard</div>
                         </div>
                     </div>
                 </div>
@@ -470,7 +479,7 @@
                 <div id="resellers-locked-paywall" class="locked-feature-paywall">
                     <div class="paywall-icon-bubble">🔒</div>
                     <h2>Reseller Accounts (Paid Feature)</h2>
-                    <p>Multi-tenant reseller accounts with custom credit balances and license sub-distribution are exclusive to the Paid Pro Plan.</p>
+                    <p>Multi-tenant reseller accounts with custom credit balances and license sub-distribution are exclusive to the Paid .</p>
                     <div class="paywall-perks-grid">
                         <div class="paywall-perk-item">💼 <span>Create Unlimited Sub-Resellers</span></div>
                         <div class="paywall-perk-item">💳 <span>Custom Credit Balance System</span></div>
@@ -518,7 +527,7 @@
                 <div id="webhooks-locked-paywall" class="locked-feature-paywall">
                     <div class="paywall-icon-bubble">🔒</div>
                     <h2>Discord Bot & Logs (Paid Feature)</h2>
-                    <p>Live Discord Bot automation, slash commands (`/genkeys`, `/resethwid`), and automated channel security telemetry logs are exclusive to the Paid Pro Plan.</p>
+                    <p>Live Discord Bot automation, slash commands (`/genkeys`, `/resethwid`), and automated channel security telemetry logs are exclusive to the Paid .</p>
                     <div class="paywall-perks-grid">
                         <div class="paywall-perk-item">🤖 <span>Official Discord Bot Invite</span></div>
                         <div class="paywall-perk-item">⚡ <span>Instant Slash Commands Support</span></div>
@@ -549,7 +558,7 @@
                                 <span class="badge badge-success"><span class="badge-dot"></span> Online</span>
                             </div>
                             <p style="font-size: 13.5px; color: var(--text-secondary); max-width: 600px;">
-                                Add the official Joyst Auth Enterprise Bot to your Discord server or DM to manage license keys, create users, manage resellers, and inspect clients directly with Interactive Dropdowns.
+                                Add the official Joyst Auth Bot to your Discord server or DM to manage license keys, create users, manage resellers, and inspect clients directly with Interactive Dropdowns.
                             </p>
                         </div>
                         <div style="display: flex; gap: 10px; flex-wrap: wrap;">
@@ -636,6 +645,20 @@
                             </div>
                         </div>
                     </div>
+
+                    <!-- Official Discord Community Banner -->
+                    <div class="glass-panel" style="margin-top: 24px; padding: 24px 30px; display: flex; justify-content: space-between; align-items: center; background: linear-gradient(135deg, rgba(88, 101, 242, 0.18) 0%, rgba(18, 6, 11, 0.85) 100%); border: 1px solid rgba(88, 101, 242, 0.4); flex-wrap: wrap; gap: 16px; border-radius: 16px;">
+                        <div style="display: flex; align-items: center; gap: 16px;">
+                            <div style="width: 44px; height: 44px; border-radius: 12px; background: #5865F2; display: flex; align-items: center; justify-content: center; font-size: 22px; box-shadow: 0 0 20px rgba(88, 101, 242, 0.6);">💬</div>
+                            <div>
+                                <h3 style="font-size: 16px; font-weight: 800; color: #fff; margin: 0;">Official Joyst Developer Discord</h3>
+                                <p style="font-size: 13px; color: #cbd5e1; margin-top: 2px;">Join our community for SDK updates, customer support, and bot deployment assistance.</p>
+                            </div>
+                        </div>
+                        <a href="https://discord.gg/cr8NXZBRe5" target="_blank" rel="noopener noreferrer" class="btn btn-primary" style="background: #5865F2; border-color: #4752C4; box-shadow: 0 0 20px rgba(88, 101, 242, 0.4); font-weight: 800;">
+                            Join Discord Server &rarr;
+                        </a>
+                    </div>
                 </div>
             </section>
 
@@ -704,7 +727,7 @@
                         <div style="font-size: 22px; font-weight: 900; color: #ff2a5f; margin-bottom: 6px;">STEP 1</div>
                         <h4 style="color: #fff; font-size: 15px; margin-bottom: 6px;">📁 1-Click Download SDK File</h4>
                         <p style="font-size: 12.5px; color: var(--text-secondary); line-height: 1.5;">
-                            Download the 1-file standalone SDK below and place it directly into your project's root folder.
+                            Download the 1-file standalone SDK below and place it directly into yourject's root folder.
                         </p>
                     </div>
                     <div class="stat-card spotlight-card" style="padding: 22px;">
@@ -732,7 +755,7 @@
                                 <strong id="sdk-lang-title" style="color: #fff; font-size: 16px;">C++ Windows Native SDK</strong>
                                 <span id="sdk-lang-badge" class="badge badge-cyan">Header-Only</span>
                             </div>
-                            <div id="sdk-lang-desc" style="color: var(--text-secondary); font-size: 13px; margin-top: 2px;">File: <code class="mono" id="sdk-lang-filename" style="color: #38bdf8;">AuthClient.hpp</code> (Drop directly into Visual Studio project)</div>
+                            <div id="sdk-lang-desc" style="color: var(--text-secondary); font-size: 13px; margin-top: 2px;">File: <code class="mono" id="sdk-lang-filename" style="color: #38bdf8;">AuthClient.hpp</code> (Drop directly into Visual Studioject)</div>
                         </div>
                     </div>
                     <div style="display: flex; gap: 12px; flex-wrap: wrap;">
@@ -809,7 +832,7 @@
                     <div class="plan-card spotlight-card" id="plan-card-paid" style="border-color: var(--border-glow);">
                         <div>
                             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-                                <span class="badge badge-success">PAID PRO PLAN</span>
+                                <span class="badge badge-success">PAID </span>
                                 <span class="glowing-pill" style="font-size: 10px; padding: 2px 8px;">ALL UNLOCKED</span>
                             </div>
                             <h3 style="font-size: 24px; font-weight: 900; color: #fff;">$19.99 <span style="font-size: 13px; color: var(--text-muted); font-weight: 500;">/ month or key</span></h3>

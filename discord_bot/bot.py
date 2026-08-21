@@ -1,11 +1,10 @@
 import discord
-from discord.ext import commands
+from discord.ext import commands, tasks
 from discord import app_commands
 import requests
 import json
 import os
 
-# Load configuration
 CONFIG_PATH = os.path.join(os.path.dirname(__file__), "config.json")
 
 def load_config():
@@ -31,17 +30,39 @@ config = load_config()
 
 intents = discord.Intents.default()
 intents.message_content = True
-from discord.ext import tasks
-
 intents.members = True
 bot = commands.Bot(command_prefix="!", intents=intents)
 
-# Auto-rotating Dynamic Status in DND Mode
+# ==================== SERVER CUSTOM ANIMATED EMOJIS ====================
+EMOJI = {
+    "dot": "<a:black_dot:1535579629253951489>",
+    "tick": "<a:CB_greentick:1441097547350282260>",
+    "cross": "<a:redtick:1441097679407943782>",
+    "bolt": "<a:13969niebieskipiorun:1441085314272722959>",
+    "shield": "<a:13969niebieskipiorun:1441085314272722959>",
+    "alert": "<a:22593alert:1441088162976895120>",
+    "loading": "<a:Green_Loading:1534236460163661976>",
+    "bot": "<a:dev:1528079861283946538>",
+    "gear": "<a:9093settings:1441087243996496079>",
+    "crown": "<a:86751whitedripheart:1320786130869817526>",
+    "arrow": "<a:32877animatedarrowbluelite:1396718513787371530>",
+    "wave": "<a:pikachu_wave:1320787117881823252>",
+    "giveaway": "<a:Giveaway86:1441323391209570446>"
+}
+
+# Theme Palette (High-Contrast Cyberpunk Gradient Aesthetics)
+COLOR_BRAND = 0xFF2A5F    # Neon Rose / Red Cyberpunk
+COLOR_SUCCESS = 0x10B981  # Matrix Emerald
+COLOR_WARNING = 0xF59E0B  # Amber Gold
+COLOR_DANGER = 0xEF4444   # Crimson Ban
+COLOR_PURPLE = 0x8B5CF6   # Electric Violet
+COLOR_INFO = 0x38BDF8     # Cyber Sky Blue
+
 STATUS_LIST = [
     ("watching", "🛡️ Joyst Auth Zero-Leak Security"),
-    ("competing", "⚡ joystauth.cc • /help"),
-    ("watching", "🔐 Managing Licenses & HWIDs"),
-    ("listening", "💎 /genkey | /adduser | /stats")
+    ("watching", "⚡ joystauth.cc • /help"),
+    ("competing", "💎 Auth Infrastructure"),
+    ("listening", "👑 /genkey • /adduser • /stats")
 ]
 status_index = 0
 
@@ -59,43 +80,65 @@ async def dynamic_presence_loop():
         else:
             act = discord.Activity(type=discord.ActivityType.competing, name=text)
 
-        # DND (Do Not Disturb) Status with Custom Activity
         await bot.change_presence(status=discord.Status.dnd, activity=act)
     except Exception:
         pass
 
-# Background Auto-Sync Slash Commands without Restart
-@tasks.loop(minutes=5)
+@tasks.loop(minutes=10)
 async def auto_sync_commands_loop():
     try:
         await bot.tree.sync()
-        print("[JOYST CORP AUTH BOT] 🔄 Auto-synced all slash commands seamlessly in background.")
+        print("[JOYST BOT] 🔄 Global slash commands synced seamlessly.")
     except Exception as e:
-        print(f"[JOYST AUTO SYNC NOTICE] {e}")
+        print(f"[JOYST SYNC NOTICE] {e}")
 
 @bot.event
 async def on_ready():
-    print(f"[JOYST CORP AUTH BOT] Logged in as {bot.user.name} (ID: {bot.user.id})")
-    
-    # 1. Set Initial DND Presence
-    act = discord.Activity(type=discord.ActivityType.watching, name="🛡️ Joyst Auth Zero-Leak Security • joystauth.cc")
+    print(f"[JOYST BOT] Online as {bot.user.name} (ID: {bot.user.id})")
+    act = discord.Activity(type=discord.ActivityType.watching, name="🛡️ Joyst Auth Zero-Leak Security")
     await bot.change_presence(status=discord.Status.dnd, activity=act)
+    
+    # 1. PURGE ALL GUILD DUPLICATES ON ALL CONNECTED SERVERS
+    for guild in bot.guilds:
+        try:
+            bot.tree.clear_commands(guild=guild)
+            await bot.tree.sync(guild=guild)
+            print(f"[JOYST BOT] 🧹 Cleared duplicate guild commands from: {guild.name}")
+        except Exception as e:
+            pass
 
-    # 2. Instant First-time Global Sync
+    # 2. SYNC SINGLE CLEAN GLOBAL TREE
     try:
         synced = await bot.tree.sync()
-        print(f"[JOYST CORP AUTH BOT] Synced {len(synced)} slash commands globally.")
+        print(f"[JOYST BOT] ⚡ Successfully synced {len(synced)} unique Global slash commands (Zero Duplicates).")
     except Exception as e:
-        print(f"[JOYST CORP AUTH BOT] Initial sync notice: {e}")
+        print(f"[JOYST BOT] Global sync notice: {e}")
 
-    # 3. Start Loops
     if not dynamic_presence_loop.is_running():
         dynamic_presence_loop.start()
     if not auto_sync_commands_loop.is_running():
         auto_sync_commands_loop.start()
 
-# ==================== INTERACTIVE UI DROPDOWNS ====================
+def parse_api_response(res):
+    try:
+        return res.json()
+    except Exception:
+        return {"success": False, "detail": res.text.strip() or f"HTTP Error {res.status_code}"}
 
+def fetch_developer_apps(discord_id: str, discord_username: str):
+    try:
+        res = requests.post(f"{config['api_url']}/api/v1/admin/bot/apps", json={
+            "discord_id": str(discord_id),
+            "discord_username": str(discord_username)
+        }, timeout=15)
+        data = parse_api_response(res)
+        if res.status_code == 200:
+            return data.get("apps", [])
+    except Exception:
+        pass
+    return []
+
+# ==================== INTERACTIVE SELECT VIEW ====================
 class AppSelectView(discord.ui.View):
     def __init__(self, action_type: str, action_data: dict, apps: list):
         super().__init__(timeout=60)
@@ -106,15 +149,15 @@ class AppSelectView(discord.ui.View):
         options = [
             discord.SelectOption(
                 label=app["name"],
-                description=f"App ID: {app['id']} • Version: {app.get('version', '1.0')}",
-                emoji="📱",
+                description=f"App ID: #{app['id']} • Version: v{app.get('version', '1.0')}",
+                emoji="📦",
                 value=app["name"]
             )
-            for app in apps[:25] # Discord max 25 options
+            for app in apps[:25]
         ]
 
         select = discord.ui.Select(
-            placeholder="📱 Select Application from your account...",
+            placeholder="📱 Choose target Application...",
             min_values=1,
             max_values=1,
             options=options
@@ -126,69 +169,171 @@ class AppSelectView(discord.ui.View):
         selected_app = interaction.data["values"][0]
         await interaction.response.defer(ephemeral=False)
 
-        # 1. Action: GENKEY
         if self.action_type == "genkey":
             self.action_data["app_name"] = selected_app
             res = requests.post(f"{config['api_url']}/api/v1/admin/bot/genkey", json=self.action_data, timeout=15)
-            data = res.json()
+            data = parse_api_response(res)
             if res.status_code == 200 and data.get("success"):
                 keys = data.get("keys", [])
+                formatted_keys = "\n".join([f"{EMOJI['dot']} **`{k}`**" for k in keys])
+                dur_text = f"**{self.action_data['duration_days']} Days**" if self.action_data['duration_days'] > 0 else f"**Lifetime** {EMOJI['crown']}"
+                
                 embed = discord.Embed(
-                    title="⚡ Joyst Auth - License Keys Generated",
-                    description=f"Generated **{len(keys)}** key(s) for application **`{selected_app}`**:\n\n" + "\n".join([f"🔑 `{k}`" for k in keys]),
-                    color=0xE11D48
+                    title=f"{EMOJI['bolt']}  LICENSE KEYS GENERATED",
+                    description=(
+                        f"### {EMOJI['tick']} Successfully Generated `{len(keys)}` Key(s)\n"
+                        f"{EMOJI['arrow']} **Application:** `{selected_app}`\n"
+                        f"{EMOJI['arrow']} **Duration:** {dur_text}\n"
+                        f"{EMOJI['arrow']} **Rank Tier:** `{self.action_data['level']}`\n\n"
+                        f"**━━━━━━━━━ KEYS VAULT ━━━━━━━━━**\n"
+                        f"{formatted_keys}\n"
+                        f"**━━━━━━━━━━━━━━━━━━━━━━━━━━━━━**"
+                    ),
+                    color=COLOR_BRAND
                 )
-                embed.add_field(name="📱 Application", value=f"`{selected_app}`", inline=True)
-                embed.add_field(name="⏳ Duration", value=f"{self.action_data['duration_days']} Days" if self.action_data['duration_days'] > 0 else "🌟 Lifetime", inline=True)
-                embed.add_field(name="💎 Rank", value=f"`{self.action_data['level']}`", inline=True)
-                embed.set_footer(text="Joyst Auth Enterprise • joystauth.cc")
+                embed.set_footer(text="Joyst Auth • Zero-Leak Security", icon_url=interaction.user.display_avatar.url)
                 await interaction.edit_original_response(content=None, embed=embed, view=None)
             else:
-                await interaction.edit_original_response(content=f"❌ **Error:** {data.get('detail', 'Key generation failed')}", view=None)
+                embed = discord.Embed(
+                    title=f"{EMOJI['cross']}  KEY GENERATION FAILED",
+                    description=f"> {EMOJI['alert']} **Reason:** `{data.get('detail', 'Failed to generate keys.')}`",
+                    color=COLOR_DANGER
+                )
+                await interaction.edit_original_response(content=None, embed=embed, view=None)
 
-        # 2. Action: ADDUSER
         elif self.action_type == "adduser":
             self.action_data["app_name"] = selected_app
             res = requests.post(f"{config['api_url']}/api/v1/admin/bot/adduser", json=self.action_data, timeout=15)
-            data = res.json()
+            data = parse_api_response(res)
             if res.status_code == 200 and data.get("success"):
                 embed = discord.Embed(
-                    title="👤 User Account Created Successfully",
-                    description=f"Client **`{data['username']}`** is now active and ready to log into **`{selected_app}`**.",
-                    color=0x10B981
+                    title=f"{EMOJI['bot']}  CLIENT ACCOUNT CREATED",
+                    description=(
+                        f"### {EMOJI['tick']} User `{data['username']}` is Now Active!\n"
+                        f"{EMOJI['arrow']} **Username:** `{data['username']}`\n"
+                        f"{EMOJI['arrow']} **Password:** `{self.action_data['password']}`\n"
+                        f"{EMOJI['arrow']} **Application:** `{selected_app}`\n"
+                        f"{EMOJI['arrow']} **Subscription:** `{data['subscription']}`\n"
+                        f"{EMOJI['arrow']} **Expiry Date:** `{data['expires_at']}`\n"
+                        f"{EMOJI['arrow']} **HWID Binding:** `Ready on 1st Login` {EMOJI['shield']}"
+                    ),
+                    color=COLOR_SUCCESS
                 )
-                embed.add_field(name="👤 Username", value=f"`{data['username']}`", inline=True)
-                embed.add_field(name="🔑 Password", value=f"`{self.action_data['password']}`", inline=True)
-                embed.add_field(name="📱 App", value=f"`{selected_app}`", inline=True)
-                embed.add_field(name="💎 Rank", value=f"`{data['subscription']}`", inline=True)
-                embed.add_field(name="⏳ Expiry", value=f"`{data['expires_at']}`", inline=True)
-                embed.set_footer(text="Joyst Auth Enterprise • joystauth.cc")
+                embed.set_footer(text="Joyst Auth • Zero-Leak Security", icon_url=interaction.user.display_avatar.url)
                 await interaction.edit_original_response(content=None, embed=embed, view=None)
             else:
-                await interaction.edit_original_response(content=f"❌ **Error:** {data.get('detail', 'Failed to create user')}", view=None)
+                embed = discord.Embed(
+                    title=f"{EMOJI['cross']}  USER CREATION FAILED",
+                    description=f"> {EMOJI['alert']} **Reason:** `{data.get('detail', 'Failed to create user.')}`",
+                    color=COLOR_DANGER
+                )
+                await interaction.edit_original_response(content=None, embed=embed, view=None)
 
 # ==================== SLASH COMMANDS ====================
 
-# Helper function to fetch developer apps
-def fetch_developer_apps(discord_id: str, discord_username: str):
-    try:
-        res = requests.post(f"{config['api_url']}/api/v1/admin/bot/apps", json={
-            "discord_id": str(discord_id),
-            "discord_username": str(discord_username)
-        }, timeout=15)
-        if res.status_code == 200:
-            return res.json().get("apps", [])
-    except Exception:
-        pass
-    return []
+# 1. /help
+@bot.tree.command(name="help", description="📖 View all available Joyst Auth slash commands")
+@app_commands.allowed_contexts(guilds=True, dms=True, private_channels=True)
+@app_commands.allowed_installs(guilds=True, users=True)
+async def help_cmd(interaction: discord.Interaction):
+    embed = discord.Embed(
+        title=f"{EMOJI['bolt']}  JOYST AUTH • COMMAND SUITE",
+        description=(
+            f"**Zero-Leak Security & Licensing Engine** {EMOJI['shield']}\n"
+            f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+            f"### {EMOJI['crown']} **Developer & Admin Commands**\n"
+            f"{EMOJI['arrow']} **`/link [email_or_user]`**\n"
+            f"┗ `Link Discord ID to Joyst Account in 1-Click`\n\n"
+            f"{EMOJI['arrow']} **`/genkey [days] [count] [rank]`**\n"
+            f"┗ `Generate License Keys with App Dropdown`\n\n"
+            f"{EMOJI['arrow']} **`/adduser [user] [pass] [days]`**\n"
+            f"┗ `Create Client Account with App Dropdown`\n\n"
+            f"{EMOJI['arrow']} **`/genplankey [count] [plan]`**\n"
+            f"┗ `Generate Paid Plan VIP Upgrade Keys`\n\n"
+            f"{EMOJI['arrow']} **`/upgrade [plan_key]`**\n"
+            f"┗ `Instant Upgrade Free Account to Paid Plan`\n\n"
+            f"### {EMOJI['gear']} **Client & Security Management**\n"
+            f"{EMOJI['arrow']} **`/resethwid [username]`**\n"
+            f"┗ `Reset HWID lock for a client to bind new PC`\n\n"
+            f"{EMOJI['arrow']} **`/userinfo [username]`**\n"
+            f"┗ `Inspect client expiry, rank, and bound HWID`\n\n"
+            f"{EMOJI['arrow']} **`/ban [user]` • `/unban [user]`**\n"
+            f"┗ `Manage client security bans and permissions`\n\n"
+            f"### {EMOJI['giveaway']} **Reseller & Telemetry Suite**\n"
+            f"{EMOJI['arrow']} **`/addreseller [user] [pass] [balance]`**\n"
+            f"┗ `Create Reseller account with Key Balance`\n\n"
+            f"{EMOJI['arrow']} **`/addbalance [user] [credits]`**\n"
+            f"┗ `Top up credits for an existing Reseller`\n\n"
+            f"{EMOJI['arrow']} **`/stats`**\n"
+            f"┗ `Live Developer Telemetry & Analytics`\n\n"
+            f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        ),
+        color=COLOR_BRAND
+    )
+    embed.set_footer(text="Joyst Auth • joystauth.cc", icon_url=interaction.user.display_avatar.url)
+    await interaction.response.send_message(embed=embed, ephemeral=False)
 
-# 1. /genkey
-@bot.tree.command(name="genkey", description="⚡ Instantly generate license keys for your Joyst Auth Application")
+# 2. /link
+@bot.tree.command(name="link", description="🔗 Link your Discord to your Joyst Auth Developer Account")
+@app_commands.allowed_contexts(guilds=True, dms=True, private_channels=True)
+@app_commands.allowed_installs(guilds=True, users=True)
+@app_commands.describe(email_or_username="Your email address or username registered on joystauth.cc")
+async def link_cmd(interaction: discord.Interaction, email_or_username: str):
+    await interaction.response.defer(ephemeral=False)
+    payload = {
+        "discord_id": str(interaction.user.id),
+        "discord_username": str(interaction.user.name),
+        "email_or_username": email_or_username.strip()
+    }
+    try:
+        res = requests.post(f"{config['api_url']}/api/v1/admin/bot/link", json=payload, timeout=15)
+        data = parse_api_response(res)
+        if res.status_code == 200 and data.get("success"):
+            embed = discord.Embed(
+                title=f"{EMOJI['tick']}  ACCOUNT LINKED SUCCESSFULLY",
+                description=(
+                    f"### {EMOJI['wave']} Welcome **@{interaction.user.name}**!\n\n"
+                    f"{EMOJI['arrow']} **Developer:** `@{data['developer']}`\n"
+                    f"{EMOJI['arrow']} **Email / ID:** `{data.get('email', 'Google Account')}`\n"
+                    f"{EMOJI['arrow']} **Plan Status:** `{data['plan']} Tier` {EMOJI['crown']}\n"
+                    f"{EMOJI['arrow']} **Bot Controller:** `Authorized` {EMOJI['shield']}\n\n"
+                    f"**━━━━━━━━━━━━━━━━━━━━━━━━━━━━━**\n"
+                    f"{EMOJI['dot']} You can now run `/genkey`, `/adduser`, `/stats` directly!"
+                ),
+                color=COLOR_SUCCESS
+            )
+            embed.set_footer(text="Joyst Auth • joystauth.cc", icon_url=interaction.user.display_avatar.url)
+            await interaction.followup.send(embed=embed, ephemeral=False)
+        else:
+            embed = discord.Embed(
+                title=f"{EMOJI['cross']}  LINKING FAILED",
+                description=(
+                    f"> {EMOJI['alert']} **Error:** `{data.get('detail', 'Account not found.')}`\n\n"
+                    f"**Troubleshooting:**\n"
+                    f"{EMOJI['dot']} Make sure you entered your correct email or username.\n"
+                    f"{EMOJI['dot']} Register on `https://joystauth.cc/register` if you haven't yet."
+                ),
+                color=COLOR_WARNING
+            )
+            embed.set_footer(text="Joyst Auth • joystauth.cc", icon_url=interaction.user.display_avatar.url)
+            await interaction.followup.send(embed=embed, ephemeral=False)
+    except Exception as e:
+        embed = discord.Embed(
+            title=f"{EMOJI['cross']}  CONNECTION ERROR",
+            description=f"> {EMOJI['alert']} `{str(e)}`",
+            color=COLOR_DANGER
+        )
+        await interaction.followup.send(embed=embed, ephemeral=False)
+
+# 3. /genkey
+@bot.tree.command(name="genkey", description="⚡ Generate license keys for your application")
+@app_commands.allowed_contexts(guilds=True, dms=True, private_channels=True)
+@app_commands.allowed_installs(guilds=True, users=True)
 @app_commands.describe(
     days="Duration in days (-1 for lifetime)",
     count="Number of keys to generate (1-50)",
-    level="Subscription Level / Rank (e.g. default, VIP)",
-    app="Application Name (leave blank to choose from Dropdown)"
+    level="Subscription Rank (e.g. default, VIP)",
+    app="Application Name (leave empty for Dropdown selector)"
 )
 async def genkey(interaction: discord.Interaction, days: int = 30, count: int = 1, level: str = "default", app: str = None):
     await interaction.response.defer(ephemeral=False)
@@ -202,48 +347,63 @@ async def genkey(interaction: discord.Interaction, days: int = 30, count: int = 
         "mask": "JOYST-XXXX-XXXX-XXXX"
     }
 
-    # If app is not specified, check if developer has multiple apps and show Dropdown Menu!
     if not app:
         apps = fetch_developer_apps(str(interaction.user.id), str(interaction.user.name))
         if len(apps) > 1:
             view = AppSelectView("genkey", payload, apps)
-            await interaction.followup.send("📋 **You have multiple applications!** Please select which app you want to generate keys for below:", view=view)
+            await interaction.followup.send(f"{EMOJI['bolt']} **Select target Application from dropdown below:**", view=view)
             return
 
     try:
         res = requests.post(f"{config['api_url']}/api/v1/admin/bot/genkey", json=payload, timeout=15)
-        data = res.json()
+        data = parse_api_response(res)
         if res.status_code == 200 and data.get("success"):
             keys = data.get("keys", [])
             app_name = data.get("app_name", "JOYST")
-            dev_user = data.get("developer", interaction.user.name)
-            plan = data.get("plan", "Enterprise")
+            formatted_keys = "\n".join([f"{EMOJI['dot']} **`{k}`**" for k in keys])
+            dur_text = f"**{days} Days**" if days > 0 else f"**Lifetime** {EMOJI['crown']}"
 
             embed = discord.Embed(
-                title="⚡ Joyst Auth - License Keys Generated",
-                description=f"Generated **{len(keys)}** key(s) for application **`{app_name}`**:\n\n" + "\n".join([f"🔑 `{k}`" for k in keys]),
-                color=0xE11D48
+                title=f"{EMOJI['bolt']}  LICENSE KEYS GENERATED",
+                description=(
+                    f"### {EMOJI['tick']} Generated `{len(keys)}` Key(s) for `{app_name}`\n"
+                    f"{EMOJI['arrow']} **Application:** `{app_name}`\n"
+                    f"{EMOJI['arrow']} **Duration:** {dur_text}\n"
+                    f"{EMOJI['arrow']} **Rank Tier:** `{level}`\n"
+                    f"{EMOJI['arrow']} **Developer:** `@{data.get('developer', interaction.user.name)}`\n\n"
+                    f"**━━━━━━━━━ KEYS VAULT ━━━━━━━━━**\n"
+                    f"{formatted_keys}\n"
+                    f"**━━━━━━━━━━━━━━━━━━━━━━━━━━━━━**"
+                ),
+                color=COLOR_BRAND
             )
-            embed.add_field(name="📱 Application", value=f"`{app_name}`", inline=True)
-            embed.add_field(name="⏳ Duration", value=f"{days} Days" if days > 0 else "🌟 Lifetime", inline=True)
-            embed.add_field(name="💎 Rank / Level", value=f"`{level}`", inline=True)
-            embed.add_field(name="👤 Developer", value=f"@{dev_user} ({plan})", inline=True)
-            embed.set_footer(text="Joyst Auth Enterprise • joystauth.cc")
+            embed.set_footer(text="Joyst Auth • Zero-Leak Security", icon_url=interaction.user.display_avatar.url)
             await interaction.followup.send(embed=embed, ephemeral=False)
         else:
-            err_msg = data.get("detail", data.get("message", "Key generation failed"))
-            await interaction.followup.send(f"❌ **Notice:** {err_msg}", ephemeral=False)
+            embed = discord.Embed(
+                title=f"{EMOJI['cross']}  KEY GENERATION NOTICE",
+                description=f"> {EMOJI['alert']} **Detail:** `{data.get('detail', 'Key generation failed.')}`",
+                color=COLOR_WARNING
+            )
+            await interaction.followup.send(embed=embed, ephemeral=False)
     except Exception as e:
-        await interaction.followup.send(f"❌ **Connection Error:** {str(e)}", ephemeral=False)
+        embed = discord.Embed(
+            title=f"{EMOJI['cross']}  CONNECTION ERROR",
+            description=f"> {EMOJI['alert']} `{str(e)}`",
+            color=COLOR_DANGER
+        )
+        await interaction.followup.send(embed=embed, ephemeral=False)
 
-# 2. /adduser (Username + Password Direct Creation)
-@bot.tree.command(name="adduser", description="👤 Create a client User & Password directly with subscription time")
+# 4. /adduser
+@bot.tree.command(name="adduser", description="👤 Create client username and password directly")
+@app_commands.allowed_contexts(guilds=True, dms=True, private_channels=True)
+@app_commands.allowed_installs(guilds=True, users=True)
 @app_commands.describe(
-    username="Client username to create",
-    password="Client login password",
+    username="Client username",
+    password="Client password",
     days="Subscription duration in days (-1 for lifetime)",
-    rank="Subscription Rank/Tier (e.g. default, VIP)",
-    app="Application Name (leave blank to choose from Dropdown)"
+    rank="Subscription Rank (e.g. default, VIP)",
+    app="Application Name (leave empty for Dropdown selector)"
 )
 async def adduser(interaction: discord.Interaction, username: str, password: str, days: int = 30, rank: str = "default", app: str = None):
     await interaction.response.defer(ephemeral=False)
@@ -257,37 +417,146 @@ async def adduser(interaction: discord.Interaction, username: str, password: str
         "subscription_tier": rank
     }
 
-    # If app is not specified, check if developer has multiple apps and show Dropdown Menu!
     if not app:
         apps = fetch_developer_apps(str(interaction.user.id), str(interaction.user.name))
         if len(apps) > 1:
             view = AppSelectView("adduser", payload, apps)
-            await interaction.followup.send("📋 **You have multiple applications!** Please select which app to create this user in below:", view=view)
+            await interaction.followup.send(f"{EMOJI['bot']} **Select target Application from dropdown below:**", view=view)
             return
 
     try:
         res = requests.post(f"{config['api_url']}/api/v1/admin/bot/adduser", json=payload, timeout=15)
-        data = res.json()
+        data = parse_api_response(res)
         if res.status_code == 200 and data.get("success"):
             embed = discord.Embed(
-                title="👤 User Account Created Successfully",
-                description=f"Client **`{data['username']}`** is now active and ready to log into **`{data['app_name']}`**.",
-                color=0x10B981
+                title=f"{EMOJI['bot']}  CLIENT ACCOUNT CREATED",
+                description=(
+                    f"### {EMOJI['tick']} User `{data['username']}` Created for `{data['app_name']}`\n\n"
+                    f"{EMOJI['arrow']} **Username:** `{data['username']}`\n"
+                    f"{EMOJI['arrow']} **Password:** `{password}`\n"
+                    f"{EMOJI['arrow']} **Application:** `{data['app_name']}`\n"
+                    f"{EMOJI['arrow']} **Subscription:** `{data['subscription']}`\n"
+                    f"{EMOJI['arrow']} **Expires:** `{data['expires_at']}`\n"
+                    f"{EMOJI['arrow']} **HWID Binding:** `Ready on 1st Login` {EMOJI['shield']}"
+                ),
+                color=COLOR_SUCCESS
             )
-            embed.add_field(name="👤 Username", value=f"`{data['username']}`", inline=True)
-            embed.add_field(name="🔑 Password", value=f"`{password}`", inline=True)
-            embed.add_field(name="📱 App", value=f"`{data['app_name']}`", inline=True)
-            embed.add_field(name="💎 Rank", value=f"`{data['subscription']}`", inline=True)
-            embed.add_field(name="⏳ Expiry", value=f"`{data['expires_at']}`", inline=True)
-            embed.add_field(name="💻 HWID Status", value="🟢 `Ready to Bind on 1st Login`", inline=True)
-            embed.set_footer(text="Joyst Auth Enterprise • joystauth.cc")
+            embed.set_footer(text="Joyst Auth • Zero-Leak Security", icon_url=interaction.user.display_avatar.url)
             await interaction.followup.send(embed=embed, ephemeral=False)
         else:
-            await interaction.followup.send(f"❌ **Notice:** {data.get('detail', 'Failed to create user')}", ephemeral=False)
+            embed = discord.Embed(
+                title=f"{EMOJI['cross']}  USER CREATION NOTICE",
+                description=f"> {EMOJI['alert']} `{data.get('detail', 'Failed to create user.')}`",
+                color=COLOR_WARNING
+            )
+            await interaction.followup.send(embed=embed, ephemeral=False)
     except Exception as e:
-        await interaction.followup.send(f"❌ **Error:** {str(e)}", ephemeral=False)
-@bot.tree.command(name="resethwid", description="🔄 Reset HWID lock for a specific user in your application")
-@app_commands.describe(username="The client username whose HWID to reset")
+        embed = discord.Embed(
+            title=f"{EMOJI['cross']}  CONNECTION ERROR",
+            description=f"> {EMOJI['alert']} `{str(e)}`",
+            color=COLOR_DANGER
+        )
+        await interaction.followup.send(embed=embed, ephemeral=False)
+
+# 5. /genplankey
+@bot.tree.command(name="genplankey", description="👑 Owner: Generate Paid Developer Plan Upgrade Keys")
+@app_commands.allowed_contexts(guilds=True, dms=True, private_channels=True)
+@app_commands.allowed_installs(guilds=True, users=True)
+@app_commands.describe(count="Number of keys to generate (1-20)", plan="Target Developer Plan (Paid /)")
+async def genplankey(interaction: discord.Interaction, count: int = 1, plan: str = "Paid"):
+    await interaction.response.defer(ephemeral=False)
+    payload = {
+        "discord_id": str(interaction.user.id),
+        "discord_username": str(interaction.user.name),
+        "count": min(max(1, count), 20),
+        "plan": plan.strip()
+    }
+    try:
+        res = requests.post(f"{config['api_url']}/api/v1/admin/bot/genplankey", json=payload, timeout=15)
+        data = parse_api_response(res)
+        if res.status_code == 200 and data.get("success"):
+            keys = data.get("keys", [])
+            formatted_keys = "\n".join([f"{EMOJI['dot']} **`{k}`**" for k in keys])
+            embed = discord.Embed(
+                title=f"{EMOJI['crown']}  DEVELOPER PLAN UPGRADE KEYS",
+                description=(
+                    f"### {EMOJI['tick']} Generated `{len(keys)}` Plan Key(s) for `{data.get('plan', 'Paid')}` Tier\n\n"
+                    f"{EMOJI['arrow']} **Target Plan:** `{data.get('plan', 'Paid')}`\n"
+                    f"{EMOJI['arrow']} **Features:** `Unlimited Apps • Unlimited Users • Full Bot Access`\n\n"
+                    f"**━━━━━━━━━ UPGRADE KEYS ━━━━━━━━━**\n"
+                    f"{formatted_keys}\n"
+                    f"**━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━**\n"
+                    f"{EMOJI['arrow']} **How to Redeem:** `/upgrade [key]` or enter on website."
+                ),
+                color=COLOR_WARNING
+            )
+            embed.set_footer(text="Joyst Auth Master License System", icon_url=interaction.user.display_avatar.url)
+            await interaction.followup.send(embed=embed, ephemeral=False)
+        else:
+            embed = discord.Embed(
+                title=f"{EMOJI['cross']}  NOTICE",
+                description=f"> {EMOJI['alert']} `{data.get('detail', 'Failed to generate plan keys.')}`",
+                color=COLOR_WARNING
+            )
+            await interaction.followup.send(embed=embed, ephemeral=False)
+    except Exception as e:
+        embed = discord.Embed(
+            title=f"{EMOJI['cross']}  CONNECTION ERROR",
+            description=f"> {EMOJI['alert']} `{str(e)}`",
+            color=COLOR_DANGER
+        )
+        await interaction.followup.send(embed=embed, ephemeral=False)
+
+# 6. /upgrade
+@bot.tree.command(name="upgrade", description="💎 Upgrade your Developer account to Paid Plan using a Key")
+@app_commands.allowed_contexts(guilds=True, dms=True, private_channels=True)
+@app_commands.allowed_installs(guilds=True, users=True)
+@app_commands.describe(key="Your Plan Upgrade Key")
+async def upgrade_cmd(interaction: discord.Interaction, key: str):
+    await interaction.response.defer(ephemeral=False)
+    payload = {
+        "discord_id": str(interaction.user.id),
+        "discord_username": str(interaction.user.name),
+        "plan_key": key.strip()
+    }
+    try:
+        res = requests.post(f"{config['api_url']}/api/v1/admin/bot/upgradeplan", json=payload, timeout=15)
+        data = parse_api_response(res)
+        if res.status_code == 200 and data.get("success"):
+            embed = discord.Embed(
+                title=f"{EMOJI['crown']}  ACCOUNT UPGRADED TO PAID TIER",
+                description=(
+                    f"### {EMOJI['wave']} Congratulations **@{data['developer']}**!\n\n"
+                    f"{EMOJI['arrow']} **Developer:** `@{data['developer']}`\n"
+                    f"{EMOJI['arrow']} **Plan Status:** `PAID / UNLIMITED` {EMOJI['crown']}\n"
+                    f"{EMOJI['arrow']} **Max Applications:** `Unlimited (999,999)`\n"
+                    f"{EMOJI['arrow']} **Max Clients:** `Unlimited (999,999)`\n"
+                    f"{EMOJI['arrow']} **Discord Bot:** `Full Admin Unlocked` {EMOJI['shield']}"
+                ),
+                color=COLOR_SUCCESS
+            )
+            embed.set_footer(text="Joyst Auth • joystauth.cc", icon_url=interaction.user.display_avatar.url)
+            await interaction.followup.send(embed=embed, ephemeral=False)
+        else:
+            embed = discord.Embed(
+                title=f"{EMOJI['cross']}  UPGRADE FAILED",
+                description=f"> {EMOJI['alert']} `{data.get('detail', 'Invalid or already used Upgrade Key.')}`",
+                color=COLOR_WARNING
+            )
+            await interaction.followup.send(embed=embed, ephemeral=False)
+    except Exception as e:
+        embed = discord.Embed(
+            title=f"{EMOJI['cross']}  CONNECTION ERROR",
+            description=f"> {EMOJI['alert']} `{str(e)}`",
+            color=COLOR_DANGER
+        )
+        await interaction.followup.send(embed=embed, ephemeral=False)
+
+# 7. /resethwid
+@bot.tree.command(name="resethwid", description="🔄 Clear HWID lock for a client")
+@app_commands.allowed_contexts(guilds=True, dms=True, private_channels=True)
+@app_commands.allowed_installs(guilds=True, users=True)
+@app_commands.describe(username="Client username to reset")
 async def resethwid(interaction: discord.Interaction, username: str):
     await interaction.response.defer(ephemeral=False)
     payload = {
@@ -296,23 +565,40 @@ async def resethwid(interaction: discord.Interaction, username: str):
         "target_username": username.strip()
     }
     try:
-        res = requests.post(f"{config['api_url']}/api/v1/admin/bot/resethwid", json=payload, timeout=8)
-        data = res.json()
+        res = requests.post(f"{config['api_url']}/api/v1/admin/bot/resethwid", json=payload, timeout=15)
+        data = parse_api_response(res)
         if res.status_code == 200 and data.get("success"):
             embed = discord.Embed(
-                title="🔄 HWID Reset Successful",
-                description=f"Hardware ID lock for client **`{data['username']}`** in app **`{data.get('app_name', 'Active App')}`** has been cleared.\nThe user can now bind a new device on next login.",
-                color=0x10B981
+                title=f"{EMOJI['gear']}  HWID RESET COMPLETED",
+                description=(
+                    f"### {EMOJI['tick']} HWID lock for `{data['username']}` has been cleared!\n\n"
+                    f"{EMOJI['arrow']} **Client:** `{data['username']}`\n"
+                    f"{EMOJI['arrow']} **Binding Status:** `Ready for New Machine` {EMOJI['shield']}\n"
+                    f"{EMOJI['dot']} Client will automatically lock to their next login device."
+                ),
+                color=COLOR_SUCCESS
             )
-            embed.set_footer(text="Joyst Auth Security • joystauth.cc")
-            await interaction.followup.send(embed=embed, ephemeral=True)
+            embed.set_footer(text="Joyst Auth Security • joystauth.cc", icon_url=interaction.user.display_avatar.url)
+            await interaction.followup.send(embed=embed, ephemeral=False)
         else:
-            await interaction.followup.send(f"❌ **Error:** {data.get('detail', 'User not found')}", ephemeral=True)
+            embed = discord.Embed(
+                title=f"{EMOJI['cross']}  NOTICE",
+                description=f"> {EMOJI['alert']} `{data.get('detail', 'User not found in your applications.')}`",
+                color=COLOR_WARNING
+            )
+            await interaction.followup.send(embed=embed, ephemeral=False)
     except Exception as e:
-        await interaction.followup.send(f"❌ **Error:** {str(e)}", ephemeral=True)
+        embed = discord.Embed(
+            title=f"{EMOJI['cross']}  CONNECTION ERROR",
+            description=f"> {EMOJI['alert']} `{str(e)}`",
+            color=COLOR_DANGER
+        )
+        await interaction.followup.send(embed=embed, ephemeral=False)
 
-# 3. /userinfo
-@bot.tree.command(name="userinfo", description="🔍 Look up a registered client's details, subscription, and HWID")
+# 8. /userinfo
+@bot.tree.command(name="userinfo", description="🔍 Look up a registered client'sfile, subscription & HWID")
+@app_commands.allowed_contexts(guilds=True, dms=True, private_channels=True)
+@app_commands.allowed_installs(guilds=True, users=True)
 @app_commands.describe(username="Username to inspect")
 async def userinfo(interaction: discord.Interaction, username: str):
     await interaction.response.defer(ephemeral=False)
@@ -322,33 +608,47 @@ async def userinfo(interaction: discord.Interaction, username: str):
         "target_username": username.strip()
     }
     try:
-        res = requests.post(f"{config['api_url']}/api/v1/admin/bot/userinfo", json=payload, timeout=8)
-        data = res.json()
+        res = requests.post(f"{config['api_url']}/api/v1/admin/bot/userinfo", json=payload, timeout=15)
+        data = parse_api_response(res)
         if res.status_code == 200 and data.get("success"):
             u = data["user"]
-            status_text = "🚫 **BANNED**" if u["is_banned"] else "🟢 **ACTIVE**"
+            status_text = f"**BANNED** {EMOJI['cross']}" if u["is_banned"] else f"**ACTIVE** {EMOJI['tick']}"
             embed = discord.Embed(
-                title=f"👤 Client Profile: {u['username']}",
-                color=0xDC2626 if u["is_banned"] else 0x10B981
+                title=f"{EMOJI['bot']}  CLIENTFILE: {u['username']}",
+                description=(
+                    f"{EMOJI['arrow']} **Application:** `{u['app_name']}`\n"
+                    f"{EMOJI['arrow']} **Status:** {status_text}\n"
+                    f"{EMOJI['arrow']} **Subscription:** `{u['subscription']}` (Lv.{u['level']})\n"
+                    f"{EMOJI['arrow']} **Expires:** `{u['expires_at']}`\n"
+                    f"{EMOJI['arrow']} **Last Login IP:** `{u['last_ip']}`\n"
+                    f"{EMOJI['arrow']} **Bound HWID:** `{u['hwid'][:24]}...`" if len(u['hwid']) > 24 else f"{EMOJI['arrow']} **Bound HWID:** `{u['hwid']}`"
+                ),
+                color=COLOR_DANGER if u["is_banned"] else COLOR_SUCCESS
             )
-            embed.add_field(name="📱 App", value=f"`{u['app_name']}`", inline=True)
-            embed.add_field(name="🛡️ Status", value=status_text, inline=True)
-            embed.add_field(name="💎 Rank", value=f"`{u['subscription']}` (Level {u['level']})", inline=True)
-            embed.add_field(name="⏳ Expiry", value=f"`{u['expires_at']}`", inline=True)
-            embed.add_field(name="🌐 Last IP", value=f"`{u['last_ip']}`", inline=True)
-            embed.add_field(name="💻 HWID", value=f"`{u['hwid'][:24]}...`" if len(u['hwid']) > 24 else f"`{u['hwid']}`", inline=False)
             if u["is_banned"]:
-                embed.add_field(name="⚠️ Ban Reason", value=f"`{u['ban_reason']}`", inline=False)
-            embed.set_footer(text="Joyst Auth Database • joystauth.cc")
-            await interaction.followup.send(embed=embed, ephemeral=True)
+                embed.add_field(name=f"{EMOJI['alert']} Ban Reason", value=f"`{u['ban_reason']}`", inline=False)
+            embed.set_footer(text="Joyst Auth Database • joystauth.cc", icon_url=interaction.user.display_avatar.url)
+            await interaction.followup.send(embed=embed, ephemeral=False)
         else:
-            await interaction.followup.send(f"❌ **Error:** {data.get('detail', 'User not found')}", ephemeral=True)
+            embed = discord.Embed(
+                title=f"{EMOJI['cross']}  NOTICE",
+                description=f"> {EMOJI['alert']} `{data.get('detail', 'User not found.')}`",
+                color=COLOR_WARNING
+            )
+            await interaction.followup.send(embed=embed, ephemeral=False)
     except Exception as e:
-        await interaction.followup.send(f"❌ **Error:** {str(e)}", ephemeral=True)
+        embed = discord.Embed(
+            title=f"{EMOJI['cross']}  CONNECTION ERROR",
+            description=f"> {EMOJI['alert']} `{str(e)}`",
+            color=COLOR_DANGER
+        )
+        await interaction.followup.send(embed=embed, ephemeral=False)
 
-# 4. /ban
-@bot.tree.command(name="ban", description="🔨 Ban a client user from logging into your applications")
-@app_commands.describe(username="User to ban", reason="Reason for the ban")
+# 9. /ban & /unban
+@bot.tree.command(name="ban", description="🔨 Ban a client user from authenticating")
+@app_commands.allowed_contexts(guilds=True, dms=True, private_channels=True)
+@app_commands.allowed_installs(guilds=True, users=True)
+@app_commands.describe(username="User to ban", reason="Reason for ban")
 async def ban(interaction: discord.Interaction, username: str, reason: str = "Banned by Admin"):
     await interaction.response.defer(ephemeral=False)
     payload = {
@@ -358,23 +658,39 @@ async def ban(interaction: discord.Interaction, username: str, reason: str = "Ba
         "reason": reason.strip()
     }
     try:
-        res = requests.post(f"{config['api_url']}/api/v1/admin/bot/ban", json=payload, timeout=8)
-        data = res.json()
+        res = requests.post(f"{config['api_url']}/api/v1/admin/bot/ban", json=payload, timeout=15)
+        data = parse_api_response(res)
         if res.status_code == 200 and data.get("success"):
             embed = discord.Embed(
-                title="🔨 User Account Banned",
-                description=f"User **`{data['username']}`** has been permanently banned from authenticating.\n**Reason:** `{data['reason']}`",
-                color=0xDC2626
+                title=f"{EMOJI['cross']}  USER ACCOUNT BANNED",
+                description=(
+                    f"### {EMOJI['alert']} User `{data['username']}` Has Been Permanently Banned\n\n"
+                    f"{EMOJI['arrow']} **Client:** `{data['username']}`\n"
+                    f"{EMOJI['arrow']} **Reason:** `{data['reason']}`\n"
+                    f"{EMOJI['dot']} All authentication attempts for this user will be rejected."
+                ),
+                color=COLOR_DANGER
             )
-            embed.set_footer(text="Joyst Auth Shield • joystauth.cc")
-            await interaction.followup.send(embed=embed, ephemeral=True)
+            embed.set_footer(text="Joyst Auth Shield • joystauth.cc", icon_url=interaction.user.display_avatar.url)
+            await interaction.followup.send(embed=embed, ephemeral=False)
         else:
-            await interaction.followup.send(f"❌ **Error:** {data.get('detail', 'Failed to ban user')}", ephemeral=True)
+            embed = discord.Embed(
+                title=f"{EMOJI['cross']}  NOTICE",
+                description=f"> {EMOJI['alert']} `{data.get('detail', 'Failed to ban user.')}`",
+                color=COLOR_WARNING
+            )
+            await interaction.followup.send(embed=embed, ephemeral=False)
     except Exception as e:
-        await interaction.followup.send(f"❌ **Error:** {str(e)}", ephemeral=True)
+        embed = discord.Embed(
+            title=f"{EMOJI['cross']}  CONNECTION ERROR",
+            description=f"> {EMOJI['alert']} `{str(e)}`",
+            color=COLOR_DANGER
+        )
+        await interaction.followup.send(embed=embed, ephemeral=False)
 
-# 5. /unban
 @bot.tree.command(name="unban", description="🔓 Unban a previously banned client user")
+@app_commands.allowed_contexts(guilds=True, dms=True, private_channels=True)
+@app_commands.allowed_installs(guilds=True, users=True)
 @app_commands.describe(username="User to unban")
 async def unban(interaction: discord.Interaction, username: str):
     await interaction.response.defer(ephemeral=False)
@@ -384,23 +700,39 @@ async def unban(interaction: discord.Interaction, username: str):
         "target_username": username.strip()
     }
     try:
-        res = requests.post(f"{config['api_url']}/api/v1/admin/bot/unban", json=payload, timeout=8)
-        data = res.json()
+        res = requests.post(f"{config['api_url']}/api/v1/admin/bot/unban", json=payload, timeout=15)
+        data = parse_api_response(res)
         if res.status_code == 200 and data.get("success"):
             embed = discord.Embed(
-                title="🔓 User Unbanned",
-                description=f"User **`{data['username']}`** has been restored and can now authenticate normally.",
-                color=0x10B981
+                title=f"{EMOJI['tick']}  USER UNBANNED",
+                description=(
+                    f"### {EMOJI['wave']} User `{data['username']}` Access Restored\n\n"
+                    f"{EMOJI['arrow']} **Client:** `{data['username']}`\n"
+                    f"{EMOJI['arrow']} **Status:** `Authorized to Login` {EMOJI['shield']}"
+                ),
+                color=COLOR_SUCCESS
             )
-            embed.set_footer(text="Joyst Auth Shield • joystauth.cc")
-            await interaction.followup.send(embed=embed, ephemeral=True)
+            embed.set_footer(text="Joyst Auth Shield • joystauth.cc", icon_url=interaction.user.display_avatar.url)
+            await interaction.followup.send(embed=embed, ephemeral=False)
         else:
-            await interaction.followup.send(f"❌ **Error:** {data.get('detail', 'Failed to unban user')}", ephemeral=True)
+            embed = discord.Embed(
+                title=f"{EMOJI['cross']}  NOTICE",
+                description=f"> {EMOJI['alert']} `{data.get('detail', 'Failed to unban user.')}`",
+                color=COLOR_WARNING
+            )
+            await interaction.followup.send(embed=embed, ephemeral=False)
     except Exception as e:
-        await interaction.followup.send(f"❌ **Error:** {str(e)}", ephemeral=True)
+        embed = discord.Embed(
+            title=f"{EMOJI['cross']}  CONNECTION ERROR",
+            description=f"> {EMOJI['alert']} `{str(e)}`",
+            color=COLOR_DANGER
+        )
+        await interaction.followup.send(embed=embed, ephemeral=False)
 
-# 6. /stats
+# 10. /stats
 @bot.tree.command(name="stats", description="📊 View live statistics of your applications, users, and licenses")
+@app_commands.allowed_contexts(guilds=True, dms=True, private_channels=True)
+@app_commands.allowed_installs(guilds=True, users=True)
 async def stats(interaction: discord.Interaction):
     await interaction.response.defer(ephemeral=False)
     payload = {
@@ -409,28 +741,44 @@ async def stats(interaction: discord.Interaction):
     }
     try:
         res = requests.post(f"{config['api_url']}/api/v1/admin/bot/stats", json=payload, timeout=15)
-        data = res.json()
+        data = parse_api_response(res)
         if res.status_code == 200 and data.get("success"):
             embed = discord.Embed(
-                title="📊 Joyst Auth - Developer Telemetry",
-                description=f"Live statistics for Developer **@{data['developer']}** (`{data['plan']}` Plan):",
-                color=0x6366F1
+                title=f"{EMOJI['loading']}  JOYST AUTH • DEVELOPER TELEMETRY",
+                description=(
+                    f"**Live Overview for Developer `@{data['developer']}`** (`{data['plan']}` Tier {EMOJI['crown']})\n"
+                    f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+                    f"{EMOJI['arrow']} **Total Applications:** ` {data['total_apps']} ` ({', '.join(data['apps_list']) or 'None'})\n"
+                    f"{EMOJI['arrow']} **Total Registered Clients:** ` {data['total_users']} `\n"
+                    f"{EMOJI['arrow']} **Total License Keys:** ` {data['total_keys']} `\n"
+                    f"{EMOJI['arrow']} **Available (Unused) Keys:** ` {data['unused_keys']} ` {EMOJI['tick']}\n"
+                    f"{EMOJI['arrow']} **Permanently Banned Users:** ` {data['banned_users']} ` {EMOJI['cross']}\n\n"
+                    f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+                ),
+                color=COLOR_INFO
             )
-            embed.add_field(name="📦 Apps", value=f"**{data['total_apps']}** ({', '.join(data['apps_list']) or 'None'})", inline=False)
-            embed.add_field(name="👥 Total Users", value=f"**{data['total_users']}**", inline=True)
-            embed.add_field(name="🔑 Total Keys", value=f"**{data['total_keys']}**", inline=True)
-            embed.add_field(name="🟢 Unused Keys", value=f"**{data['unused_keys']}**", inline=True)
-            embed.add_field(name="🚫 Banned Users", value=f"**{data['banned_users']}**", inline=True)
-            embed.set_footer(text="Joyst Auth Zero-Leak Infrastructure • joystauth.cc")
-            await interaction.followup.send(embed=embed, ephemeral=True)
+            embed.set_footer(text="Joyst Auth Zero-Leak Infrastructure • joystauth.cc", icon_url=interaction.user.display_avatar.url)
+            await interaction.followup.send(embed=embed, ephemeral=False)
         else:
-            await interaction.followup.send(f"❌ **Notice:** {data.get('detail', 'Failed to fetch stats')}", ephemeral=True)
+            embed = discord.Embed(
+                title=f"{EMOJI['cross']}  NOTICE",
+                description=f"> {EMOJI['alert']} `{data.get('detail', 'Failed to fetch telemetry.')}`",
+                color=COLOR_WARNING
+            )
+            await interaction.followup.send(embed=embed, ephemeral=False)
     except Exception as e:
-        await interaction.followup.send(f"❌ **Error:** {str(e)}", ephemeral=True)
+        embed = discord.Embed(
+            title=f"{EMOJI['cross']}  CONNECTION ERROR",
+            description=f"> {EMOJI['alert']} `{str(e)}`",
+            color=COLOR_DANGER
+        )
+        await interaction.followup.send(embed=embed, ephemeral=False)
 
-# 7. /addreseller
+# 11. /addreseller & /addbalance
 @bot.tree.command(name="addreseller", description="💼 Create a new Reseller with key credits balance")
-@app_commands.describe(username="Reseller username", password="Reseller dashboard password", balance="Initial key credits")
+@app_commands.allowed_contexts(guilds=True, dms=True, private_channels=True)
+@app_commands.allowed_installs(guilds=True, users=True)
+@app_commands.describe(username="Reseller username", password="Password", balance="Initial Credits")
 async def addreseller(interaction: discord.Interaction, username: str, password: str, balance: int = 50):
     await interaction.response.defer(ephemeral=False)
     payload = {
@@ -442,27 +790,40 @@ async def addreseller(interaction: discord.Interaction, username: str, password:
     }
     try:
         res = requests.post(f"{config['api_url']}/api/v1/admin/bot/addreseller", json=payload, timeout=15)
-        data = res.json()
+        data = parse_api_response(res)
         if res.status_code == 200 and data.get("success"):
             embed = discord.Embed(
-                title="💼 Reseller Account Created",
-                description=f"New Reseller **`@{data['reseller_username']}`** is now active with **{data['balance']} Credits**.",
-                color=0x818CF8
+                title=f"{EMOJI['giveaway']}  RESELLER ACCOUNT CREATED",
+                description=(
+                    f"### {EMOJI['tick']} Reseller `@{data['reseller_username']}` is Active!\n\n"
+                    f"{EMOJI['arrow']} **Reseller Username:** `@{data['reseller_username']}`\n"
+                    f"{EMOJI['arrow']} **Initial Password:** `{password}`\n"
+                    f"{EMOJI['arrow']} **Allotted Balance:** `{data['balance']} Key Credits`\n"
+                    f"{EMOJI['arrow']} **Reseller Portal:** `https://joystauth.cc/reseller/login`"
+                ),
+                color=COLOR_PURPLE
             )
-            embed.add_field(name="💼 Reseller Username", value=f"`{data['reseller_username']}`", inline=True)
-            embed.add_field(name="🔑 Password", value=f"`{password}`", inline=True)
-            embed.add_field(name="💳 Credits Balance", value=f"`{data['balance']} Keys`", inline=True)
-            embed.add_field(name="🌐 Reseller Portal", value="`https://joystauth.cc/reseller/login`", inline=False)
-            embed.set_footer(text="Joyst Auth Enterprise Reseller System")
+            embed.set_footer(text="Joyst Auth Reseller System", icon_url=interaction.user.display_avatar.url)
             await interaction.followup.send(embed=embed, ephemeral=False)
         else:
-            await interaction.followup.send(f"❌ **Notice:** {data.get('detail', 'Failed to create reseller')}", ephemeral=False)
+            embed = discord.Embed(
+                title=f"{EMOJI['cross']}  NOTICE",
+                description=f"> {EMOJI['alert']} `{data.get('detail', 'Failed to create reseller.')}`",
+                color=COLOR_WARNING
+            )
+            await interaction.followup.send(embed=embed, ephemeral=False)
     except Exception as e:
-        await interaction.followup.send(f"❌ **Error:** {str(e)}", ephemeral=False)
+        embed = discord.Embed(
+            title=f"{EMOJI['cross']}  CONNECTION ERROR",
+            description=f"> {EMOJI['alert']} `{str(e)}`",
+            color=COLOR_DANGER
+        )
+        await interaction.followup.send(embed=embed, ephemeral=False)
 
-# 8. /addbalance
-@bot.tree.command(name="addbalance", description="💳 Add/Top-up key credits to an existing Reseller")
-@app_commands.describe(username="Reseller username", credits="Number of key credits to add")
+@bot.tree.command(name="addbalance", description="💳 Top up key credits for an existing Reseller")
+@app_commands.allowed_contexts(guilds=True, dms=True, private_channels=True)
+@app_commands.allowed_installs(guilds=True, users=True)
+@app_commands.describe(username="Reseller username", credits="Credits to add")
 async def addbalance(interaction: discord.Interaction, username: str, credits: int = 25):
     await interaction.response.defer(ephemeral=False)
     payload = {
@@ -473,165 +834,38 @@ async def addbalance(interaction: discord.Interaction, username: str, credits: i
     }
     try:
         res = requests.post(f"{config['api_url']}/api/v1/admin/bot/addbalance", json=payload, timeout=15)
-        data = res.json()
+        data = parse_api_response(res)
         if res.status_code == 200 and data.get("success"):
             embed = discord.Embed(
-                title="💳 Reseller Balance Updated",
-                description=f"Added **+{data['added_amount']} Credits** to Reseller **`@{data['reseller_username']}`**.\n**New Balance:** **`{data['new_balance']} Keys`**",
-                color=0x10B981
+                title=f"{EMOJI['tick']}  RESELLER BALANCE UPDATED",
+                description=(
+                    f"### {EMOJI['giveaway']} Added **+{data['added_amount']} Credits** to `@{data['reseller_username']}`\n\n"
+                    f"{EMOJI['arrow']} **Reseller:** `@{data['reseller_username']}`\n"
+                    f"{EMOJI['arrow']} **Added Amount:** `+{data['added_amount']} Keys`\n"
+                    f"{EMOJI['arrow']} **New Total Balance:** `{data['new_balance']} Keys` {EMOJI['crown']}"
+                ),
+                color=COLOR_SUCCESS
             )
-            embed.set_footer(text="Joyst Auth Enterprise Reseller System")
+            embed.set_footer(text="Joyst Auth Reseller System", icon_url=interaction.user.display_avatar.url)
             await interaction.followup.send(embed=embed, ephemeral=False)
         else:
-            await interaction.followup.send(f"❌ **Notice:** {data.get('detail', 'Failed to update balance')}", ephemeral=False)
-    except Exception as e:
-        await interaction.followup.send(f"❌ **Error:** {str(e)}", ephemeral=False)
-
-# 9. /redeem (Customer License Key Activation on Discord)
-@bot.tree.command(name="redeem", description="🎁 Customers: Redeem your license key to activate software subscription")
-@app_commands.describe(key="Your license key (e.g. JOYST-XXXX-XXXX-XXXX)")
-async def redeem(interaction: discord.Interaction, key: str):
-    await interaction.response.defer(ephemeral=False)
-    payload = {
-        "discord_id": str(interaction.user.id),
-        "discord_username": str(interaction.user.name),
-        "license_key": key.strip()
-    }
-    try:
-        res = requests.post(f"{config['api_url']}/api/v1/admin/bot/redeem", json=payload, timeout=15)
-        data = res.json()
-        if res.status_code == 200 and data.get("success"):
             embed = discord.Embed(
-                title="🎉 License Key Redeemed Successfully!",
-                description=f"Welcome **@{interaction.user.name}**! Your subscription for **`{data['app_name']}`** is now **ACTIVE**.",
-                color=0x10B981
+                title=f"{EMOJI['cross']}  NOTICE",
+                description=f"> {EMOJI['alert']} `{data.get('detail', 'Failed to update balance.')}`",
+                color=COLOR_WARNING
             )
-            embed.add_field(name="📱 Software", value=f"`{data['app_name']}`", inline=True)
-            embed.add_field(name="💎 Rank / Tier", value=f"`{data['rank']}`", inline=True)
-            embed.add_field(name="⏳ Expiration", value=f"`{data['expires_at']}`", inline=True)
-            embed.add_field(name="🔑 Key Used", value=f"`{key.strip()}`", inline=False)
-            embed.set_footer(text="Thank you for your purchase! • joystauth.cc")
             await interaction.followup.send(embed=embed, ephemeral=False)
-        else:
-            await interaction.followup.send(f"❌ **Notice:** {data.get('detail', 'Invalid or already used key')}", ephemeral=False)
     except Exception as e:
-        await interaction.followup.send(f"❌ **Error:** {str(e)}", ephemeral=False)
-
-# 10. /genplankey (Generate Developer Plan Upgrade Key)
-@bot.tree.command(name="genplankey", description="👑 Owner: Generate VIP / Paid Developer Plan Upgrade Keys")
-@app_commands.describe(count="Number of upgrade keys to generate (1-20)", plan="Target Developer Plan (Paid / Enterprise)")
-async def genplankey(interaction: discord.Interaction, count: int = 1, plan: str = "Paid"):
-    await interaction.response.defer(ephemeral=False)
-    payload = {
-        "discord_id": str(interaction.user.id),
-        "discord_username": str(interaction.user.name),
-        "count": min(max(1, count), 20),
-        "plan": plan.strip()
-    }
-    try:
-        res = requests.post(f"{config['api_url']}/api/v1/admin/bot/genplankey", json=payload, timeout=15)
-        data = res.json()
-        if res.status_code == 200 and data.get("success"):
-            keys = data.get("keys", [])
-            embed = discord.Embed(
-                title="👑 Joyst Auth - Developer Plan Keys Generated",
-                description=f"Generated **{len(keys)}** Plan Key(s) for **`{data.get('plan', 'Paid')}`** Tier:\n\n" + "\n".join([f"💎 `{k}`" for k in keys]),
-                color=0xF59E0B
-            )
-            embed.add_field(name="👑 Target Plan", value=f"`{data.get('plan', 'Paid')}`", inline=True)
-            embed.add_field(name="📦 Features", value="`Unlimited Apps • Unlimited Users • Full Bot Access`", inline=False)
-            embed.add_field(name="⚡ How to Redeem", value="Developers can type `/upgrade [key]` or enter it on `joystauth.cc/register`", inline=False)
-            embed.set_footer(text="Joyst Auth Enterprise Master License System")
-            await interaction.followup.send(embed=embed, ephemeral=False)
-        else:
-            await interaction.followup.send(f"❌ **Notice:** {data.get('detail', 'Failed to generate plan keys')}", ephemeral=False)
-    except Exception as e:
-        await interaction.followup.send(f"❌ **Error:** {str(e)}", ephemeral=False)
-
-# 11. /upgrade (Upgrade Free Developer Account to Paid Plan)
-@bot.tree.command(name="upgrade", description="💎 Developers: Upgrade your Joyst Auth account to Paid Plan using a Plan Key")
-@app_commands.describe(key="Your Plan Upgrade Key (e.g. JOYST-PAID-XXXX-XXXX-XXXX)")
-async def upgrade_cmd(interaction: discord.Interaction, key: str):
-    await interaction.response.defer(ephemeral=False)
-    payload = {
-        "discord_id": str(interaction.user.id),
-        "discord_username": str(interaction.user.name),
-        "plan_key": key.strip()
-    }
-    try:
-        res = requests.post(f"{config['api_url']}/api/v1/admin/bot/upgradeplan", json=payload, timeout=15)
-        data = res.json()
-        if res.status_code == 200 and data.get("success"):
-            embed = discord.Embed(
-                title="🎉 Developer Account Upgraded to PAID Plan!",
-                description=f"Congratulations **@{data['developer']}**! Your account is now upgraded to **`PAID / ENTERPRISE`**.",
-                color=0x10B981
-            )
-            embed.add_field(name="👤 Developer", value=f"`@{data['developer']}`", inline=True)
-            embed.add_field(name="💎 Plan Status", value="`PAID / UNLIMITED`", inline=True)
-            embed.add_field(name="📦 Max Applications", value="`Unlimited (999,999)`", inline=True)
-            embed.add_field(name="👥 Max Clients", value="`Unlimited (999,999)`", inline=True)
-            embed.add_field(name="🤖 Discord Bot", value="🟢 `Full Admin Access Unlocked`", inline=False)
-            embed.set_footer(text="Joyst Auth Enterprise • joystauth.cc")
-            await interaction.followup.send(embed=embed, ephemeral=False)
-        else:
-            await interaction.followup.send(f"❌ **Notice:** {data.get('detail', 'Invalid or already used key')}", ephemeral=False)
-    except Exception as e:
-        await interaction.followup.send(f"❌ **Error:** {str(e)}", ephemeral=False)
-
-# 12. /link
-@bot.tree.command(name="link", description="🔗 Link your Discord to your Joyst Auth Developer Account (Google / Email)")
-@app_commands.describe(email_or_username="Your email address or username registered on joystauth.cc")
-async def link_cmd(interaction: discord.Interaction, email_or_username: str):
-    await interaction.response.defer(ephemeral=False)
-    payload = {
-        "discord_id": str(interaction.user.id),
-        "discord_username": str(interaction.user.name),
-        "email_or_username": email_or_username.strip()
-    }
-    try:
-        res = requests.post(f"{config['api_url']}/api/v1/admin/bot/link", json=payload, timeout=15)
-        data = res.json()
-        if res.status_code == 200 and data.get("success"):
-            embed = discord.Embed(
-                title="🔗 Discord Account Linked Successfully!",
-                description=f"Your Discord **@{interaction.user.name}** is now permanently linked to **@{data['developer']}** (`{data['plan']}` Plan).",
-                color=0x10B981
-            )
-            embed.add_field(name="Account Email", value=f"`{data['email']}`", inline=True)
-            embed.add_field(name="Plan Tier", value=f"`{data['plan']}`", inline=True)
-            embed.add_field(name="Bot Access", value="🟢 **Full Admin Permissions Enabled**", inline=False)
-            embed.set_footer(text="You can now run /genkey, /stats, /ban, /resethwid from any channel or DM!")
-            await interaction.followup.send(embed=embed, ephemeral=False)
-        else:
-            await interaction.followup.send(f"❌ **Notice:** {data.get('detail', 'Account not found')}", ephemeral=False)
-    except Exception as e:
-        await interaction.followup.send(f"❌ **Error:** {str(e)}", ephemeral=False)
-
-# 13. /help
-@bot.tree.command(name="help", description="📖 View all available Joyst Auth Discord commands")
-async def help_cmd(interaction: discord.Interaction):
-    embed = discord.Embed(
-        title="⚡ Joyst Auth Enterprise - Discord Slash Commands",
-        description="Complete command suite for Software Developers, Resellers & Customers:",
-        color=0xE11D48
-    )
-    embed.add_field(name="👑 `/genplankey [count] [plan]`", value="Generate Paid Developer Plan Upgrade Keys.", inline=False)
-    embed.add_field(name="💎 `/upgrade [key]`", value="Upgrade Free Developer account to Paid Plan in 1-click.", inline=False)
-    embed.add_field(name="🔗 `/link [email_or_username]`", value="Link your Discord to your Google / Email Joyst account.", inline=False)
-    embed.add_field(name="👤 `/adduser [username] [password] [days] [rank]`", value="Create user & password with Dropdown App selector.", inline=False)
-    embed.add_field(name="⚡ `/genkey [days] [count] [level]`", value="Generate software license keys with Dropdown App selector.", inline=False)
-    embed.add_field(name="💼 `/addreseller [username] [password] [balance]`", value="Create a Reseller account with Key Balance.", inline=False)
-    embed.add_field(name="💳 `/addbalance [username] [credits]`", value="Top up key credits for an existing Reseller.", inline=False)
-    embed.add_field(name="🔄 `/resethwid [username]`", value="Clear HWID lock for a client to bind a new device.", inline=False)
-    embed.add_field(name="🔍 `/userinfo [username]`", value="Inspect subscription expiry, rank, and bound HWID.", inline=False)
-    embed.add_field(name="🔨 `/ban` & 🔓 `/unban`", value="Manage client access and security bans.", inline=False)
-    embed.add_field(name="📊 `/stats`", value="View live developer summary & telemetry.", inline=False)
-    embed.set_footer(text="Joyst Auth Zero-Leak Infrastructure • joystauth.cc")
-    await interaction.response.send_message(embed=embed, ephemeral=False)
+        embed = discord.Embed(
+            title=f"{EMOJI['cross']}  CONNECTION ERROR",
+            description=f"> {EMOJI['alert']} `{str(e)}`",
+            color=COLOR_DANGER
+        )
+        await interaction.followup.send(embed=embed, ephemeral=False)
 
 if __name__ == "__main__":
-    if config.get("token") and config["token"] != "YOUR_DISCORD_BOT_TOKEN_HERE":
-        bot.run(config["token"])
+    token = os.environ.get("DISCORD_BOT_TOKEN") or config.get("token")
+    if token and token != "YOUR_DISCORD_BOT_TOKEN_HERE":
+        bot.run(token)
     else:
-        print("[JOYST CORP AUTH BOT] Please configure your Discord bot token in discord_bot/config.json")
+        print("[JOYST BOT] Please configure token via DISCORD_BOT_TOKEN environment variable or run_bot.bat")

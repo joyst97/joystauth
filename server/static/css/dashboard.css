@@ -1,18 +1,26 @@
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&family=Roboto+Flex:opsz,wght@8..144,100..1000&display=swap');
+
+.variable-proximity {
+    font-family: 'Roboto Flex', sans-serif;
+    font-variation-settings: 'wght' 600, 'opsz' 16;
+    display: inline-block;
+    cursor: default;
+    user-select: none;
+}
 
 :root {
     --bg-main: #060204;
-    --bg-surface: rgba(18, 6, 11, 0.75);
-    --bg-glass-card: rgba(26, 8, 15, 0.58);
-    --bg-glass-card-hover: rgba(38, 12, 22, 0.82);
-    --bg-glass-heavy: rgba(16, 5, 10, 0.9);
+    --bg-surface: rgba(18, 6, 11, 0.85);
+    --bg-glass-card: rgba(26, 8, 16, 0.62);
+    --bg-glass-card-hover: rgba(42, 12, 24, 0.88);
+    --bg-glass-heavy: rgba(18, 5, 11, 0.94);
     
     --border-subtle: rgba(255, 255, 255, 0.08);
-    --border-highlight: rgba(255, 255, 255, 0.16);
-    --border-glass: rgba(255, 255, 255, 0.12);
-    --border-glow: rgba(225, 29, 72, 0.55);
-    --border-crimson: rgba(244, 63, 94, 0.65);
-    --border-emerald: rgba(16, 185, 129, 0.55);
+    --border-highlight: rgba(255, 255, 255, 0.18);
+    --border-glass: rgba(255, 255, 255, 0.14);
+    --border-glow: rgba(225, 29, 72, 0.65);
+    --border-crimson: rgba(244, 63, 94, 0.75);
+    --border-emerald: rgba(16, 185, 129, 0.65);
 
     --text-primary: #f8fafc;
     --text-secondary: #94a3b8;
@@ -27,7 +35,7 @@
     --brand-amber: #f59e0b;
 
     --gradient-primary: linear-gradient(135deg, #ff2a5f 0%, #e11d48 50%, #9f1239 100%);
-    --gradient-glass: linear-gradient(135deg, rgba(255, 255, 255, 0.09) 0%, rgba(255, 255, 255, 0.015) 100%);
+    --gradient-glass: linear-gradient(135deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0.02) 100%);
     --gradient-button: linear-gradient(135deg, #e11d48 0%, #be123c 100%);
     --gradient-button-hover: linear-gradient(135deg, #f43f5e 0%, #e11d48 100%);
 
@@ -37,12 +45,12 @@
     --radius-xl: 28px;
     --radius-full: 9999px;
 
-    --glass-blur: blur(28px);
-    --glass-blur-heavy: blur(40px);
+    --glass-blur: blur(32px);
+    --glass-blur-heavy: blur(48px);
 
-    --shadow-glass: 0 20px 50px -10px rgba(0, 0, 0, 0.85), inset 0 1px 0 rgba(255, 255, 255, 0.12);
-    --shadow-glow: 0 0 35px rgba(225, 29, 72, 0.35);
-    --shadow-crimson: 0 0 35px rgba(244, 63, 94, 0.35);
+    --shadow-glass: 0 25px 60px -10px rgba(0, 0, 0, 0.92), inset 0 1px 0 rgba(255, 255, 255, 0.18);
+    --shadow-glow: 0 0 45px rgba(225, 29, 72, 0.45);
+    --shadow-crimson: 0 0 45px rgba(244, 63, 94, 0.45);
 }
 
 * {
@@ -428,22 +436,28 @@ code, pre, .mono {
     border-radius: 8px;
 }
 
-/* ==================== NAVBAR ==================== */
-.landing-nav {
+/* ==================== NAVBAR (TRANSPARENT FROSTED GLASS) ==================== */
+.landing-nav, .nav-bar {
     position: fixed;
     top: 0;
     left: 0;
     right: 0;
-    height: 76px;
-    background: rgba(6, 2, 4, 0.82);
-    backdrop-filter: blur(24px);
-    -webkit-backdrop-filter: blur(24px);
-    border-bottom: 1px solid var(--border-glass);
+    height: 72px;
+    background: rgba(6, 2, 4, 0.55);
+    backdrop-filter: blur(28px);
+    -webkit-backdrop-filter: blur(28px);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 0 48px;
+    padding: 0 40px;
     z-index: 1000;
+    transition: all 0.3s ease;
+}
+
+.landing-nav:hover, .nav-bar:hover {
+    background: rgba(18, 6, 12, 0.75);
+    border-bottom-color: rgba(225, 29, 72, 0.35);
 }
 
 .brand-wrap {
@@ -451,6 +465,7 @@ code, pre, .mono {
     align-items: center;
     gap: 12px;
     text-decoration: none;
+    flex-shrink: 0;
 }
 
 .brand-badge-icon {
@@ -460,16 +475,17 @@ code, pre, .mono {
     border-radius: 11px;
     display: flex;
     align-items: center;
-    justify-content: center;
+    justify-content: space-between;
     font-size: 20px;
     box-shadow: 0 0 25px rgba(225, 29, 72, 0.5);
 }
 
 .brand-title {
-    font-size: 17.5px;
+    font-size: 17px;
     font-weight: 900;
     color: #fff;
     letter-spacing: -0.4px;
+    line-height: 1.2;
 }
 
 .brand-title span {
@@ -483,21 +499,27 @@ code, pre, .mono {
 
 .nav-menu {
     display: flex;
-    align-items: center;
-    gap: 32px;
+    gap: 28px;
     list-style: none;
+    align-items: center;
+    margin: 0;
+    padding: 0;
 }
 
 .nav-menu a {
     color: var(--text-secondary);
     text-decoration: none;
     font-size: 13.5px;
-    font-weight: 700;
-    transition: color 0.2s;
+    font-weight: 600;
+    transition: all 0.2s ease;
+    padding: 6px 12px;
+    border-radius: 8px;
+    white-space: nowrap;
 }
 
 .nav-menu a:hover {
     color: #fff;
+    background: rgba(255, 255, 255, 0.08);
 }
 
 /* ==================== HERO SECTION ==================== */
@@ -1627,17 +1649,16 @@ code, pre, .mono {
 
 /* 6. Ultra-Smooth Scroll Reveal Animation System */
 .reveal-on-scroll {
-    opacity: 0;
-    transform: translateY(35px);
-    filter: blur(10px);
-    transition: opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1), transform 0.8s cubic-bezier(0.16, 1, 0.3, 1), filter 0.8s cubic-bezier(0.16, 1, 0.3, 1);
-    will-change: opacity, transform, filter;
+    opacity: 1 !important;
+    transform: none !important;
+    filter: none !important;
+    transition: opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1), transform 0.8s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .reveal-on-scroll.is-visible {
-    opacity: 1;
-    transform: translateY(0);
-    filter: blur(0);
+    opacity: 1 !important;
+    transform: translateY(0) !important;
+    filter: none !important;
 }
 
 /* Stagger delays */
@@ -1912,6 +1933,105 @@ html, body {
     overflow-x: hidden !important;
     max-width: 100vw !important;
 }
+
+/* ========================================================
+   REACT BITS: GLARE HOVER COMPONENT STYLES
+   ======================================================== */
+.glare-hover {
+    width: var(--gh-width, 100%);
+    height: var(--gh-height, auto);
+    background: var(--gh-bg, var(--bg-glass-card));
+    border-radius: var(--gh-br, var(--radius-lg));
+    border: 1px solid var(--gh-border, var(--border-glass));
+    overflow: hidden;
+    position: relative;
+    display: block;
+    transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.glare-hover::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+        var(--gh-angle, -35deg),
+        hsla(0, 0%, 0%, 0) 55%,
+        var(--gh-rgba, rgba(255, 255, 255, 0.28)) 70%,
+        hsla(0, 0%, 0%, 0) 85%,
+        hsla(0, 0%, 0%, 0) 100%
+    );
+    transition: var(--gh-duration, 700ms) cubic-bezier(0.16, 1, 0.3, 1);
+    background-size:
+        var(--gh-size, 250%) var(--gh-size, 250%),
+        100% 100%;
+    background-repeat: no-repeat;
+    background-position:
+        -100% -100%,
+        0 0;
+    pointer-events: none;
+    z-index: 2;
+}
+
+.glare-hover:hover {
+    cursor: pointer;
+    border-color: rgba(225, 29, 72, 0.6);
+    transform: translateY(-4px);
+    box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.8), 0 0 30px rgba(225, 29, 72, 0.3);
+}
+
+.glare-hover:hover::before {
+    background-position:
+        100% 100%,
+        0 0;
+}
+
+.glare-hover--play-once::before {
+    transition: none;
+}
+
+.glare-hover--play-once:hover::before {
+    transition: var(--gh-duration, 700ms) cubic-bezier(0.16, 1, 0.3, 1);
+    background-position:
+        100% 100%,
+        0 0;
+}
+
+/* ========================================================
+   REACT BITS: PARTICLE TEXT CANVAS ENGINE STYLES
+   ======================================================== */
+.particle-text {
+    position: relative;
+    display: block;
+    width: 100%;
+    height: 120px;
+    min-height: 100px;
+    overflow: hidden;
+    touch-action: none;
+    isolation: isolate;
+    margin: 0 auto;
+}
+
+.particle-text__canvas {
+    position: absolute;
+    inset: 0;
+    display: block;
+    width: 100%;
+    height: 100%;
+}
+
+.particle-text__sr {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+
 
 
 

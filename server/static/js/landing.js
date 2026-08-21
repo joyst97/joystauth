@@ -51,48 +51,63 @@ function initFaqAccordion() {
 
 // 2. Multi-Language SDK Studio
 const sdkSnippets = {
-    cpp: `// ================== JOYST CORPORATION C++ SDK ==================
+    cpp: `// ================== JOYST AUTH C++ WINDOWS NATIVE SDK ==================
 #include "AuthClient.hpp"
 #include <iostream>
 
 int main() {
-    // 1. Initialize with your App parameters
-    JoystAuth::api auth("SuperCheatPro", "joyst_dev_88a91c", "sec_77918750...", "2.5", "http://127.0.0.1:8000");
-    auth.init();
+    // 1. Initialize with your Application Credentials
+    JoystAuth::api auth("ApexLoader", "joyst_owner_id", "your_app_secret", "1.0");
+    
+    // 2. Anti-Debug Scan & Dynamic AES-256 Handshake
+    if (!auth.init()) {
+        std::cout << "Initialization Failed: " << auth.response.message << "\\n";
+        return 1;
+    }
 
-    // 2. Ultra-Safe Login (Motherboard HWID Check + AES-256 Encryption)
+    // 3. Login with Motherboard HWID Lock
     if (auth.login("gamer123", "password123")) {
-        std::cout << "✅ [AUTHENTICATED] Welcome " << auth.user_data.username << "\\n";
+        std::cout << "✅ Authenticated! Welcome " << auth.user_data.username << "\\n";
         std::cout << "💎 Subscription: " << auth.user_data.subscription << "\\n";
-        std::cout << "🔒 Locked HWID:  " << auth.user_data.hwid.substr(0, 16) << "...\\n";
+        std::cout << "⏳ Expiry Date:  " << auth.user_data.expiry << "\\n";
         
-        // 3. Fetch Zero-Leak Encrypted Cloud Offsets
-        // std::string offset = auth.var("GAME_OFFSET");
+        // 4. Start 30-Second Security Watchdog Heartbeat
+        auth.start_heartbeat(30);
+
+        // 5. Fetch Protected Cloud Variable
+        std::string offset = auth.var("aimbot_offset");
+        std::cout << "Secure Memory Offset: " << offset << "\\n";
     } else {
-        std::cout << "❌ [BLOCKED] " << auth.response.message << "\\n";
+        std::cout << "❌ Blocked: " << auth.response.message << "\\n";
     }
     return 0;
 }`,
 
-    python: `# ================== JOYST CORPORATION PYTHON SDK ==================
+    python: `# ================== JOYST AUTH PYTHON CLIENT SDK ==================
 from auth_client import api
 
-# 1. Initialize
+# 1. Initialize Client Gateway
 auth = api(
-    name="SuperCheatPro",
-    ownerid="joyst_dev_88a91c",
-    secret="sec_77918750...",
-    version="2.5",
-    url="http://127.0.0.1:8000"
+    name="ApexLoader",
+    ownerid="joyst_owner_id",
+    secret="your_app_secret",
+    version="1.0"
 )
 
-# 2. Login User (Strict Motherboard HWID Binding)
+# 2. Authenticate User with Windows Hardware UUID
 if auth.login("gamer123", "password123"):
     print(f"✅ Login Success! Welcome {auth.user_data.username}")
     print(f"💎 Subscription: {auth.user_data.subscription}")
     print(f"⏳ Expiry: {auth.user_data.expiry}")
+    
+    # 3. Start Heartbeat Watchdog Thread
+    auth.start_heartbeat(interval_seconds=30)
+    
+    # 4. Fetch Secure Cloud Variable
+    payload = auth.var("game_config")
+    print("Received Encrypted Config:", payload)
 else:
-    print(f"❌ Blocked: {auth.response.message}")`,
+    print(f"❌ Access Denied: {auth.response.message}")`,
 
     csharp: `// ================== JOYST CORPORATION C# .NET SDK ==================
 using System;
@@ -366,12 +381,36 @@ function showLandingToast(msg) {
     toast.style.opacity = "1";
     toast.style.transform = "translateY(0)";
 
-    setTimeout(() => {
-        toast.style.opacity = "0";
-        toast.style.transform = "translateY(20px)";
-    }, 3200);
+// 8. Hero Security Enclave Simulator
+async function simulateHeroSecurityBlock() {
+    const badge = document.getElementById("hero-shield-status-badge");
+    const resultBox = document.getElementById("hero-shield-result-msg");
+    if (!resultBox) return;
+
+    if (badge) {
+        badge.textContent = "INTERCEPTING...";
+        badge.style.background = "rgba(239, 68, 68, 0.25)";
+        badge.style.color = "#f87171";
+    }
+
+    resultBox.style.display = "block";
+    resultBox.style.background = "rgba(225, 29, 72, 0.15)";
+    resultBox.style.border = "1px solid rgba(244, 63, 94, 0.4)";
+    resultBox.style.color = "#fca5a5";
+    resultBox.innerHTML = "⏳ [1/2] Hardware handshake received from foreign PC (UUID: 7A19-9B21-FF88)...";
+
+    await sleep(400);
+
+    resultBox.innerHTML = "🛡️ <strong>[HWID MISMATCH BLOCKED]</strong><br><span style='color:#cbd5e1;'>Client UUID does not match authorized Motherboard.<br>Session Terminated instantly (0.8ms). Audit Log dispatched!</span>";
+
+    if (badge) {
+        badge.textContent = "THREAT NEUTRALIZED";
+        badge.style.background = "rgba(16, 185, 129, 0.25)";
+        badge.style.color = "#34d399";
+    }
 }
 
 function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
+

@@ -27,7 +27,7 @@ class api:
     """
     Joyst Corporation Auth API Client (Exact KeyAuth parity)
     """
-    def __init__(self, name: str, ownerid: str, secret: str, version: str = "1.0", url: str = "http://127.0.0.1:8000"):
+    def __init__(self, name: str, ownerid: str, secret: str, version: str = "1.0", url: str = "https://joystauth.cc"):
         self.name = name
         self.ownerid = ownerid
         self.secret = secret

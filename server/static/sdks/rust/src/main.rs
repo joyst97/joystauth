@@ -90,7 +90,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     println!("      ⚡ JOYST CORPORATION - RUST AUTH DEMO       ");
     println!("==================================================");
 
-    let mut auth = api::new("JoystApp", "joyst_owner", "sec_default", "1.0", "http://127.0.0.1:8000");
+    let mut auth = api::new("JoystApp", "joyst_owner", "sec_default", "1.0", "https://joystauth.cc");
 
     println!("[+] Hardware ID (HWID): {}", auth.hwid);
     println!("[*] Initializing connection to Joyst server...");

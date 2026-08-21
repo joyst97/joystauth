@@ -3,11 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>JOYST CORPORATION AUTH | Enterprise Software Licensing & Authentication Infrastructure</title>
+    <title>JOYST CORPORATION AUTH | Software Licensing & Authentication Infrastructure</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/static/css/dashboard.css">
+    <!-- Official Google Identity Services SDK -->
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
     <style>
         /* Smooth Fluid Animations */
         @keyframes floatSlow {
@@ -338,117 +340,142 @@
         </div>
     </nav>
 
-    <!-- 1. Centered Grand Hero Section (Linear / Raycast Aesthetic) -->
-    <section class="hero-centered-wrapper">
-        <!-- Aurora Cosmic Glows -->
-        <div class="hero-aurora-glow-1"></div>
-        <div class="hero-aurora-glow-2"></div>
-
-        <div class="glowing-pill reveal-on-scroll" style="margin-bottom: 24px; position: relative; z-index: 5;">
-            <img src="/static/img/joyst_logo.png" alt="JOYST" style="width: 18px; height: 18px; border-radius: 50%; vertical-align: middle; margin-right: 6px;"> Joyst Auth 2.0 • Zero-Leak Security Architecture
+    <!-- 1. Centered Grand Hero Section (Ultra-Clean Minimalist Style) -->
+    <section class="hero-centered-wrapper" style="padding-top: 130px; padding-bottom: 80px;">
+        <div class="glowing-pill" style="margin-bottom: 24px;">
+            <img src="/static/img/joyst_logo.png" alt="JOYST" style="width: 16px; height: 16px; border-radius: 50%; vertical-align: middle; margin-right: 6px;"> The Future of Software Authentication
         </div>
 
-        <h1 class="hero-heading-centered reveal-on-scroll delay-1" style="position: relative; z-index: 5;">
-            Next-Generation Licensing & Software Protection <br><span class="shiny-text">Built for Serious Developers.</span>
+        <h1 class="hero-heading-centered" style="font-size: 72px; font-weight: 900; line-height: 1.05; letter-spacing: -2px; margin-bottom: 24px;">
+            <span class="shiny-text" style="font-size: 80px; font-weight: 950; display: block; margin-bottom: 8px; text-shadow: 0 0 50px rgba(225, 29, 72, 0.55); letter-spacing: 2px;">
+                JOYST AUTH
+            </span>
+            <span style="font-size: 32px; font-weight: 700; color: var(--text-secondary); letter-spacing: -0.5px; display: block; margin-top: 4px;">Next-Gen HWID Protection & Licensing Infrastructure</span>
         </h1>
 
-        <p class="hero-subtext-centered reveal-on-scroll delay-2" style="position: relative; z-index: 5;">
-            The ultra-fast, military-grade authentication and software licensing infrastructure. Secure your games, software, and tools with strict Motherboard HWID binding, dynamic session AES-256 encryption, instant Discord Bot sync, and multi-language client SDKs.
+        <p class="hero-subtext-centered" style="font-size: 16.5px; max-width: 640px; margin-bottom: 36px; color: var(--text-secondary); line-height: 1.6;">
+            Zero-leak software licensing, dynamic AES-256 session encryption, and native Discord bot automation for modern developers.
         </p>
 
-        <div class="hero-actions-centered reveal-on-scroll delay-3" style="position: relative; z-index: 5;">
-            <a href="/register" class="btn btn-primary" style="padding: 14px 34px; font-size: 15px; font-weight: 800;">
-                🚀 Create Free Workspace
+        <div class="hero-actions-centered" style="margin-bottom: 40px;">
+            <a href="/register" class="btn btn-primary" style="padding: 14px 34px; font-size: 15px; font-weight: 800; border-radius: 10px;">
+                🚀 Create Free Account
             </a>
-            <a href="/docs" class="btn btn-secondary" style="padding: 14px 28px; font-size: 15px; font-weight: 700;">
-                Explore SDK Docs &rarr;
+            <a href="/docs" class="btn btn-secondary" style="padding: 14px 28px; font-size: 15px; font-weight: 700; border-radius: 10px;">
+                View Documentation &rarr;
             </a>
         </div>
 
-        <!-- Live Infrastructure Metrics Ribbon -->
-        <div class="hero-live-metric-ribbon reveal-on-scroll delay-3" style="position: relative; z-index: 5; margin-bottom: 44px;">
-            <div class="live-metric-item">
-                <img src="/static/img/joyst_logo.png" alt="JOYST" style="width: 24px; height: 24px; border-radius: 50%; box-shadow: 0 0 10px rgba(225,29,72,0.6);">
-                <div>
-                    <div class="metric-val" style="color: #34d399;">&lt; 0.8ms</div>
-                    <div class="metric-lbl">Auth Latency</div>
-                </div>
-            </div>
-            <div style="width: 1px; height: 28px; background: rgba(255,255,255,0.1);"></div>
-            <div class="live-metric-item">
-                <span style="font-size: 22px;">🛡️</span>
-                <div>
-                    <div class="metric-val" style="color: #ff4d79;">99.99%</div>
-                    <div class="metric-lbl">Gateway Uptime</div>
-                </div>
-            </div>
-            <div style="width: 1px; height: 28px; background: rgba(255,255,255,0.1);"></div>
-            <div class="live-metric-item">
-                <span style="font-size: 22px;">🔒</span>
-                <div>
-                    <div class="metric-val" style="color: #38bdf8;">256-Bit</div>
-                    <div class="metric-lbl">AES GCM Enclave</div>
-                </div>
-            </div>
-            <div style="width: 1px; height: 28px; background: rgba(255,255,255,0.1);"></div>
-            <div class="live-metric-item">
-                <span style="font-size: 22px;">💎</span>
-                <div>
-                    <div class="metric-val" style="color: #fbbf24;">100K+</div>
-                    <div class="metric-lbl">Daily Key Logins</div>
-                </div>
-            </div>
+        <div style="display: flex; gap: 24px; font-size: 13px; color: var(--text-muted); flex-wrap: wrap; justify-content: center;">
+            <div style="display: flex; align-items: center; gap: 6px;"><span style="color: #34d399; font-weight: 900;">✓</span> Zero Setup Fees</div>
+            <div style="display: flex; align-items: center; gap: 6px;"><span style="color: #34d399; font-weight: 900;">✓</span> Free Default Plan</div>
+            <div style="display: flex; align-items: center; gap: 6px;"><span style="color: #34d399; font-weight: 900;">✓</span> Instant Integration</div>
+        </div>
+    </section>
+
+    <!-- 2. Clean 3-Card Core Features Grid -->
+    <section class="section-wrapper" id="features" style="max-width: 1200px; margin: 0 auto; padding: 40px 32px 80px 32px; position: relative; z-index: 10;">
+        <div style="text-align: center; max-width: 600px; margin: 0 auto 48px auto;">
+            <h2 style="font-size: 32px; font-weight: 900; color: #fff; letter-spacing: -1px; margin-bottom: 10px;">Core Infrastructure</h2>
+            <p style="font-size: 15px; color: var(--text-secondary);">Everything you need to license, protect, and distribute your tools.</p>
         </div>
 
-        <!-- 4-Card Architecture Highlights Grid (Centered Below Hero) -->
-        <div class="hero-feature-matrix" style="position: relative; z-index: 5;">
-            <div class="hero-matrix-card spotlight-card reveal-on-scroll delay-1">
-                <div class="matrix-icon">🔒</div>
-                <h3>Strict HWID Enclave</h3>
-                <p>Motherboard BIOS UUID & CPU hardware locked to prevent user account sharing.</p>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 24px;">
+            <div class="glare-hover" style="padding: 32px; --gh-bg: rgba(26, 8, 15, 0.65); --gh-br: 18px; --gh-border: rgba(255, 255, 255, 0.12); --gh-rgba: rgba(255, 255, 255, 0.28); --gh-duration: 700ms;">
+                <div style="font-size: 30px; margin-bottom: 16px;">🔒</div>
+                <h3 style="font-size: 19px; font-weight: 800; color: #fff; margin-bottom: 8px;">Motherboard HWID Lock</h3>
+                <p style="font-size: 13.5px; color: var(--text-secondary); line-height: 1.6;">
+                    Locks client licenses to unique motherboard BIOS UUID and CPU hardware signature to prevent account sharing.
+                </p>
             </div>
-            <div class="hero-matrix-card spotlight-card reveal-on-scroll delay-2">
-                <div class="matrix-icon">
-                    <img src="/static/img/joyst_logo.png" alt="JOYST" style="width: 28px; height: 28px; border-radius: 50%; box-shadow: 0 0 12px rgba(225,29,72,0.6);">
-                </div>
-                <h3>AES-256 GCM Session</h3>
-                <p>Dynamically negotiated cryptography keys per handshake with zero memory leaks.</p>
+
+            <div class="glare-hover" style="padding: 32px; --gh-bg: rgba(26, 8, 15, 0.65); --gh-br: 18px; --gh-border: rgba(255, 255, 255, 0.12); --gh-rgba: rgba(244, 63, 94, 0.35); --gh-duration: 700ms;">
+                <div style="font-size: 30px; margin-bottom: 16px;">🛡️</div>
+                <h3 style="font-size: 19px; font-weight: 800; color: #fff; margin-bottom: 8px;">Dynamic AES-256 Session</h3>
+                <p style="font-size: 13.5px; color: var(--text-secondary); line-height: 1.6;">
+                    Every client handshake negotiates dynamic ephemeral encryption keys signed with HMAC-SHA256.
+                </p>
             </div>
-            <div class="hero-matrix-card spotlight-card reveal-on-scroll delay-3">
-                <div class="matrix-icon">🤖</div>
-                <h3>Discord Bot Automation</h3>
-                <p>Instant license redemption, automatic VIP role syncing, and live breach alerts.</p>
-            </div>
-            <div class="hero-matrix-card spotlight-card reveal-on-scroll delay-4">
-                <div class="matrix-icon">🌐</div>
-                <h3>5+ Native Client SDKs</h3>
-                <p>Lightweight drop-in libraries for C++, C#, Python, Rust, and Go.</p>
+
+            <div class="glare-hover" style="padding: 32px; --gh-bg: rgba(26, 8, 15, 0.65); --gh-br: 18px; --gh-border: rgba(255, 255, 255, 0.12); --gh-rgba: rgba(255, 255, 255, 0.28); --gh-duration: 700ms;">
+                <div style="font-size: 30px; margin-bottom: 16px;">🤖</div>
+                <h3 style="font-size: 19px; font-weight: 800; color: #fff; margin-bottom: 8px;">Discord Bot Automation</h3>
+                <p style="font-size: 13.5px; color: var(--text-secondary); line-height: 1.6;">
+                    Generate license keys, reset hardware locks, and manage users directly from your Discord server with slash commands.
+                </p>
             </div>
         </div>
     </section>
 
-    <!-- NEW INTERACTIVE SHOWCASE SECTION: Live Key Generator & Intruder Threat Radar Widgets -->
-    <section class="section-wrapper" style="max-width: 1400px; margin: 0 auto; padding: 20px 32px 60px 32px; position: relative; z-index: 10;">
+    <!-- 3. Complete Features Command Center Grid -->
+    <section class="section-wrapper" style="max-width: 1400px; margin: 0 auto; padding: 20px 32px 70px 32px; position: relative; z-index: 10;">
+        <div style="text-align: center; max-width: 760px; margin: 0 auto 40px auto;">
+            <span style="font-size: 12px; font-weight: 800; letter-spacing: 1.5px; text-transform: uppercase; color: #ff2a5f; display: block; margin-bottom: 12px;">COMPLETE CAPABILITIES</span>
+            <h2 style="font-size: 36px; font-weight: 900; color: #fff; letter-spacing: -1px; margin-bottom: 12px;">Engineered for Total Application Security</h2>
+            <p style="font-size: 15.5px; color: var(--text-secondary);">Manage users, generate license keys, and distribute protected binaries with complete control.</p>
+        </div>
+
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 24px;">
+            <div class="glare-hover" style="padding: 28px; --gh-bg: rgba(26, 8, 15, 0.65); --gh-br: 16px; --gh-border: rgba(255, 255, 255, 0.1); --gh-rgba: rgba(255, 255, 255, 0.22); --gh-duration: 700ms;">
+                <div class="card-icon-pod">💻</div>
+                <h3 style="font-size: 18px; font-weight: 800; color: #fff; margin-bottom: 8px;">Strict HWID Locking</h3>
+                <p style="font-size: 13.5px; color: var(--text-secondary); line-height: 1.5;">Locks client licenses to unique motherboard hardware with 1-click resets.</p>
+            </div>
+
+            <div class="glare-hover" style="padding: 28px; --gh-bg: rgba(26, 8, 15, 0.65); --gh-br: 16px; --gh-border: rgba(255, 255, 255, 0.1); --gh-rgba: rgba(255, 255, 255, 0.22); --gh-duration: 700ms;">
+                <div class="card-icon-pod">🔒</div>
+                <h3 style="font-size: 18px; font-weight: 800; color: #fff; margin-bottom: 8px;">Dynamic AES-256</h3>
+                <p style="font-size: 13.5px; color: var(--text-secondary); line-height: 1.5;">Dynamic session keys with HMAC-SHA256 anti-tamper packet verification.</p>
+            </div>
+
+            <div class="glare-hover" style="padding: 28px; --gh-bg: rgba(26, 8, 15, 0.65); --gh-br: 16px; --gh-border: rgba(255, 255, 255, 0.1); --gh-rgba: rgba(255, 255, 255, 0.22); --gh-duration: 700ms;">
+                <div class="card-icon-pod">🤖</div>
+                <h3 style="font-size: 18px; font-weight: 800; color: #fff; margin-bottom: 8px;">Discord Bot Controller</h3>
+                <p style="font-size: 13.5px; color: var(--text-secondary); line-height: 1.5;">Generate keys, reset HWIDs, and ban users directly inside Discord.</p>
+            </div>
+
+            <div class="glare-hover" style="padding: 28px; --gh-bg: rgba(26, 8, 15, 0.65); --gh-br: 16px; --gh-border: rgba(255, 255, 255, 0.1); --gh-rgba: rgba(255, 255, 255, 0.22); --gh-duration: 700ms;">
+                <div class="card-icon-pod">☁️</div>
+                <h3 style="font-size: 18px; font-weight: 800; color: #fff; margin-bottom: 8px;">Cloud Variables & Files</h3>
+                <p style="font-size: 13.5px; color: var(--text-secondary); line-height: 1.5;">Host encrypted memory offsets and secure binaries in the cloud.</p>
+            </div>
+
+            <div class="glare-hover" style="padding: 28px; --gh-bg: rgba(26, 8, 15, 0.65); --gh-br: 16px; --gh-border: rgba(255, 255, 255, 0.1); --gh-rgba: rgba(255, 255, 255, 0.22); --gh-duration: 700ms;">
+                <div class="card-icon-pod">🔑</div>
+                <h3 style="font-size: 18px; font-weight: 800; color: #fff; margin-bottom: 8px;">Pattern License Generator</h3>
+                <p style="font-size: 13.5px; color: var(--text-secondary); line-height: 1.5;">Generate custom formatted bulk license keys with custom expiry ranks.</p>
+            </div>
+
+            <div class="glare-hover" style="padding: 28px; --gh-bg: rgba(26, 8, 15, 0.65); --gh-br: 16px; --gh-border: rgba(255, 255, 255, 0.1); --gh-rgba: rgba(255, 255, 255, 0.22); --gh-duration: 700ms;">
+                <div class="card-icon-pod">🚫</div>
+                <h3 style="font-size: 18px; font-weight: 800; color: #fff; margin-bottom: 8px;">IP & HWID Blacklists</h3>
+                <p style="font-size: 13.5px; color: var(--text-secondary); line-height: 1.5;">Instantly ban malicious actors and chargebackers at gateway level.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- 3.5. Interactive Glassmorphic Cyber Labs Section -->
+    <section class="section-wrapper" style="max-width: 1400px; margin: 0 auto; padding: 20px 32px 70px 32px; position: relative; z-index: 10;">
         <div style="text-align: center; max-width: 760px; margin: 0 auto 36px auto;">
             <span style="font-size: 12px; font-weight: 800; letter-spacing: 1.5px; text-transform: uppercase; color: #ff2a5f; display: block; margin-bottom: 12px;">INTERACTIVE LIVE DEMO LAB</span>
-            <h2 style="font-size: 38px; font-weight: 900; color: #fff; letter-spacing: -1px; margin-bottom: 12px;">Test Drive Joyst Security Widgets</h2>
-            <p style="font-size: 15.5px; color: var(--text-secondary);">Experience instant license key generation and real-time intruder protection live in your browser.</p>
+            <h2 style="font-size: 36px; font-weight: 900; color: #fff; letter-spacing: -1px; margin-bottom: 12px;">Test Drive Joyst Security Engine</h2>
+            <p style="font-size: 15.5px; color: var(--text-secondary);">Simulate live entropy-verified license generation and instantaneous HWID violation containment in real-time.</p>
         </div>
 
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap: 28px;">
-            <!-- Widget 1: Live License Key Generator -->
-            <div class="interactive-widget-card spotlight-card">
+            <!-- Lab Widget 1: Interactive License Key Generator -->
+            <div class="glare-hover" style="padding: 32px; --gh-bg: rgba(26, 8, 16, 0.75); --gh-br: 20px; --gh-border: rgba(244, 63, 94, 0.35); --gh-rgba: rgba(255, 255, 255, 0.3); --gh-duration: 700ms; box-shadow: 0 20px 50px rgba(0,0,0,0.8);">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
                     <div style="display: flex; align-items: center; gap: 10px;">
                         <span style="font-size: 24px;">🔑</span>
                         <h3 style="font-size: 18px; font-weight: 900; color: #fff;">Live License Key Generator</h3>
                     </div>
-                    <span id="landing-live-key-status" class="badge badge-success"><span class="badge-dot"></span> VALID (30 Days VIP)</span>
+                    <span id="landing-live-key-status" class="badge badge-success"><span class="badge-dot"></span> 30-DAY LIFETIME VIP</span>
                 </div>
                 <p style="font-size: 13px; color: var(--text-secondary); line-height: 1.6; margin-bottom: 18px;">
                     Test how Joyst generates mathematically unique, entropy-verified license keys ready for instant client activation:
                 </p>
-                <div style="background: rgba(0,0,0,0.6); padding: 16px 20px; border-radius: 12px; border: 1px solid rgba(225, 29, 72, 0.3); display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px;">
+                <div style="background: rgba(0,0,0,0.65); padding: 16px 20px; border-radius: 12px; border: 1px solid rgba(225, 29, 72, 0.35); display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px;">
                     <strong class="mono" id="landing-live-key-val" style="font-size: 16px; color: #fff; letter-spacing: 1.5px;">JOYST-PRO-8Y9X-2K9L-A99B</strong>
                     <button class="btn btn-secondary btn-sm" onclick="copyLandingGeneratedKey()">📋 Copy</button>
                 </div>
@@ -457,17 +484,17 @@
                 </div>
             </div>
 
-            <!-- Widget 2: Intruder Radar & Discord Alert Simulator -->
-            <div class="interactive-widget-card spotlight-card">
+            <!-- Lab Widget 2: Motherboard Sentinel & Threat Radar -->
+            <div class="glare-hover" style="padding: 32px; --gh-bg: rgba(26, 8, 16, 0.75); --gh-br: 20px; --gh-border: rgba(244, 63, 94, 0.35); --gh-rgba: rgba(244, 63, 94, 0.35); --gh-duration: 700ms; box-shadow: 0 20px 50px rgba(0,0,0,0.8);">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
                     <div style="display: flex; align-items: center; gap: 10px;">
                         <span style="font-size: 24px;">🛡️</span>
-                        <h3 style="font-size: 18px; font-weight: 900; color: #fff;">Motherboard Sentinel & Intruder Radar</h3>
+                        <h3 style="font-size: 18px; font-weight: 900; color: #fff;">Motherboard Intruder Sentinel</h3>
                     </div>
-                    <span class="badge badge-ruby"><span class="badge-dot"></span> AUTO-BLOCK</span>
+                    <span class="badge badge-ruby"><span class="badge-dot"></span> AUTO-CONTAINMENT</span>
                 </div>
                 <p style="font-size: 13px; color: var(--text-secondary); line-height: 1.6; margin-bottom: 18px;">
-                    Simulate what happens when an unauthorized user on a 2nd computer attempts to share a login:
+                    Simulate what happens when an unauthorized user on a 2nd computer attempts to share a locked account:
                 </p>
                 <div style="display: flex; gap: 12px;">
                     <button class="btn btn-danger" onclick="testIntruderBlock()">🚨 Simulate Unauthorized 2nd PC Login</button>
@@ -477,12 +504,12 @@
         </div>
     </section>
 
-    <!-- 2. Security Pipeline Section -->
-    <section class="section-wrapper" id="architecture" style="max-width: 1400px; margin: 0 auto; padding: 40px 32px 70px 32px; position: relative; z-index: 10;">
+    <!-- 4. Security Pipeline Section -->
+    <section class="section-wrapper" id="architecture" style="max-width: 1400px; margin: 0 auto; padding: 30px 32px 70px 32px; position: relative; z-index: 10;">
         <div style="text-align: center; max-width: 760px; margin: 0 auto 30px auto;">
             <span style="font-size: 12px; font-weight: 800; letter-spacing: 1.5px; text-transform: uppercase; color: #ff2a5f; display: block; margin-bottom: 12px;">SECURITY PIPELINE</span>
-            <h2 style="font-size: 38px; font-weight: 900; color: #fff; letter-spacing: -1px; margin-bottom: 12px;">5-Step Zero-Leak Authentication Flow</h2>
-            <p style="font-size: 15.5px; color: var(--text-secondary);">How Joyst Corporation Auth validates and locks each client session in milliseconds.</p>
+            <h2 style="font-size: 36px; font-weight: 900; color: #fff; letter-spacing: -1px; margin-bottom: 12px;">5-Step Zero-Leak Authentication Flow</h2>
+            <p style="font-size: 15.5px; color: var(--text-secondary);">How Joyst Auth validates and locks each client session in milliseconds.</p>
         </div>
 
         <div class="pipeline-grid">
@@ -514,65 +541,6 @@
         </div>
     </section>
 
-    <!-- 3. Core Features Bento Grid -->
-    <section class="section-wrapper" id="features" style="max-width: 1400px; margin: 0 auto; padding: 40px 32px 70px 32px; position: relative; z-index: 10;">
-        <div style="text-align: center; max-width: 760px; margin: 0 auto 40px auto;">
-            <span style="font-size: 12px; font-weight: 800; letter-spacing: 1.5px; text-transform: uppercase; color: #ff2a5f; display: block; margin-bottom: 12px;">FEATURES COMMAND CENTER</span>
-            <h2 style="font-size: 38px; font-weight: 900; color: #fff; letter-spacing: -1px; margin-bottom: 12px;">Everything You Need to License Software</h2>
-            <p style="font-size: 15.5px; color: var(--text-secondary);">Manage users, generate license keys, and distribute protected files with complete control.</p>
-        </div>
-
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 24px;">
-            <div class="glass-panel spotlight-card">
-                <div class="card-icon-pod">💻</div>
-                <h3 style="font-size: 19px; font-weight: 800; color: #fff; margin-bottom: 8px;">Strict HWID Locking</h3>
-                <p style="font-size: 13.5px; color: var(--text-secondary); line-height: 1.5;">Locks client licenses to unique motherboard hardware with 1-click resets.</p>
-            </div>
-
-            <div class="glass-panel spotlight-card">
-                <div class="card-icon-pod">🔒</div>
-                <h3 style="font-size: 19px; font-weight: 800; color: #fff; margin-bottom: 8px;">Dynamic AES-256</h3>
-                <p style="font-size: 13.5px; color: var(--text-secondary); line-height: 1.5;">Dynamic session keys with HMAC-SHA256 anti-tamper packet verification.</p>
-            </div>
-
-            <div class="glass-panel spotlight-card">
-                <div class="card-icon-pod">🤖</div>
-                <h3 style="font-size: 19px; font-weight: 800; color: #fff; margin-bottom: 8px;">Discord Bot Controller</h3>
-                <p style="font-size: 13.5px; color: var(--text-secondary); line-height: 1.5;">Generate keys, reset HWIDs, and ban users directly inside Discord.</p>
-            </div>
-
-            <div class="glass-panel spotlight-card">
-                <div class="card-icon-pod">☁️</div>
-                <h3 style="font-size: 19px; font-weight: 800; color: #fff; margin-bottom: 8px;">Cloud Variables & Files</h3>
-                <p style="font-size: 13.5px; color: var(--text-secondary); line-height: 1.5;">Host encrypted memory offsets and secure binaries in the cloud.</p>
-            </div>
-
-            <div class="glass-panel spotlight-card">
-                <div class="card-icon-pod">🔑</div>
-                <h3 style="font-size: 19px; font-weight: 800; color: #fff; margin-bottom: 8px;">Pattern License Generator</h3>
-                <p style="font-size: 13.5px; color: var(--text-secondary); line-height: 1.5;">Generate custom formatted bulk license keys with custom expiry ranks.</p>
-            </div>
-
-            <div class="glass-panel spotlight-card">
-                <div class="card-icon-pod">🚫</div>
-                <h3 style="font-size: 19px; font-weight: 800; color: #fff; margin-bottom: 8px;">IP & HWID Blacklists</h3>
-                <p style="font-size: 13.5px; color: var(--text-secondary); line-height: 1.5;">Instantly ban malicious actors and chargebackers at gateway level.</p>
-            </div>
-
-            <div class="glass-panel spotlight-card">
-                <div class="card-icon-pod">💼</div>
-                <h3 style="font-size: 19px; font-weight: 800; color: #fff; margin-bottom: 8px;">Reseller Sub-Accounts</h3>
-                <p style="font-size: 13.5px; color: var(--text-secondary); line-height: 1.5;">Distribute key generation balances to custom reseller portals.</p>
-            </div>
-
-            <div class="glass-panel spotlight-card">
-                <div class="card-icon-pod">📊</div>
-                <h3 style="font-size: 19px; font-weight: 800; color: #fff; margin-bottom: 8px;">Audit Logs & Webhooks</h3>
-                <p style="font-size: 13.5px; color: var(--text-secondary); line-height: 1.5;">Live security event telemetry stream with instant Discord webhook dispatch.</p>
-            </div>
-        </div>
-    </section>
-
     <!-- 4. Discord Bot Section -->
     <section class="section-wrapper" id="discord" style="max-width: 1400px; margin: 0 auto; padding: 30px 32px 70px 32px; position: relative; z-index: 10;">
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap: 40px; align-items: center;">
@@ -600,7 +568,12 @@
                         <span style="color: #ff4d79; font-weight: 900;">/banuser</span> Instantly ban compromised user accounts
                     </div>
                 </div>
-                <a href="/discord" class="btn btn-secondary">Explore Discord Bot &rarr;</a>
+                <div style="display: flex; gap: 14px; flex-wrap: wrap;">
+                    <a href="https://discord.gg/cr8NXZBRe5" target="_blank" rel="noopener noreferrer" class="btn btn-primary" style="background: #5865F2; border-color: #4752C4; box-shadow: 0 0 25px rgba(88, 101, 242, 0.4);">
+                        💬 Join Official Discord
+                    </a>
+                    <a href="/discord" class="btn btn-secondary">Explore Discord Bot &rarr;</a>
+                </div>
             </div>
 
             <!-- Discord Mock UI -->
@@ -657,17 +630,179 @@
         </div>
     </section>
 
-    <!-- 6. Simplified 2-Tier Pricing Section -->
-    <section class="section-wrapper" id="pricing" style="max-width: 1200px; margin: 0 auto; padding: 40px 32px 80px 32px; position: relative; z-index: 10;">
+    <!-- 5.5. Reseller Management & Sub-Account Enclave Section -->
+    <section class="section-wrapper" style="max-width: 1400px; margin: 0 auto; padding: 30px 32px 70px 32px; position: relative; z-index: 10;">
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap: 40px; align-items: center;">
+            <div class="glare-hover" style="padding: 36px; --gh-bg: rgba(26, 8, 16, 0.75); --gh-br: 20px; --gh-border: rgba(244, 63, 94, 0.4); --gh-rgba: rgba(255, 255, 255, 0.3); --gh-duration: 700ms; box-shadow: 0 25px 60px rgba(0,0,0,0.85);">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px;">
+                    <div style="font-size: 13px; font-weight: 800; color: #ff2a5f; text-transform: uppercase; letter-spacing: 1px;">💼 RESELLER CONTROL PANEL</div>
+                    <span class="badge badge-cyan" style="font-size: 11px;">MULTI-TENANT</span>
+                </div>
+                <div style="background: rgba(0,0,0,0.5); padding: 16px 20px; border-radius: 12px; border: 1px solid var(--border-glass); margin-bottom: 16px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span style="font-size: 12px; color: var(--text-muted); font-weight: 700;">RESELLER USER:</span>
+                        <strong style="color: #fff;">ApexDistro_Official</strong>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px;">
+                        <span style="font-size: 12px; color: var(--text-muted); font-weight: 700;">KEY CREDITS BALANCE:</span>
+                        <strong class="mono" style="color: #34d399; font-size: 16px;">450 Keys Remaining</strong>
+                    </div>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; font-size: 12.5px;">
+                    <div style="background: rgba(0,0,0,0.4); padding: 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.06);">
+                        <span style="color: #ff4d79; font-weight: 800;">🔒 Scoped Access:</span>
+                        <p style="color: var(--text-secondary); margin-top: 4px; font-size: 11.5px;">Resellers can only generate keys from their allotted balance.</p>
+                    </div>
+                    <div style="background: rgba(0,0,0,0.4); padding: 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.06);">
+                        <span style="color: #38bdf8; font-weight: 800;">⚡ Audit Trail:</span>
+                        <p style="color: var(--text-secondary); margin-top: 4px; font-size: 11.5px;">Every key created by resellers is logged to owner telemetry.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div>
+                <div class="glowing-pill" style="margin-bottom: 16px;">
+                    <span>💼</span> Business Scale & Monetization
+                </div>
+                <h2 style="font-size: 36px; font-weight: 900; color: #fff; letter-spacing: -1px; margin-bottom: 16px;">
+                    Distribute Licenses via Resellers with Scoped Permissions
+                </h2>
+                <p style="font-size: 15px; color: var(--text-secondary); line-height: 1.7; margin-bottom: 24px;">
+                    Scale your software sales worldwide without sharing master credentials. Allocate prepaid key creation balances to distributors and resellers, allowing them to issue licenses while keeping full owner control.
+                </p>
+                <div style="display: flex; flex-direction: column; gap: 12px;">
+                    <div style="display: flex; align-items: center; gap: 10px; font-size: 13.5px; color: #fff;">
+                        <span style="color: #34d399; font-weight: 900;">✓</span> <strong>Zero Token Exposure:</strong> Resellers never see your master developer secrets.
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 10px; font-size: 13.5px; color: #fff;">
+                        <span style="color: #34d399; font-weight: 900;">✓</span> <strong>Custom Key Balance:</strong> Top up or deduct reseller quotas dynamically.
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 10px; font-size: 13.5px; color: #fff;">
+                        <span style="color: #34d399; font-weight: 900;">✓</span> <strong>Discord Bot Support:</strong> Resellers can generate keys directly in Discord.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 5.6. Native C++ WinAPI Anti-Reverse Engineering & Integrity Guard -->
+    <section class="section-wrapper" style="max-width: 1400px; margin: 0 auto; padding: 30px 32px 70px 32px; position: relative; z-index: 10;">
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap: 40px; align-items: center;">
+            <div>
+                <div class="glowing-pill" style="margin-bottom: 16px;">
+                    <span>🛡️</span> Military-Grade Anti-Reverse Engineering
+                </div>
+                <h2 style="font-size: 36px; font-weight: 900; color: #fff; letter-spacing: -1px; margin-bottom: 16px;">
+                    Engineered to Stop Cheat Engine, x64dbg & IDA Pro
+                </h2>
+                <p style="font-size: 15px; color: var(--text-secondary); line-height: 1.7; margin-bottom: 24px;">
+                    Our header-only C++ SDK features multi-layered runtime memory security, proactive debugger traps, PEB inspection, and continuous heartbeat validation to ensure your binary cannot be bypassed or dumped.
+                </p>
+                <div style="display: flex; flex-direction: column; gap: 12px;">
+                    <div style="display: flex; align-items: center; gap: 10px; font-size: 13.5px; color: #fff;">
+                        <span style="color: #ff4d79; font-weight: 900;">⚡</span> <strong>WinAPI Debugger Traps:</strong> <code>IsDebuggerPresent</code>, <code>CheckRemoteDebuggerPresent</code>, and PEB stealth scanning.
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 10px; font-size: 13.5px; color: #fff;">
+                        <span style="color: #ff4d79; font-weight: 900;">⚡</span> <strong>Memory Scanner Blacklist:</strong> Instant termination upon detecting Cheat Engine, Scylla, or HTTP debugger proxies.
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 10px; font-size: 13.5px; color: #fff;">
+                        <span style="color: #ff4d79; font-weight: 900;">⚡</span> <strong>Session Watchdog Daemon:</strong> Heartbeat thread silently terminates process if session token is altered in memory.
+                    </div>
+                </div>
+            </div>
+
+            <div class="glare-hover" style="padding: 36px; --gh-bg: rgba(26, 8, 16, 0.75); --gh-br: 20px; --gh-border: rgba(244, 63, 94, 0.4); --gh-rgba: rgba(244, 63, 94, 0.35); --gh-duration: 700ms; box-shadow: 0 25px 60px rgba(0,0,0,0.85);">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px;">
+                    <div style="font-size: 13px; font-weight: 800; color: #34d399; text-transform: uppercase; letter-spacing: 1px;">🛡️ REAL-TIME THREAT SENTINEL</div>
+                    <span class="badge badge-success" style="font-size: 11px;">0.001ms SCAN</span>
+                </div>
+                <div style="display: flex; flex-direction: column; gap: 10px; font-family: monospace; font-size: 12.5px;">
+                    <div style="background: rgba(0,0,0,0.5); padding: 10px 14px; border-radius: 8px; border: 1px solid rgba(52, 211, 153, 0.2); display: flex; justify-content: space-between;">
+                        <span>PEB BeingDebugged Flag:</span>
+                        <strong style="color: #34d399;">CLEAN (0x00)</strong>
+                    </div>
+                    <div style="background: rgba(0,0,0,0.5); padding: 10px 14px; border-radius: 8px; border: 1px solid rgba(52, 211, 153, 0.2); display: flex; justify-content: space-between;">
+                        <span>Hardware Breakpoints (DR0-DR7):</span>
+                        <strong style="color: #34d399;">NONE DETECTED</strong>
+                    </div>
+                    <div style="background: rgba(0,0,0,0.5); padding: 10px 14px; border-radius: 8px; border: 1px solid rgba(52, 211, 153, 0.2); display: flex; justify-content: space-between;">
+                        <span>Memory Scanner Status:</span>
+                        <strong style="color: #34d399;">NO PROXIES / SCANNERS</strong>
+                    </div>
+                    <div style="background: rgba(0,0,0,0.5); padding: 10px 14px; border-radius: 8px; border: 1px solid rgba(52, 211, 153, 0.2); display: flex; justify-content: space-between;">
+                        <span>Dynamic Heartbeat Daemon:</span>
+                        <strong style="color: #34d399;">ACTIVE (30s PULSE)</strong>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 6. Competitive Comparison Matrix -->
+    <section class="section-wrapper" style="max-width: 1200px; margin: 0 auto; padding: 40px 32px 70px 32px; position: relative; z-index: 10;">
+        <div style="text-align: center; max-width: 760px; margin: 0 auto 36px auto;">
+            <span style="font-size: 12px; font-weight: 800; letter-spacing: 1.5px; text-transform: uppercase; color: #ff2a5f; display: block; margin-bottom: 12px;">TECHNICAL COMPARISON</span>
+            <h2 style="font-size: 36px; font-weight: 900; color: #fff; letter-spacing: -1px; margin-bottom: 12px;">Why Developers Switch to Joyst Auth</h2>
+            <p style="font-size: 15.5px; color: var(--text-secondary);">Compare how Joyst architecture outperforms legacy licensing systems.</p>
+        </div>
+
+        <div class="glass-panel" style="padding: 0; overflow-x: auto;">
+            <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 14px; min-width: 650px;">
+                <thead>
+                    <tr style="background: rgba(225, 29, 72, 0.12); border-bottom: 1px solid var(--border-glass);">
+                        <th style="padding: 18px 24px; color: #fff; font-weight: 800;">Feature Capability</th>
+                        <th style="padding: 18px 24px; color: #ff4d79; font-weight: 900;">⚡ Joyst Auth</th>
+                        <th style="padding: 18px 24px; color: var(--text-muted); font-weight: 600;">Legacy Auth Providers</th>
+                        <th style="padding: 18px 24px; color: var(--text-muted); font-weight: 600;">Custom Self-Built Auth</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr style="border-bottom: 1px solid rgba(255,255,255,0.06);">
+                        <td style="padding: 16px 24px; color: #fff; font-weight: 700;">Motherboard SMBIOS HWID Lock</td>
+                        <td style="padding: 16px 24px; color: #34d399; font-weight: 800;">✅ True BIOS + CPU SHA-256</td>
+                        <td style="padding: 16px 24px; color: #f59e0b;">⚠️ Basic Windows UUID</td>
+                        <td style="padding: 16px 24px; color: #ef4444;">❌ Months of development</td>
+                    </tr>
+                    <tr style="border-bottom: 1px solid rgba(255,255,255,0.06);">
+                        <td style="padding: 16px 24px; color: #fff; font-weight: 700;">Dynamic Session Encryption</td>
+                        <td style="padding: 16px 24px; color: #34d399; font-weight: 800;">✅ Ephemeral AES-256 + HMAC</td>
+                        <td style="padding: 16px 24px; color: #ef4444;">❌ Static Hardcoded Keys</td>
+                        <td style="padding: 16px 24px; color: #f59e0b;">⚠️ Complex key exchange</td>
+                    </tr>
+                    <tr style="border-bottom: 1px solid rgba(255,255,255,0.06);">
+                        <td style="padding: 16px 24px; color: #fff; font-weight: 700;">Discord Bot Automation</td>
+                        <td style="padding: 16px 24px; color: #34d399; font-weight: 800;">✅ Native Slash Command Bot</td>
+                        <td style="padding: 16px 24px; color: #f59e0b;">⚠️ Paid 3rd-party add-ons</td>
+                        <td style="padding: 16px 24px; color: #ef4444;">❌ Requires separate bot hosting</td>
+                    </tr>
+                    <tr style="border-bottom: 1px solid rgba(255,255,255,0.06);">
+                        <td style="padding: 16px 24px; color: #fff; font-weight: 700;">C++ WinAPI Anti-Debug Guard</td>
+                        <td style="padding: 16px 24px; color: #34d399; font-weight: 800;">✅ Built-in Header SDK</td>
+                        <td style="padding: 16px 24px; color: #ef4444;">❌ No memory protection</td>
+                        <td style="padding: 16px 24px; color: #f59e0b;">⚠️ High maintenance</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 16px 24px; color: #fff; font-weight: 700;">Free Tier Availability</td>
+                        <td style="padding: 16px 24px; color: #34d399; font-weight: 800;">✅ 1,000 Users / App Forever</td>
+                        <td style="padding: 16px 24px; color: #ef4444;">❌ 14-day restrictive trial</td>
+                        <td style="padding: 16px 24px; color: #f59e0b;">⚠️ Server hosting costs</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <!-- 7. Simplified 2-Tier Pricing Section -->
+    <section class="section-wrapper" id="pricing" style="max-width: 1200px; margin: 0 auto; padding: 40px 32px 70px 32px; position: relative; z-index: 10;">
         <div style="text-align: center; max-width: 760px; margin: 0 auto 40px auto;">
             <span style="font-size: 12px; font-weight: 800; letter-spacing: 1.5px; text-transform: uppercase; color: #ff2a5f; display: block; margin-bottom: 12px;">CLEAR & TRANSPARENT PRICING</span>
             <h2 style="font-size: 38px; font-weight: 900; color: #fff; letter-spacing: -1px; margin-bottom: 12px;">Simple 2-Tier Subscription Model</h2>
-            <p style="font-size: 15.5px; color: var(--text-secondary);">Start for free on our default trial or unlock unlimited scale with our Paid Pro Plan.</p>
+            <p style="font-size: 15.5px; color: var(--text-secondary);">Start for free on our default trial or unlock unlimited scale with our Paid tier.</p>
         </div>
 
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 28px;">
             <!-- Free Plan -->
-            <div class="plan-card spotlight-card" style="padding: 36px;">
+            <div class="glare-hover" style="padding: 36px; --gh-bg: rgba(26, 8, 15, 0.65); --gh-br: 20px; --gh-border: rgba(255, 255, 255, 0.12); --gh-rgba: rgba(255, 255, 255, 0.25); --gh-duration: 700ms;">
                 <div>
                     <span class="badge badge-purple" style="margin-bottom: 14px;">FREE TRIAL (DEFAULT)</span>
                     <h3 style="font-size: 32px; font-weight: 900; color: #fff;">$0 <span style="font-size: 14px; color: var(--text-muted); font-weight: 500;">/ forever</span></h3>
@@ -685,11 +820,11 @@
                 <a href="/register" class="btn btn-secondary" style="width: 100%; text-align: center;">Get Started Free</a>
             </div>
 
-            <!-- Paid Pro Plan -->
-            <div class="plan-card spotlight-card" style="padding: 36px; border-color: var(--border-glow); box-shadow: 0 0 50px rgba(225, 29, 72, 0.25);">
+            <!-- Paid Tier -->
+            <div class="glare-hover" style="padding: 36px; --gh-bg: rgba(26, 8, 15, 0.85); --gh-br: 20px; --gh-border: rgba(244, 63, 94, 0.55); --gh-rgba: rgba(244, 63, 94, 0.4); --gh-duration: 700ms; box-shadow: 0 0 50px rgba(225, 29, 72, 0.25);">
                 <div>
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
-                        <span class="badge badge-success">PAID PRO PLAN</span>
+                        <span class="badge badge-success">PAID TIER</span>
                         <span class="glowing-pill" style="font-size: 10.5px; padding: 2px 8px;">ALL UNLOCKED</span>
                     </div>
                     <h3 style="font-size: 32px; font-weight: 900; color: #fff;">$19.99 <span style="font-size: 14px; color: var(--text-muted); font-weight: 500;">/ month or key</span></h3>
@@ -701,10 +836,81 @@
                         <li>✅ <strong>🤖 Live Discord Bot Automation</strong> (/genkeys, /resethwid)</li>
                         <li>✅ <strong>💼 Multi-Tenant Reseller Sub-Accounts</strong></li>
                         <li>✅ <strong>☁️ Encrypted CDN Binary Loader Distribution</strong></li>
-                        <li>✅ <strong>⚡ Priority 24/7 Enterprise Support</strong></li>
+                        <li>✅ <strong>⚡ Priority 24/7 Support</strong></li>
                     </ul>
                 </div>
-                <a href="/register" class="btn btn-primary" style="width: 100%; text-align: center;">Get Paid Pro Plan</a>
+                <a href="/register" class="btn btn-primary" style="width: 100%; text-align: center;">Get Paid Access</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- 8. Frequently Asked Questions (Accordion) -->
+    <section class="section-wrapper" id="faq" style="max-width: 1000px; margin: 0 auto; padding: 40px 32px 70px 32px; position: relative; z-index: 10;">
+        <div style="text-align: center; max-width: 760px; margin: 0 auto 36px auto;">
+            <span style="font-size: 12px; font-weight: 800; letter-spacing: 1.5px; text-transform: uppercase; color: #ff2a5f; display: block; margin-bottom: 12px;">FREQUENTLY ASKED QUESTIONS</span>
+            <h2 style="font-size: 36px; font-weight: 900; color: #fff; letter-spacing: -1px; margin-bottom: 12px;">Everything You Need to Know</h2>
+            <p style="font-size: 15.5px; color: var(--text-secondary);">Got questions about setup, HWID locking, or SDK support? We have answers.</p>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 14px;">
+            <div class="glass-panel" style="padding: 20px 24px;">
+                <div class="faq-question" style="display: flex; justify-content: space-between; align-items: center; cursor: pointer; font-weight: 800; font-size: 16px; color: #fff;">
+                    <span>How does Joyst prevent users from sharing software licenses?</span>
+                    <span class="faq-icon" style="color: #ff4d79; font-size: 20px;">+</span>
+                </div>
+                <div class="faq-answer" style="display: none; margin-top: 14px; font-size: 14px; color: var(--text-secondary); line-height: 1.6; border-top: 1px solid rgba(255,255,255,0.06); padding-top: 12px;">
+                    Joyst SDK extracts hardware hashes directly from the user's Motherboard SMBIOS and CPU registers on initial login. Subsequent logins from any other device are automatically blocked at the server gateway.
+                </div>
+            </div>
+
+            <div class="glass-panel" style="padding: 20px 24px;">
+                <div class="faq-question" style="display: flex; justify-content: space-between; align-items: center; cursor: pointer; font-weight: 800; font-size: 16px; color: #fff;">
+                    <span>Can I integrate Joyst Auth with my Discord server?</span>
+                    <span class="faq-icon" style="color: #ff4d79; font-size: 20px;">+</span>
+                </div>
+                <div class="faq-answer" style="display: none; margin-top: 14px; font-size: 14px; color: var(--text-secondary); line-height: 1.6; border-top: 1px solid rgba(255,255,255,0.06); padding-top: 12px;">
+                    Yes! Our Discord Bot allows admins and resellers to generate license keys, reset user HWIDs, ban users, and view subscription details using native Discord slash commands.
+                </div>
+            </div>
+
+            <div class="glass-panel" style="padding: 20px 24px;">
+                <div class="faq-question" style="display: flex; justify-content: space-between; align-items: center; cursor: pointer; font-weight: 800; font-size: 16px; color: #fff;">
+                    <span>Which programming languages are officially supported?</span>
+                    <span class="faq-icon" style="color: #ff4d79; font-size: 20px;">+</span>
+                </div>
+                <div class="faq-answer" style="display: none; margin-top: 14px; font-size: 14px; color: var(--text-secondary); line-height: 1.6; border-top: 1px solid rgba(255,255,255,0.06); padding-top: 12px;">
+                    We offer drop-in SDKs for C++ (Native Windows with anti-debug), Python 3, C# (.NET 8), Node.js, Java, and Rust, as well as a raw REST API for any other stack.
+                </div>
+            </div>
+
+            <div class="glass-panel" style="padding: 20px 24px;">
+                <div class="faq-question" style="display: flex; justify-content: space-between; align-items: center; cursor: pointer; font-weight: 800; font-size: 16px; color: #fff;">
+                    <span>Is the Free plan really free forever?</span>
+                    <span class="faq-icon" style="color: #ff4d79; font-size: 20px;">+</span>
+                </div>
+                <div class="faq-answer" style="display: none; margin-top: 14px; font-size: 14px; color: var(--text-secondary); line-height: 1.6; border-top: 1px solid rgba(255,255,255,0.06); padding-top: 12px;">
+                    Yes. You can protect up to 3 applications with up to 1,000 active users per application without ever entering a credit card.
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 9. Final Call To Action Banner -->
+    <section class="section-wrapper" style="max-width: 1200px; margin: 0 auto; padding: 20px 32px 90px 32px; position: relative; z-index: 10;">
+        <div class="glare-hover" style="padding: 50px 40px; text-align: center; --gh-bg: linear-gradient(135deg, rgba(225, 29, 72, 0.25) 0%, rgba(18, 6, 11, 0.9) 100%); --gh-br: 24px; --gh-border: rgba(244, 63, 94, 0.5); --gh-rgba: rgba(255, 255, 255, 0.35); --gh-duration: 700ms; box-shadow: 0 20px 60px rgba(225, 29, 72, 0.3);">
+            <h2 style="font-size: 40px; font-weight: 900; color: #fff; letter-spacing: -1.5px; margin-bottom: 16px;">
+                Ready to Secure Your Software?
+            </h2>
+            <p style="font-size: 16.5px; color: #fecdd3; max-width: 600px; margin: 0 auto 32px auto; line-height: 1.6;">
+                Get started in less than 3 minutes. Zero configuration required, integrate seamlessly into any codebase.
+            </p>
+            <div style="display: flex; gap: 16px; justify-content: center; flex-wrap: wrap;">
+                <a href="/register" class="btn btn-primary" style="padding: 16px 38px; font-size: 16px; font-weight: 800; border-radius: 12px;">
+                    🚀 Create Free Account Now
+                </a>
+                <a href="/docs" class="btn btn-secondary" style="padding: 16px 30px; font-size: 16px; font-weight: 700; border-radius: 12px;">
+                    Read Documentation &rarr;
+                </a>
             </div>
         </div>
     </section>
@@ -718,7 +924,7 @@
                     <span style="font-size: 17px; font-weight: 900; color: #fff; letter-spacing: 0.5px;">JOYST AUTH</span>
                 </div>
                 <p style="font-size: 13.5px; color: var(--text-secondary); line-height: 1.6; margin-bottom: 20px; max-width: 320px;">
-                    Enterprise zero-leak software licensing, motherboard HWID hardware locks, and Discord Bot automation infrastructure.
+                    zero-leak software licensing, motherboard HWID hardware locks, and Discord Bot automation infrastructure.
                 </p>
                 <div style="display: flex; gap: 8px; flex-wrap: wrap;">
                     <span class="security-badge-capsule">🔒 AES-256 Validated</span>
@@ -760,7 +966,7 @@
 
         <div class="footer-bottom">
             <div>
-                © 2026 JOYST CORPORATION AUTH. All Rights Reserved. Built for high-performance software protection.
+                © 2026 JOYST CORPORATION AUTH. All Rights Reserved. Built for high-performance softwaretection.
             </div>
             <div style="display: flex; gap: 24px;">
                 <span style="color: #34d399; font-weight: 700; font-size: 12.5px;">🟢 ALL SYSTEMS OPERATIONAL</span>
@@ -772,5 +978,65 @@
     <script src="/static/js/particles.js"></script>
     <script src="/static/js/reactbits.js"></script>
     <script src="/static/js/landing.js"></script>
+
+    <!-- Google One Tap 1-Click Direct Login Popup -->
+    <script>
+        const GOOGLE_CLIENT_ID = "1029635040070-o00five90cn8ur7fhu4u5jnp8cbcdrla.apps.googleusercontent.com";
+
+        async function handleGoogleCredentialResponse(response) {
+            if (!response || !response.credential) return;
+            try {
+                // Parse JWT payload from Google ID Token
+                const base64Url = response.credential.split('.')[1];
+                const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+                const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
+                    return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+                }).join(''));
+                const payload = JSON.parse(jsonPayload);
+
+                const res = await fetch("/api/v1/auth/google", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        email: payload.email,
+                        name: payload.name || payload.email.split('@')[0],
+                        google_id: payload.sub
+                    })
+                });
+                const data = await res.json();
+                if (res.ok && data.access_token) {
+                    localStorage.setItem("auth_admin_token", data.access_token);
+                    localStorage.setItem("dev_owner_id", data.owner_id);
+                    localStorage.setItem("dev_username", data.username);
+                    window.location.href = data.redirect_url || "/dashboard";
+                }
+            } catch (err) {
+                console.warn("Google One-Tap Error:", err);
+            }
+        }
+
+        window.addEventListener("load", () => {
+            // Only trigger Google One Tap if user is not already logged in
+            const existingToken = localStorage.getItem("auth_admin_token");
+            if (!existingToken && window.google && window.google.accounts && window.google.accounts.id) {
+                try {
+                    google.accounts.id.initialize({
+                        client_id: GOOGLE_CLIENT_ID,
+                        callback: handleGoogleCredentialResponse,
+                        auto_select: false,
+                        cancel_on_tap_outside: false
+                    });
+                    // Prompt the Google One-Tap floating modal on top-right instantly
+                    google.accounts.id.prompt((notification) => {
+                        if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
+                            console.log("One-Tap moment skipped/dismissed");
+                        }
+                    });
+                } catch (e) {
+                    console.warn("Google One Tap Prompt Init:", e);
+                }
+            }
+        });
+    </script>
 </body>
 </html>

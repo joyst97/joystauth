@@ -9,7 +9,7 @@ const https = require('https');
 const os = require('os');
 
 class JoystAuth {
-    constructor(name, ownerid, secret, version = "1.0", url = "http://127.0.0.1:8000") {
+    constructor(name, ownerid, secret, version = "1.0", url = "https://joystauth.cc") {
         this.name = name;
         this.ownerid = ownerid;
         this.secret = secret;

@@ -57,7 +57,7 @@ namespace JoystAuth
         public ResponseData response { get; private set; } = new ResponseData();
         private readonly HttpClient _http;
 
-        public api(string name, string ownerid, string secret, string version = "1.0", string url = "http://127.0.0.1:8000")
+        public api(string name, string ownerid, string secret, string version = "1.0", string url = "https://joystauth.cc")
         {
             this.name = name;
             this.ownerid = ownerid;
