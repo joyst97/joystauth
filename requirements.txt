@@ -11,5 +11,3 @@ aiofiles>=23.1.0
 pydantic>=2.0.0
 discord.py>=2.3.0
 psycopg2-binary>=2.9.9
-pymongo>=4.6.0
-dnspython>=2.5.0
