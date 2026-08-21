@@ -87,7 +87,7 @@ async function initDashboard() {
 
     // 2. Fetch fresh data in parallel
     try {
-        awaitmise.all([
+        await Promise.all([
             loadUserProfile(),
             loadApps()
         ]);
