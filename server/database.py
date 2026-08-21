@@ -4,12 +4,25 @@ from sqlalchemy import create_engine, Column, String, Integer, Boolean, DateTime
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, relationship
 
+# Global Cloud Database Engine (MongoDB Atlas + SQL Bridge)
+DEFAULT_MONGO_URI = "mongodb+srv://joyst:JoystAuth6969@cluster0.xflp74i.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
+MONGO_URI = os.environ.get("MONGO_URI") or DEFAULT_MONGO_URI
+
+mongo_client = None
+mongo_db = None
+try:
+    from pymongo import MongoClient
+    mongo_client = MongoClient(MONGO_URI, serverSelectionTimeoutMS=4000)
+    mongo_db = mongo_client["joyst_auth"]
+except Exception as e:
+    print(f"[JOYST MONGO] Atlas connection notice: {e}")
+
 DATABASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DATABASE_FILE = os.path.join(DATABASE_DIR, "joyst_corp.db")
 if os.environ.get("VERCEL") or os.environ.get("AWS_LAMBDA_FUNCTION_NAME"):
     DATABASE_FILE = "/tmp/joyst_corp.db"
 
-# Cloud Database URL (Supabase / Neon / PostgreSQL)
+# Cloud Database URL fallback
 DATABASE_URL = os.environ.get("DATABASE_URL")
 
 engine = None
@@ -24,11 +37,9 @@ if DATABASE_URL:
             max_overflow=10,
             pool_recycle=300
         )
-        # Test connection
         with engine.connect() as test_conn:
             pass
     except Exception as e:
-        print(f"[JOYST DATABASE] Cloud Database connection failed ({e}), falling back to SQLite.")
         engine = None
 
 if engine is None:
