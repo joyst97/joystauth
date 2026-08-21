@@ -279,24 +279,29 @@ async function loadApps() {
     if (!data || !data.success) return;
 
     appsList = data.apps || [];
-    const select = document.getElementById("overview-app-select") || document.getElementById("header-app-select");
-    if (!select) return;
+    const selects = [document.getElementById("overview-app-select"), document.getElementById("header-app-select")].filter(Boolean);
+    if (selects.length === 0) return;
 
-    select.innerHTML = "";
+    selects.forEach(select => {
+        select.innerHTML = "";
+        if (appsList.length === 0) {
+            select.innerHTML = `<option value="">No Apps Created</option>`;
+        } else {
+            appsList.forEach(app => {
+                const opt = document.createElement("option");
+                opt.value = app.id;
+                opt.textContent = `${app.name} (v${app.version})`;
+                select.appendChild(opt);
+            });
+        }
+    });
+
     if (appsList.length === 0) {
-        select.innerHTML = `<option value="">No Apps Created</option>`;
         currentAppId = null;
         localStorage.removeItem("selected_app_id");
         updateBannerCredentials();
         return;
     }
-
-    appsList.forEach(app => {
-        const opt = document.createElement("option");
-        opt.value = app.id;
-        opt.textContent = `${app.name} (v${app.version})`;
-        select.appendChild(opt);
-    });
 
     const savedAppId = parseInt(localStorage.getItem("selected_app_id"));
     if (savedAppId && appsList.some(a => a.id === savedAppId)) {
@@ -305,20 +310,21 @@ async function loadApps() {
         currentAppId = appsList[0].id;
         localStorage.setItem("selected_app_id", currentAppId);
     }
-    select.value = currentAppId;
-
-    select.onchange = (e) => {
-        currentAppId = e.target.value ? parseInt(e.target.value) : null;
-        if (currentAppId) {
-            localStorage.setItem("selected_app_id", currentAppId);
-        } else {
-            localStorage.removeItem("selected_app_id");
-        }
-        updateBannerCredentials();
-        loadGlobalStats();
-        loadActiveTab();
-    };
-
+    
+    selects.forEach(select => {
+        select.value = currentAppId;
+        select.onchange = (e) => {
+            currentAppId = e.target.value ? parseInt(e.target.value) : null;
+            if (currentAppId) {
+                localStorage.setItem("selected_app_id", currentAppId);
+            } else {
+                localStorage.removeItem("selected_app_id");
+            }
+            selects.forEach(s => { s.value = currentAppId; });
+            updateBannerCredentials();
+            loadGlobalStats();
+            loadActiveTab();
+        };
     updateBannerCredentials();
 }
 
