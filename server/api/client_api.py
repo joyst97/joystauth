@@ -510,6 +510,46 @@ async def client_gateway(req_data: EncryptedPayloadRequest, request: Request, db
                 }
             }
 
+    # ---------------- HEARTBEAT / SESSION WATCHDOG ----------------
+    elif action == "heartbeat" or action == "ping":
+        if session.user_id:
+            user = db.query(User).filter(User.id == session.user_id).first()
+            if not user or user.is_banned:
+                response_data = {"success": False, "message": "User session revoked or banned."}
+            elif user.expires_at and datetime.datetime.utcnow() > user.expires_at:
+                response_data = {"success": False, "message": "Subscription expired during active session."}
+            else:
+                # Refresh session expiry
+                session.expires_at = datetime.datetime.utcnow() + datetime.timedelta(minutes=app.session_timeout_minutes)
+                db.commit()
+                response_data = {"success": True, "message": "Heartbeat acknowledged.", "timestamp": int(datetime.datetime.utcnow().timestamp())}
+        else:
+            session.expires_at = datetime.datetime.utcnow() + datetime.timedelta(minutes=app.session_timeout_minutes)
+            db.commit()
+            response_data = {"success": True, "message": "Session active.", "timestamp": int(datetime.datetime.utcnow().timestamp())}
+
+    # ---------------- SECURITY ALERT / TAMPER DETECTED ----------------
+    elif action == "security_alert" or action == "tamper_detected":
+        reason = data.get("reason", "Debugger or Memory Tampering detected on client machine.")
+        threat_name = data.get("threat", "Reverse Engineering Tool Detected")
+        
+        # Log high priority security incident
+        log_audit(
+            db, 
+            app.id, 
+            "TAMPER_DETECTED", 
+            username=session.user.username if session.user else "Anonymous",
+            ip_address=ip, 
+            hwid=hwid, 
+            details=f"🚨 Anti-Cheat Triggered: {threat_name} ({reason})", 
+            status="DANGER"
+        )
+        
+        # Invalidate session immediately
+        session.is_valid = False
+        db.commit()
+        response_data = {"success": False, "message": "Security integrity violation. Session terminated."}
+
     # ---------------- CLOUD VARIABLE ----------------
     elif action == "var" or action == "get_var":
         var_name = data.get("varid") or data.get("var_name", "").strip()

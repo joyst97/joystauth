@@ -76,9 +76,11 @@ async function initDashboard() {
     setupModals();
     setupChangePassword();
     try {
-        await loadUserProfile();
-        await loadApps();
-        await loadGlobalStats();
+        await Promise.all([
+            loadUserProfile(),
+            loadApps()
+        ]);
+        loadGlobalStats();
     } catch (err) {
         console.error("Error during dashboard init:", err);
     }
@@ -867,6 +869,9 @@ async function submitManualUser() {
         return;
     }
 
+    closeModal("modal-create-user-manual");
+    showToast("Creating user...", "info");
+
     const res = await apiFetch("/api/v1/admin/users/manual-create", {
         method: "POST",
         body: JSON.stringify({
@@ -882,11 +887,11 @@ async function submitManualUser() {
 
     if (res && res.success) {
         showToast(res.message, "success");
-        closeModal("modal-create-user-manual");
         loadUsers();
         loadGlobalStats();
     } else {
         showToast(res?.detail || "Failed to create user", "error");
+        loadUsers();
     }
 }
 
@@ -1551,6 +1556,9 @@ async function createAppSubmit() {
         return;
     }
 
+    closeModal("modal-create-app");
+    showToast("Creating application...", "info");
+
     const res = await apiFetch("/api/v1/admin/apps", {
         method: "POST",
         body: JSON.stringify({
@@ -1563,12 +1571,12 @@ async function createAppSubmit() {
 
     if (res && res.success) {
         showToast(res.message, "success");
-        closeModal("modal-create-app");
         await loadApps();
         renderAppsPage();
         loadGlobalStats();
     } else {
         showToast(res?.detail || "Failed to create app", "error");
+        await loadApps();
     }
 }
 

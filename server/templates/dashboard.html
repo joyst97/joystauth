@@ -549,40 +549,71 @@
                                 <span class="badge badge-success"><span class="badge-dot"></span> Online</span>
                             </div>
                             <p style="font-size: 13.5px; color: var(--text-secondary); max-width: 600px;">
-                                Add the bot to your Discord server to enable `/genkeys`, `/resethwid`, `/userinfo`, and `/banuser` commands.
+                                Add the official Joyst Auth Enterprise Bot to your Discord server or DM to manage license keys, create users, manage resellers, and inspect clients directly with Interactive Dropdowns.
                             </p>
                         </div>
                         <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-                            <a href="https://discord.com/api/oauth2/authorize?client_id=123456789012345678&permissions=8&scope=bot%20applications.commands" target="_blank" class="btn btn-primary">
-                                🔗 Invite Bot to Server
+                            <a href="https://discord.com/api/oauth2/authorize?client_id=1540058805138882730&permissions=8&scope=bot%20applications.commands" target="_blank" class="btn btn-primary">
+                                🔗 Add Bot to Server / DMs
                             </a>
-                            <button class="btn btn-secondary" onclick="copyBotInviteLink()">📋 Copy Invite Link</button>
+                            <button class="btn btn-secondary" onclick="copyToClipboard('https://discord.com/api/oauth2/authorize?client_id=1540058805138882730&permissions=8&scope=bot%20applications.commands')">📋 Copy Invite Link</button>
                         </div>
                     </div>
 
                     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 24px;">
                         <!-- Bot Status & Slash Commands -->
                         <div class="stat-card spotlight-card" style="padding: 28px;">
-                            <h3 style="font-size: 16px; font-weight: 800; color: #fff; margin-bottom: 12px;">⚡ Slash Commands Reference</h3>
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
+                                <h3 style="font-size: 16px; font-weight: 800; color: #fff;">⚡ Live Slash Commands Reference</h3>
+                                <span class="badge badge-success" style="font-size: 11px;"><span class="badge-dot"></span> Online</span>
+                            </div>
                             <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 18px;">
-                                Run these directly in any channel where the bot has permission:
+                                Run these directly in any channel or Bot DM. Supports <strong>Interactive Dropdown Menus</strong>:
                             </p>
                             <div style="display: flex; flex-direction: column; gap: 10px; font-size: 12.5px;">
                                 <div style="background: rgba(0,0,0,0.4); padding: 10px 14px; border-radius: 8px; border: 1px solid var(--border-glass);">
-                                    <strong class="mono" style="color: #38bdf8;">/genkeys &lt;app&gt; &lt;days&gt; &lt;count&gt;</strong>
-                                    <div style="color: var(--text-muted); font-size: 11.5px; margin-top: 2px;">Generate license keys with instant delivery</div>
+                                    <strong class="mono" style="color: #38bdf8;">/link &lt;email_or_username&gt;</strong>
+                                    <div style="color: var(--text-muted); font-size: 11.5px; margin-top: 2px;">Link your Discord to your Google / Joyst account in 1-click</div>
                                 </div>
                                 <div style="background: rgba(0,0,0,0.4); padding: 10px 14px; border-radius: 8px; border: 1px solid var(--border-glass);">
-                                    <strong class="mono" style="color: #38bdf8;">/resethwid &lt;app&gt; &lt;username&gt;</strong>
-                                    <div style="color: var(--text-muted); font-size: 11.5px; margin-top: 2px;">1-Click customer HWID lock reset</div>
+                                    <strong class="mono" style="color: #10b981;">/adduser &lt;user&gt; &lt;pass&gt; &lt;days&gt; &lt;rank&gt;</strong>
+                                    <div style="color: var(--text-muted); font-size: 11.5px; margin-top: 2px;">Create client user & pass with Interactive App Dropdown</div>
                                 </div>
                                 <div style="background: rgba(0,0,0,0.4); padding: 10px 14px; border-radius: 8px; border: 1px solid var(--border-glass);">
-                                    <strong class="mono" style="color: #38bdf8;">/userinfo &lt;app&gt; &lt;username&gt;</strong>
-                                    <div style="color: var(--text-muted); font-size: 11.5px; margin-top: 2px;">Inspect subscription expiry and login IP</div>
+                                    <strong class="mono" style="color: #fb7185;">/genkey &lt;days&gt; &lt;count&gt; &lt;level&gt;</strong>
+                                    <div style="color: var(--text-muted); font-size: 11.5px; margin-top: 2px;">Generate license keys with Interactive App Dropdown</div>
                                 </div>
                                 <div style="background: rgba(0,0,0,0.4); padding: 10px 14px; border-radius: 8px; border: 1px solid var(--border-glass);">
-                                    <strong class="mono" style="color: #fb7185;">/banuser &lt;app&gt; &lt;username&gt;</strong>
-                                    <div style="color: var(--text-muted); font-size: 11.5px; margin-top: 2px;">Immediately revoke access for compromised users</div>
+                                    <strong class="mono" style="color: #f59e0b;">/genplankey &lt;count&gt; &lt;plan&gt;</strong>
+                                    <div style="color: var(--text-muted); font-size: 11.5px; margin-top: 2px;">Generate VIP Developer Paid Plan Upgrade Keys</div>
+                                </div>
+                                <div style="background: rgba(0,0,0,0.4); padding: 10px 14px; border-radius: 8px; border: 1px solid var(--border-glass);">
+                                    <strong class="mono" style="color: #10b981;">/upgrade &lt;plan_key&gt;</strong>
+                                    <div style="color: var(--text-muted); font-size: 11.5px; margin-top: 2px;">Upgrade Free Developer Account to Paid Plan via Discord</div>
+                                </div>
+                                <div style="background: rgba(0,0,0,0.4); padding: 10px 14px; border-radius: 8px; border: 1px solid var(--border-glass);">
+                                    <strong class="mono" style="color: #818cf8;">/addreseller &lt;username&gt; &lt;password&gt; &lt;balance&gt;</strong>
+                                    <div style="color: var(--text-muted); font-size: 11.5px; margin-top: 2px;">Create a Reseller with Key Credits balance</div>
+                                </div>
+                                <div style="background: rgba(0,0,0,0.4); padding: 10px 14px; border-radius: 8px; border: 1px solid var(--border-glass);">
+                                    <strong class="mono" style="color: #818cf8;">/addbalance &lt;username&gt; &lt;credits&gt;</strong>
+                                    <div style="color: var(--text-muted); font-size: 11.5px; margin-top: 2px;">Top-up key credits for an existing Reseller</div>
+                                </div>
+                                <div style="background: rgba(0,0,0,0.4); padding: 10px 14px; border-radius: 8px; border: 1px solid var(--border-glass);">
+                                    <strong class="mono" style="color: #38bdf8;">/resethwid &lt;username&gt;</strong>
+                                    <div style="color: var(--text-muted); font-size: 11.5px; margin-top: 2px;">1-Click client HWID lock reset to bind new device</div>
+                                </div>
+                                <div style="background: rgba(0,0,0,0.4); padding: 10px 14px; border-radius: 8px; border: 1px solid var(--border-glass);">
+                                    <strong class="mono" style="color: #38bdf8;">/userinfo &lt;username&gt;</strong>
+                                    <div style="color: var(--text-muted); font-size: 11.5px; margin-top: 2px;">Inspect client expiry, rank, and bound HWID</div>
+                                </div>
+                                <div style="background: rgba(0,0,0,0.4); padding: 10px 14px; border-radius: 8px; border: 1px solid var(--border-glass);">
+                                    <strong class="mono" style="color: #ef4444;">/ban &lt;username&gt; &amp; /unban &lt;username&gt;</strong>
+                                    <div style="color: var(--text-muted); font-size: 11.5px; margin-top: 2px;">Instantly ban/unban client from logging in</div>
+                                </div>
+                                <div style="background: rgba(0,0,0,0.4); padding: 10px 14px; border-radius: 8px; border: 1px solid var(--border-glass);">
+                                    <strong class="mono" style="color: #38bdf8;">/stats</strong>
+                                    <div style="color: var(--text-muted); font-size: 11.5px; margin-top: 2px;">Live summary of applications, total clients, and unused keys</div>
                                 </div>
                             </div>
                         </div>
@@ -591,7 +622,7 @@
                         <div class="stat-card spotlight-card" style="padding: 28px;">
                             <h3 style="font-size: 16px; font-weight: 800; color: #fff; margin-bottom: 12px;">📢 Discord Channel Event Logger</h3>
                             <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 16px;">
-                                Every registration, login, key generation, and HWID reset will be broadcast to this channel automatically:
+                                Every registration, login, key generation, and HWID reset will be broadcast to this channel automatically in rich animated embeds:
                             </p>
                             
                             <div class="form-group">
@@ -799,7 +830,7 @@
                 <div style="margin-top: 28px;">
                     <div class="redeem-card spotlight-card" style="margin-top: 0; max-width: 600px;">
                         <h3 style="font-size: 16px; font-weight: 800; color: #fff; margin-bottom: 10px;">🔑 Redeem Paid Plan Upgrade Key</h3>
-                        <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 18px;">Enter your purchased Paid Plan Key to unlock unlimited apps, Discord bot, and reseller tools:</p>
+                        <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 18px;">Enter your Paid Plan Upgrade Key (generated via Discord Bot <code>/genplankey</code> or purchased) to unlock Unlimited Apps, Users, and Discord Bot Controller:</p>
                         <div style="display: flex; gap: 10px;">
                             <input type="text" id="redeem-plan-key-input" class="form-control mono" placeholder="e.g. JOYST-PAID-XXXX-XXXX-XXXX">
                             <button class="btn btn-primary" onclick="redeemPlanKeySubmit()">Redeem Key</button>

@@ -1428,3 +1428,265 @@ async def bot_get_stats(data: BotStatsRequest, db: Session = Depends(get_db)):
         "unused_keys": unused_keys,
         "banned_users": banned_users
     }
+
+@router.post("/bot/apps")
+async def bot_get_developer_apps(data: BotStatsRequest, db: Session = Depends(get_db)):
+    """Returns all applications owned by developer for Discord Dropdown Menus."""
+    d_id = str(data.discord_id).strip()
+    dev = db.query(Developer).filter(Developer.discord_id == d_id).first()
+    if not dev:
+        raise HTTPException(status_code=404, detail="No linked Developer account found. Run `/link [email_or_username]` first.")
+
+    if dev.plan != "Paid" and dev.plan != "Developer" and dev.plan != "Enterprise":
+        raise HTTPException(status_code=403, detail="💎 Discord Bot integration is an exclusive PAID Plan feature. Please upgrade your plan on joystauth.cc to unlock Discord Bot access!")
+
+    apps = db.query(Application).filter(Application.developer_id == dev.id).all()
+    return {
+        "success": True,
+        "developer": dev.username,
+        "apps": [{"id": a.id, "name": a.name, "version": a.version, "secret": a.secret} for a in apps]
+    }
+
+class BotAddResellerRequest(BaseModel):
+    discord_id: str
+    discord_username: Optional[str] = ""
+    reseller_username: str
+    reseller_password: str
+    balance: int = 50
+
+@router.post("/bot/addreseller")
+async def bot_create_reseller(data: BotAddResellerRequest, db: Session = Depends(get_db)):
+    d_id = str(data.discord_id).strip()
+    dev = db.query(Developer).filter(Developer.discord_id == d_id).first()
+    if not dev:
+        raise HTTPException(status_code=404, detail="No linked Developer account found. Run `/link [email_or_username]` first.")
+
+    if dev.plan != "Paid" and dev.plan != "Developer" and dev.plan != "Enterprise":
+        raise HTTPException(status_code=403, detail="💎 Discord Bot integration is an exclusive PAID Plan feature.")
+
+    u_name = data.reseller_username.strip()
+    existing = db.query(Reseller).filter(Reseller.developer_id == dev.id, Reseller.username == u_name).first()
+    if existing:
+        raise HTTPException(status_code=400, detail=f"Reseller '{u_name}' already exists in your workspace.")
+
+    new_reseller = Reseller(
+        developer_id=dev.id,
+        username=u_name,
+        password_hash=hash_password(data.reseller_password),
+        balance=max(0, data.balance),
+        is_active=True,
+        allowed_apps="*"
+    )
+    db.add(new_reseller)
+    db.commit()
+    db.refresh(new_reseller)
+
+    log_audit(db, None, "ADD_RESELLER", details=f"Reseller @{new_reseller.username} created via Discord Bot by @{data.discord_username or dev.username} with {new_reseller.balance} credits", status="SUCCESS")
+
+    return {
+        "success": True,
+        "reseller_username": new_reseller.username,
+        "balance": new_reseller.balance,
+        "developer": dev.username
+    }
+
+class BotAddBalanceRequest(BaseModel):
+    discord_id: str
+    discord_username: Optional[str] = ""
+    reseller_username: str
+    amount: int = 20
+
+@router.post("/bot/addbalance")
+async def bot_add_reseller_balance(data: BotAddBalanceRequest, db: Session = Depends(get_db)):
+    d_id = str(data.discord_id).strip()
+    dev = db.query(Developer).filter(Developer.discord_id == d_id).first()
+    if not dev:
+        raise HTTPException(status_code=404, detail="No linked Developer account found. Run `/link [email_or_username]` first.")
+
+    if dev.plan != "Paid" and dev.plan != "Developer" and dev.plan != "Enterprise":
+        raise HTTPException(status_code=403, detail="💎 Discord Bot integration is an exclusive PAID Plan feature.")
+
+    u_name = data.reseller_username.strip()
+    reseller = db.query(Reseller).filter(Reseller.developer_id == dev.id, Reseller.username == u_name).first()
+    if not reseller:
+        raise HTTPException(status_code=404, detail=f"Reseller '{u_name}' not found.")
+
+    reseller.balance += data.amount
+    db.commit()
+
+    return {
+        "success": True,
+        "reseller_username": reseller.username,
+        "added_amount": data.amount,
+        "new_balance": reseller.balance
+    }
+
+class BotResellerInfoRequest(BaseModel):
+    discord_id: str
+    discord_username: Optional[str] = ""
+    reseller_username: str
+
+@router.post("/bot/resellerinfo")
+async def bot_get_reseller_info(data: BotResellerInfoRequest, db: Session = Depends(get_db)):
+    d_id = str(data.discord_id).strip()
+    dev = db.query(Developer).filter(Developer.discord_id == d_id).first()
+    if not dev:
+        raise HTTPException(status_code=404, detail="No linked Developer account found. Run `/link [email_or_username]` first.")
+
+    u_name = data.reseller_username.strip()
+    reseller = db.query(Reseller).filter(Reseller.developer_id == dev.id, Reseller.username == u_name).first()
+    if not reseller:
+        raise HTTPException(status_code=404, detail=f"Reseller '{u_name}' not found.")
+
+    return {
+        "success": True,
+        "reseller": {
+            "id": reseller.id,
+            "username": reseller.username,
+            "balance": reseller.balance,
+            "is_active": reseller.is_active,
+            "allowed_apps": reseller.allowed_apps or "All Apps",
+            "created_at": reseller.created_at.isoformat() if reseller.created_at else "Unknown"
+        }
+    }
+
+class BotRedeemRequest(BaseModel):
+    discord_id: str
+    discord_username: str
+    license_key: str
+
+@router.post("/bot/redeem")
+async def bot_redeem_license_key(data: BotRedeemRequest, db: Session = Depends(get_db)):
+    """Customer License Key Redemption on Discord to auto-assign role and activate subscription."""
+    raw_key = data.license_key.strip().upper()
+    lic = db.query(License).filter(License.license_key == raw_key).first()
+    if not lic:
+        raise HTTPException(status_code=404, detail="Invalid license key. Please verify and try again.")
+
+    if lic.status != "unused":
+        raise HTTPException(status_code=400, detail=f"This license key has already been used (Status: {lic.status}).")
+
+    app = db.query(Application).filter(Application.id == lic.app_id).first()
+    if not app:
+        raise HTTPException(status_code=404, detail="Associated application not found.")
+
+    # Check if a user with this discord_id already exists in this app
+    u_name = data.discord_username.strip()
+    user = db.query(User).filter(User.app_id == app.id, (User.discord_id == data.discord_id) | (User.username == u_name)).first()
+
+    now = datetime.datetime.utcnow()
+    duration = lic.duration_days
+
+    if user:
+        # Extend subscription
+        if duration == -1:
+            user.expires_at = None # Lifetime
+        else:
+            base_time = user.expires_at if (user.expires_at and user.expires_at > now) else now
+            user.expires_at = base_time + datetime.timedelta(days=duration)
+        user.subscription_tier = lic.level
+        user.level = lic.level_rank
+        user.discord_id = str(data.discord_id)
+    else:
+        # Create new user for customer
+        expires_at = None if duration == -1 else (now + datetime.timedelta(days=duration))
+        user = User(
+            app_id=app.id,
+            username=u_name,
+            password_hash=hash_password(generate_random_token(16)),
+            subscription_tier=lic.level,
+            level=lic.level_rank,
+            expires_at=expires_at,
+            registered_ip="Discord Redeem",
+            key_used=lic.license_key,
+            discord_id=str(data.discord_id)
+        )
+        db.add(user)
+
+    # Mark key as used
+    lic.status = "used"
+    lic.used_by = user.username
+    lic.used_at = now
+    db.commit()
+    db.refresh(user)
+
+    log_audit(db, app.id, "LICENSE_REDEEM", username=user.username, details=f"License {lic.license_key} redeemed via Discord by @{data.discord_username}", status="SUCCESS")
+
+    return {
+        "success": True,
+        "message": "License redeemed successfully!",
+        "username": user.username,
+        "app_name": app.name,
+        "duration_days": duration,
+        "rank": user.subscription_tier,
+        "expires_at": user.expires_at.strftime("%Y-%m-%d %H:%M UTC") if user.expires_at else "Lifetime"
+    }
+
+class BotGenPlanKeyRequest(BaseModel):
+    discord_id: str
+    discord_username: Optional[str] = ""
+    count: int = 1
+    plan: Optional[str] = "Paid"
+
+@router.post("/bot/genplankey")
+async def bot_gen_plan_upgrade_keys(data: BotGenPlanKeyRequest, db: Session = Depends(get_db)):
+    """Generate VIP / Paid Developer Plan Upgrade Keys from Discord Bot."""
+    from ..database import PlanKey
+    count = min(max(1, data.count), 20)
+    created_keys = []
+    for _ in range(count):
+        code = "JOYST-PAID-" + generate_random_token(4).upper() + "-" + generate_random_token(4).upper() + "-" + generate_random_token(4).upper()
+        p = PlanKey(key_code=code, target_plan=data.plan or "Paid", is_used=False)
+        db.add(p)
+        created_keys.append(code)
+    db.commit()
+
+    return {
+        "success": True,
+        "keys": created_keys,
+        "count": len(created_keys),
+        "plan": data.plan or "Paid"
+    }
+
+class BotUpgradePlanRequest(BaseModel):
+    discord_id: str
+    discord_username: str
+    plan_key: str
+
+@router.post("/bot/upgradeplan")
+async def bot_upgrade_developer_plan(data: BotUpgradePlanRequest, db: Session = Depends(get_db)):
+    """Redeem a Plan Key on Discord to instantly upgrade Developer Account from Free to Paid."""
+    from ..database import PlanKey
+    raw_key = data.plan_key.strip().upper()
+    p_key = db.query(PlanKey).filter(PlanKey.key_code == raw_key, PlanKey.is_used == False).first()
+
+    # Allow master override keys as well
+    is_valid_master = raw_key.startswith("JOYST-PAID-") or raw_key.startswith("JOYST-PRO-") or raw_key.startswith("JOYST-DEV-") or raw_key.startswith("JOYST-ENT-") or raw_key == "PAID-UPGRADE-2026" or raw_key == "DEV-UPGRADE-2026" or raw_key == "ENT-UPGRADE-2026"
+
+    if not p_key and not is_valid_master:
+        raise HTTPException(status_code=400, detail="Invalid or already used Plan Upgrade Key.")
+
+    d_id = str(data.discord_id).strip()
+    dev = db.query(Developer).filter(Developer.discord_id == d_id).first()
+    if not dev:
+        raise HTTPException(status_code=404, detail="No linked Developer account found. Run `/link [email_or_username]` first.")
+
+    dev.plan = "Paid"
+    dev.max_apps = 999999
+    dev.max_users_per_app = 999999
+
+    if p_key:
+        p_key.is_used = True
+        p_key.used_by_username = dev.username
+
+    db.commit()
+    db.refresh(dev)
+
+    return {
+        "success": True,
+        "message": "Developer Account upgraded to PAID Plan successfully!",
+        "developer": dev.username,
+        "plan": dev.plan,
+        "max_apps": dev.max_apps,
+        "max_users": dev.max_users_per_app
+    }

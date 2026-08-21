@@ -149,6 +149,27 @@ class api:
             self.response = ResponseData(False, f"Error: {str(e)}")
             return False
 
+    def start_heartbeat(self, interval_seconds: int = 30):
+        """Starts background anti-tamper heartbeat thread to continuously validate session."""
+        import threading
+        import time
+
+        def _watchdog():
+            while True:
+                time.sleep(interval_seconds)
+                # Check for debuggers / hooks
+                if sys.gettrace() is not None:
+                    self._send_action("security_alert", reason="Python tracer/debugger attached", threat="Debugger")
+                    os._exit(0)
+                
+                # Send server heartbeat ping
+                ok = self._send_action("heartbeat")
+                if not ok:
+                    os._exit(0) # Session revoked or expired
+
+        t = threading.Thread(target=_watchdog, daemon=True)
+        t.start()
+
     def login(self, username: str, password: str) -> bool:
         """Login with username and password (HWID lock enforced)."""
         return self._send_action("login", username=username, password=password)
@@ -161,9 +182,9 @@ class api:
         """Login using license key only."""
         return self._send_action("license", key=key)
 
-    def var(self, varid: str) -> str:
-        """Fetch remote cloud variable."""
-        if self._send_action("var", varid=varid):
+    def var(self, var_name: str) -> str:
+        """Fetch remote encrypted cloud variable."""
+        if self._send_action("var", varid=var_name):
             return self.response.message
         return ""
 
@@ -177,3 +198,4 @@ class api:
 
 # Alias for backwards compatibility
 AuthClient = api
+
