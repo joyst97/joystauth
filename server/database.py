@@ -4,25 +4,25 @@ from sqlalchemy import create_engine, Column, String, Integer, Boolean, DateTime
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, relationship
 
-DATABASE_DIR = os.path.dirname(os.path.abspath(__file__))
-DATABASE_FILE = os.path.join(DATABASE_DIR, "joyst_corp.db")
+# Global Cloud PostgreSQL Database (Supabase Enterprise Cluster)
+DEFAULT_SUPABASE_DB = "postgresql://postgres.wlunbttadwoyfoprlnks:JOYST%406969@aws-0-ap-northeast-1.pooler.supabase.com:6543/postgres"
+DATABASE_URL = os.environ.get("DATABASE_URL") or DEFAULT_SUPABASE_DB
 
-# Vercel Serverless read-only filesystem support
-if os.environ.get("VERCEL") or os.environ.get("AWS_LAMBDA_FUNCTION_NAME"):
-    import shutil
-    TMP_DB = "/tmp/joyst_corp.db"
-    if os.path.exists(DATABASE_FILE) and not os.path.exists(TMP_DB):
-        try:
-            shutil.copyfile(DATABASE_FILE, TMP_DB)
-        except Exception:
-            pass
-    DATABASE_FILE = TMP_DB
+# Fix dialect prefix if postgres:// is provided instead of postgresql://
+if DATABASE_URL.startswith("postgres://"):
+    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
 
-SQLALCHEMY_DATABASE_URL = f"sqlite:///{DATABASE_FILE}"
+if "sqlite" in DATABASE_URL:
+    engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
+else:
+    engine = create_engine(
+        DATABASE_URL,
+        pool_pre_ping=True,
+        pool_size=10,
+        max_overflow=20,
+        pool_recycle=300
+    )
 
-engine = create_engine(
-    SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False}
-)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
