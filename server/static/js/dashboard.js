@@ -329,6 +329,8 @@ async function loadApps() {
             loadGlobalStats();
             loadActiveTab();
         };
+    });
+
     updateBannerCredentials();
 }
 
