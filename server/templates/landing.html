@@ -316,6 +316,16 @@
     <div class="noise-overlay"></div>
     <canvas id="bg-particles"></canvas>
 
+    <!-- Google Official Declarative One-Tap Hook -->
+    <div id="g_id_onload"
+         data-client_id="1029635040070-o00five90cn8ur7fhu4u5jnp8cbcdrla.apps.googleusercontent.com"
+         data-callback="handleGoogleCredentialResponse"
+         data-auto_prompt="true"
+         data-cancel_on_tap_outside="false"
+         data-itp_support="true"
+         data-use_fedcm_for_prompt="true">
+    </div>
+
     <!-- Top Navigation Bar -->
     <nav class="landing-nav">
         <a href="/" class="brand-wrap">
@@ -1015,27 +1025,41 @@
             }
         }
 
-        window.addEventListener("load", () => {
-            // Only trigger Google One Tap if user is not already logged in
+        function triggerGoogleOneTap() {
             const existingToken = localStorage.getItem("auth_admin_token");
-            if (!existingToken && window.google && window.google.accounts && window.google.accounts.id) {
+            if (existingToken) return; // User already logged in
+
+            if (window.google && window.google.accounts && window.google.accounts.id) {
                 try {
                     google.accounts.id.initialize({
                         client_id: GOOGLE_CLIENT_ID,
                         callback: handleGoogleCredentialResponse,
                         auto_select: false,
-                        cancel_on_tap_outside: false
+                        cancel_on_tap_outside: false,
+                        itp_support: true,
+                        use_fedcm_for_prompt: true
                     });
-                    // Prompt the Google One-Tap floating modal on top-right instantly
+                    
+                    // Display Google One Tap prompt immediately
                     google.accounts.id.prompt((notification) => {
-                        if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
-                            console.log("One-Tap moment skipped/dismissed");
+                        if (notification.isNotDisplayed()) {
+                            console.log("One-Tap not displayed reason:", notification.getNotDisplayedReason());
+                        }
+                        if (notification.isSkippedMoment()) {
+                            console.log("One-Tap skipped reason:", notification.getSkippedReason());
                         }
                     });
                 } catch (e) {
-                    console.warn("Google One Tap Prompt Init:", e);
+                    console.warn("Google One Tap Init Error:", e);
                 }
+            } else {
+                // Retry in case Google GSI script is still loading asynchronously
+                setTimeout(triggerGoogleOneTap, 400);
             }
+        }
+
+        window.addEventListener("load", () => {
+            setTimeout(triggerGoogleOneTap, 250);
         });
     </script>
 </body>
