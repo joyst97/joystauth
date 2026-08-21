@@ -75,9 +75,13 @@ async function initDashboard() {
     setupNavigation();
     setupModals();
     setupChangePassword();
-    await loadUserProfile();
-    await loadApps();
-    await loadGlobalStats();
+    try {
+        await loadUserProfile();
+        await loadApps();
+        await loadGlobalStats();
+    } catch (err) {
+        console.error("Error during dashboard init:", err);
+    }
     loadActiveTab();
 }
 
