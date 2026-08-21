@@ -1122,12 +1122,12 @@ async def bot_auto_genkey(data: BotGenKeyRequest, db: Session = Depends(get_db))
     if not dev and d_user:
         dev = db.query(Developer).filter(Developer.email.like(f"{d_user}%")).first()
 
-    # Fallback to single/first developer if running in single-tenant mode or default workspace
     if not dev:
-        dev = db.query(Developer).first()
+        raise HTTPException(status_code=404, detail="No linked Developer account found. Please run `/link [email_or_username]` first.")
 
-    if not dev:
-        raise HTTPException(status_code=404, detail="No linked Developer account found. Please sign in with Discord on joystauth.cc")
+    # Strict Paid Plan Verification
+    if dev.plan != "Paid" and dev.plan != "Developer" and dev.plan != "Enterprise":
+        raise HTTPException(status_code=403, detail="💎 Discord Bot integration is an exclusive PAID Plan feature. Please upgrade your plan on joystauth.cc to unlock Discord Bot access!")
 
     # Select app
     app = None
@@ -1178,4 +1178,253 @@ async def bot_auto_genkey(data: BotGenKeyRequest, db: Session = Depends(get_db))
         "count": len(created_keys),
         "duration_days": data.duration_days,
         "level": data.level
+    }
+
+class BotLinkRequest(BaseModel):
+    discord_id: str
+    discord_username: Optional[str] = ""
+    email_or_username: str
+    password: Optional[str] = None
+    owner_id: Optional[str] = None
+
+@router.post("/bot/link")
+async def bot_link_account(data: BotLinkRequest, db: Session = Depends(get_db)):
+    """Allows Google or Username developers to link their Discord ID to their account in 1-click."""
+    ident = data.email_or_username.strip()
+    dev = db.query(Developer).filter(
+        (Developer.email.ilike(ident)) |
+        (Developer.username.ilike(ident)) |
+        (Developer.owner_id == ident)
+    ).first()
+
+    if not dev:
+        raise HTTPException(status_code=404, detail=f"No account found matching '{ident}'. Make sure you registered on joystauth.cc")
+
+    dev.discord_id = str(data.discord_id).strip()
+    db.commit()
+
+    return {
+        "success": True,
+        "message": f"Successfully linked Discord @{data.discord_username or data.discord_id} to Developer Account @{dev.username}!",
+        "developer": dev.username,
+        "email": dev.email or "Google Auth",
+        "plan": dev.plan
+    }
+
+class BotCreateUserRequest(BaseModel):
+    discord_id: str
+    discord_username: Optional[str] = ""
+    app_name: Optional[str] = None
+    username: str
+    password: str
+    duration_days: int = 30
+    subscription_tier: Optional[str] = "default"
+    level: Optional[int] = 1
+
+@router.post("/bot/adduser")
+async def bot_add_user(data: BotCreateUserRequest, db: Session = Depends(get_db)):
+    """Create user and password directly via Discord Bot."""
+    d_id = str(data.discord_id).strip()
+    dev = db.query(Developer).filter(Developer.discord_id == d_id).first()
+    if not dev:
+        raise HTTPException(status_code=404, detail="No linked Developer account found. Run `/link [email_or_username]` first.")
+
+    if dev.plan != "Paid" and dev.plan != "Developer" and dev.plan != "Enterprise":
+        raise HTTPException(status_code=403, detail="💎 Discord Bot integration is an exclusive PAID Plan feature. Please upgrade your plan on joystauth.cc to unlock Discord Bot access!")
+
+    app = None
+    if data.app_name:
+        app = db.query(Application).filter(Application.developer_id == dev.id, Application.name.ilike(data.app_name)).first()
+    if not app:
+        app = db.query(Application).filter(Application.developer_id == dev.id).first()
+
+    if not app:
+        raise HTTPException(status_code=404, detail="No application found in your workspace. Create an app first.")
+
+    existing = db.query(User).filter(User.app_id == app.id, User.username == data.username.strip()).first()
+    if existing:
+        raise HTTPException(status_code=400, detail=f"User '{data.username}' already exists in application '{app.name}'.")
+
+    expires_at = None
+    if data.duration_days > 0:
+        expires_at = datetime.datetime.utcnow() + datetime.timedelta(days=data.duration_days)
+
+    new_user = User(
+        app_id=app.id,
+        username=data.username.strip(),
+        password_hash=hash_password(data.password),
+        subscription_tier=data.subscription_tier or "default",
+        level=data.level or 1,
+        expires_at=expires_at,
+        registered_ip="Discord Bot",
+        key_used="Manual by Discord Bot"
+    )
+    db.add(new_user)
+    db.commit()
+    db.refresh(new_user)
+
+    log_audit(db, app.id, "MANUAL_USER_CREATE", username=new_user.username, details=f"Created via Discord Bot by @{data.discord_username or dev.username}", status="SUCCESS")
+
+    return {
+        "success": True,
+        "message": f"Client user '{new_user.username}' created successfully.",
+        "username": new_user.username,
+        "app_name": app.name,
+        "duration_days": data.duration_days,
+        "subscription": new_user.subscription_tier,
+        "expires_at": new_user.expires_at.strftime("%Y-%m-%d %H:%M UTC") if new_user.expires_at else "Lifetime"
+    }
+
+class BotUserActionRequest(BaseModel):
+    discord_id: str
+    discord_username: Optional[str] = ""
+    app_name: Optional[str] = None
+    target_username: str
+    reason: Optional[str] = "Admin action via Discord Bot"
+
+@router.post("/bot/resethwid")
+async def bot_reset_hwid(data: BotUserActionRequest, db: Session = Depends(get_db)):
+    d_id = str(data.discord_id).strip()
+    dev = db.query(Developer).filter(Developer.discord_id == d_id).first()
+    if not dev:
+        raise HTTPException(status_code=404, detail="No linked Developer account found. Run `/link [email_or_username]` first.")
+
+    if dev.plan != "Paid" and dev.plan != "Developer" and dev.plan != "Enterprise":
+        raise HTTPException(status_code=403, detail="💎 Discord Bot integration is an exclusive PAID Plan feature. Please upgrade your plan on joystauth.cc to unlock Discord Bot access!")
+
+    target = data.target_username.strip()
+    user = db.query(User).join(Application).filter(
+        Application.developer_id == dev.id,
+        User.username.ilike(target)
+    ).first()
+
+    if not user:
+        raise HTTPException(status_code=404, detail=f"User '{target}' not found in your apps.")
+
+    user.hwid = None
+    db.commit()
+    log_audit(db, user.app_id, "HWID_RESET", username=user.username, details=f"HWID reset via Discord Bot by {data.discord_username or dev.username}", status="SUCCESS")
+
+    return {"success": True, "message": f"HWID for user '{user.username}' reset successfully.", "username": user.username, "app_name": user.app.name}
+
+@router.post("/bot/ban")
+async def bot_ban_user(data: BotUserActionRequest, db: Session = Depends(get_db)):
+    d_id = str(data.discord_id).strip()
+    dev = db.query(Developer).filter(Developer.discord_id == d_id).first()
+    if not dev:
+        raise HTTPException(status_code=404, detail="No linked Developer account found. Run `/link [email_or_username]` first.")
+
+    if dev.plan != "Paid" and dev.plan != "Developer" and dev.plan != "Enterprise":
+        raise HTTPException(status_code=403, detail="💎 Discord Bot integration is an exclusive PAID Plan feature. Please upgrade your plan on joystauth.cc to unlock Discord Bot access!")
+
+    target = data.target_username.strip()
+    user = db.query(User).join(Application).filter(
+        Application.developer_id == dev.id,
+        User.username.ilike(target)
+    ).first()
+
+    if not user:
+        raise HTTPException(status_code=404, detail=f"User '{target}' not found.")
+
+    user.is_banned = True
+    user.ban_reason = data.reason or "Banned via Discord Bot"
+    db.commit()
+    log_audit(db, user.app_id, "BAN_USER", username=user.username, details=user.ban_reason, status="DANGER")
+
+    return {"success": True, "message": f"User '{user.username}' banned successfully.", "username": user.username, "reason": user.ban_reason}
+
+@router.post("/bot/unban")
+async def bot_unban_user(data: BotUserActionRequest, db: Session = Depends(get_db)):
+    d_id = str(data.discord_id).strip()
+    dev = db.query(Developer).filter(Developer.discord_id == d_id).first()
+    if not dev:
+        raise HTTPException(status_code=404, detail="No linked Developer account found. Run `/link [email_or_username]` first.")
+
+    if dev.plan != "Paid" and dev.plan != "Developer" and dev.plan != "Enterprise":
+        raise HTTPException(status_code=403, detail="💎 Discord Bot integration is an exclusive PAID Plan feature. Please upgrade your plan on joystauth.cc to unlock Discord Bot access!")
+
+    target = data.target_username.strip()
+    user = db.query(User).join(Application).filter(
+        Application.developer_id == dev.id,
+        User.username.ilike(target)
+    ).first()
+
+    if not user:
+        raise HTTPException(status_code=404, detail=f"User '{target}' not found.")
+
+    user.is_banned = False
+    user.ban_reason = ""
+    db.commit()
+    log_audit(db, user.app_id, "UNBAN_USER", username=user.username, details="Unbanned via Discord Bot", status="SUCCESS")
+
+    return {"success": True, "message": f"User '{user.username}' unbanned successfully.", "username": user.username}
+
+@router.post("/bot/userinfo")
+async def bot_user_info(data: BotUserActionRequest, db: Session = Depends(get_db)):
+    d_id = str(data.discord_id).strip()
+    dev = db.query(Developer).filter(Developer.discord_id == d_id).first()
+    if not dev:
+        raise HTTPException(status_code=404, detail="No linked Developer account found. Run `/link [email_or_username]` first.")
+
+    if dev.plan != "Paid" and dev.plan != "Developer" and dev.plan != "Enterprise":
+        raise HTTPException(status_code=403, detail="💎 Discord Bot integration is an exclusive PAID Plan feature. Please upgrade your plan on joystauth.cc to unlock Discord Bot access!")
+
+    target = data.target_username.strip()
+    user = db.query(User).join(Application).filter(
+        Application.developer_id == dev.id,
+        User.username.ilike(target)
+    ).first()
+
+    if not user:
+        raise HTTPException(status_code=404, detail=f"User '{target}' not found.")
+
+    return {
+        "success": True,
+        "user": {
+            "id": user.id,
+            "username": user.username,
+            "app_name": user.app.name,
+            "hwid": user.hwid or "Not Bound",
+            "last_ip": user.last_ip or "Unknown",
+            "subscription": user.subscription_tier,
+            "level": user.level,
+            "expires_at": user.expires_at.isoformat() if user.expires_at else "Lifetime",
+            "is_banned": user.is_banned,
+            "ban_reason": user.ban_reason,
+            "created_at": user.created_at.isoformat() if user.created_at else "Unknown"
+        }
+    }
+
+class BotStatsRequest(BaseModel):
+    discord_id: str
+    discord_username: Optional[str] = ""
+
+@router.post("/bot/stats")
+async def bot_get_stats(data: BotStatsRequest, db: Session = Depends(get_db)):
+    d_id = str(data.discord_id).strip()
+    dev = db.query(Developer).filter(Developer.discord_id == d_id).first()
+    if not dev:
+        raise HTTPException(status_code=404, detail="No linked Developer account found. Run `/link [email_or_username]` first.")
+
+    if dev.plan != "Paid" and dev.plan != "Developer" and dev.plan != "Enterprise":
+        raise HTTPException(status_code=403, detail="💎 Discord Bot integration is an exclusive PAID Plan feature. Please upgrade your plan on joystauth.cc to unlock Discord Bot access!")
+
+    apps = db.query(Application).filter(Application.developer_id == dev.id).all()
+    app_ids = [a.id for a in apps]
+
+    total_users = db.query(User).filter(User.app_id.in_(app_ids)).count() if app_ids else 0
+    total_keys = db.query(License).filter(License.app_id.in_(app_ids)).count() if app_ids else 0
+    unused_keys = db.query(License).filter(License.app_id.in_(app_ids), License.status == "unused").count() if app_ids else 0
+    banned_users = db.query(User).filter(User.app_id.in_(app_ids), User.is_banned == True).count() if app_ids else 0
+
+    return {
+        "success": True,
+        "developer": dev.username,
+        "plan": dev.plan,
+        "total_apps": len(apps),
+        "apps_list": [a.name for a in apps],
+        "total_users": total_users,
+        "total_keys": total_keys,
+        "unused_keys": unused_keys,
+        "banned_users": banned_users
     }

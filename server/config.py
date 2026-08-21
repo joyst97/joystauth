@@ -69,16 +69,20 @@ def log_audit(db: Session, app_id: int = None, action: str = "ACTION", username:
                     target_webhook = app.webhook_url
 
         if target_webhook:
-            send_discord_webhook(target_webhook, app_name, action, username, ip_address, hwid, status, details, extra_data)
+            import threading
+            threading.Thread(
+                target=send_discord_webhook,
+                args=(target_webhook, app_name, action, username, ip_address, hwid, status, details, extra_data),
+                daemon=True
+            ).start()
     except Exception as e:
         print(f"[AUDIT LOG ERROR] {e}")
 
 def send_discord_webhook(webhook_url: str, app_name: str, action: str, username: str, ip: str, hwid: str, status: str, details: str, extra_data: dict = None):
-    """Send clean, rich Discord webhook embed keeping the original webhook's name and avatar."""
+    """Send clean, rich Discord webhook embed in background non-blocking thread."""
     if not webhook_url or not webhook_url.startswith("http"):
         return
 
-    # Color mapping
     color = 0x10B981 # Emerald Green
     if action == "SECURITY_BAN" or status == "DANGER" or "MISMATCH" in action or "BAN" in action or "BLOCKED" in action:
         color = 0xDC2626 # Dark Red
@@ -119,6 +123,6 @@ def send_discord_webhook(webhook_url: str, app_name: str, action: str, username:
     }
 
     try:
-        requests.post(webhook_url, json=payload, timeout=4)
+        requests.post(webhook_url, json=payload, timeout=2)
     except Exception:
         pass

@@ -20,12 +20,10 @@ if DATABASE_URL:
         engine = create_engine(
             DATABASE_URL,
             pool_pre_ping=True,
-            pool_size=5,
-            max_overflow=10,
+            pool_size=10,
+            max_overflow=20,
             pool_recycle=300
         )
-        with engine.connect() as test_conn:
-            pass
     except Exception as e:
         print(f"[JOYST DATABASE] Cloud Database Notice: {e}")
         engine = None
