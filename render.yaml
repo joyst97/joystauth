@@ -2,6 +2,8 @@ services:
   - type: web
     name: joyst-auth
     env: python
+    region: frankfurt # Low latency EU/Asia routing
+    plan: free
     buildCommand: "pip install -r requirements.txt"
     startCommand: "uvicorn server.main:app --host 0.0.0.0 --port $PORT"
     envVars:
@@ -9,3 +11,9 @@ services:
         value: 3.11.0
       - key: PRODUCTION_DOMAIN
         value: https://joystauth.cc
+      - key: JWT_SECRET
+        generateValue: true
+      - key: GOOGLE_CLIENT_ID
+        value: 1029635040070-o00five90cn8ur7fhu4u5jnp8cbcdrla.apps.googleusercontent.com
+      - key: DISCORD_CLIENT_ID
+        value: "1540058805138882730"
