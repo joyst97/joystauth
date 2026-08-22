@@ -54,14 +54,17 @@ async def on_startup():
     except Exception as e:
         print(f"[JOYST] Database init notice: {e}")
     print("=======================================================")
-    print("[JOYST CORPORATION] Platform is LIVE on http://localhost:8000")
-    print("[+] Public Landing Page: http://localhost:8000")
-    print("[+] Developer Sign Up:   http://localhost:8000/register")
-    print("[+] Developer Login:     http://localhost:8000/login")
-    print("[+] Developer Dashboard: http://localhost:8000/dashboard")
-    print("[+] Reseller Login:      http://localhost:8000/reseller/login")
-    print("[+] Reseller Dashboard:  http://localhost:8000/reseller/dashboard")
+    print("[JOYST CORPORATION] Production Platform is ONLINE ⚡")
+    print("[+] Public Gateway:  https://joystauth.cc")
+    print("[+] Status Endpoint: https://joystauth.cc/health")
     print("=======================================================")
+
+@app.get("/favicon.ico", include_in_schema=False)
+async def serve_favicon():
+    logo_path = os.path.join(STATIC_DIR, "img", "joyst_logo.png")
+    if os.path.exists(logo_path):
+        return FileResponse(logo_path, media_type="image/png")
+    return HTMLResponse("", status_code=204)
 
 @app.get("/reseller/login", response_class=HTMLResponse)
 async def serve_reseller_login(request: Request):

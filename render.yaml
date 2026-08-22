@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: joyst-auth
+    env: python
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "uvicorn server.main:app --host 0.0.0.0 --port $PORT"
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.0
+      - key: PRODUCTION_DOMAIN
+        value: https://joystauth.cc
