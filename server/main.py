@@ -27,6 +27,17 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Inbuilt Anti-Stale-Cache & Instant Refresh Middleware
+@app.middleware("http")
+async def add_anti_cache_headers(request: Request, call_next):
+    response = await call_next(request)
+    # Ensure browsers and proxies always fetch the freshest 0-second updated HTML/API
+    if "text/html" in response.headers.get("content-type", "") or "application/json" in response.headers.get("content-type", ""):
+        response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate, max-age=0"
+        response.headers["Pragma"] = "no-cache"
+        response.headers["Expires"] = "0"
+    return response
+
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 STATIC_DIR = os.path.join(BASE_DIR, "static")
 TEMPLATES_DIR = os.path.join(BASE_DIR, "templates")
