@@ -1560,23 +1560,6 @@ async function generatePlanKeysSubmit() {
     }
 }
 
-// 12. Applications Management Page
-function renderAppsPage() {
-    const container = document.getElementById("apps-grid-container");
-    if (!container) return;
-
-    if (appsList.length === 0) {
-        container.innerHTML = `
-            <div style="color: var(--text-muted); text-align: center; grid-column: 1/-1; padding: 60px; background: var(--bg-card); border-radius: 16px; border: 1px dashed var(--border-subtle);">
-                <div style="font-size: 36px; margin-bottom: 12px;">📦</div>
-                <h3 style="color: #fff; font-size: 18px; margin-bottom: 8px;">No Applications Yet</h3>
-                <p style="font-size: 13px; margin-bottom: 20px;">Create your first software application to generate license keys and start authenticating clients.</p>
-                <button class="btn btn-primary" onclick="openModal('modal-create-app')">➕ Create Your First App</button>
-            </div>
-        `;
-        return;
-    }
-
 // ==================== 12. IN-APP CLIENT NOTIFICATIONS (KEYAUTH STYLE) ====================
 async function loadNotifications() {
     const tbody = document.getElementById("notifications-table-body");

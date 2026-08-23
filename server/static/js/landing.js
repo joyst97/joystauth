@@ -362,6 +362,13 @@ function showLandingToast(msg) {
     toast.textContent = msg;
     toast.style.opacity = "1";
     toast.style.transform = "translateY(0)";
+    setTimeout(() => {
+        if (toast) {
+            toast.style.opacity = "0";
+            toast.style.transform = "translateY(10px)";
+        }
+    }, 3500);
+}
 
 // 8. Hero Security Enclave Simulator
 async function simulateHeroSecurityBlock() {
