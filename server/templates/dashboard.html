@@ -90,7 +90,7 @@
                 </li>
                 <li class="nav-item" data-tab="apps" onclick="switchTab('apps')">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>
-                    <span>App Settings</span>
+                    <span>Applications</span>
                 </li>
                 <li class="nav-item" data-tab="licenses" onclick="switchTab('licenses')">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
@@ -130,7 +130,7 @@
                 </li>
                 <li class="nav-item" data-tab="settings" onclick="switchTab('settings')">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
-                    <span>Plans & Account</span>
+                    <span>App Settings</span>
                 </li>
             </ul>
 
@@ -731,26 +731,20 @@
                 </div>
             </section>
 
-            <!-- 11. TAB: APPLICATIONS & KEYAUTH-GRADE SECURITY SETTINGS -->
+            <!-- 2. TAB: APPLICATIONS DIRECTORY -->
             <section id="page-apps" class="page-container">
                 <div class="page-header">
                     <div class="page-title">
-                        <h2>Application Security & Settings</h2>
-                        <p>Master HWID policies, custom login responses, killswitches, hash integrity checks, and maintenance modes.</p>
+                        <h2>Applications Directory</h2>
+                        <p>Manage, switch, and create protected software applications and security tokens.</p>
                     </div>
                     <div style="display: flex; gap: 8px;">
-                        <button class="btn btn-secondary btn-sm" onclick="openModal('modal-create-app')">
-                            <span>➕ New App</span>
+                        <button class="btn btn-primary btn-sm" onclick="openModal('modal-create-app')">
+                            <span>➕ Create Application</span>
                         </button>
                     </div>
                 </div>
 
-                <!-- Active App Master Settings Card -->
-                <div id="active-app-settings-container" style="margin-bottom: 30px;"></div>
-
-                <h3 style="font-size: 17px; font-weight: 800; color: #fff; margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
-                    <span>📱 All Registered Applications</span>
-                </h3>
                 <div class="stats-grid" id="apps-grid-container"></div>
             </section>
 
@@ -880,77 +874,110 @@
                 </div>
             </section>
 
-            <!-- 13. TAB: PLANS & ACCOUNT -->
+            <!-- 12. TAB: APPLICATION SECURITY & SETTINGS -->
             <section id="page-settings" class="page-container">
                 <div class="page-header">
                     <div class="page-title">
-                        <h2>Developer Plans & Account</h2>
-                        <p>View your active subscription tier, redeem upgrade keys, or manage account password.</p>
+                        <h2>Settings & Application Hub</h2>
+                        <p>Configure custom response messages, hardware binding, killswitches, subscription plans, and account password.</p>
                     </div>
                 </div>
 
-                <!-- Plans Cards -->
-                <div class="plans-grid">
-                    <div class="plan-card spotlight-card" id="plan-card-free">
-                        <div>
-                            <span class="badge badge-purple" style="margin-bottom: 12px;">FREE TRIAL (DEFAULT)</span>
-                            <h3 style="font-size: 24px; font-weight: 900; color: #fff;">$0 <span style="font-size: 13px; color: var(--text-muted); font-weight: 500;">/ forever</span></h3>
-                            <ul style="list-style: none; margin: 20px 0; display: flex; flex-direction: column; gap: 10px; font-size: 13px; color: var(--text-secondary);">
-                                <li>✅ 3 Applications Max</li>
-                                <li>✅ 1,000 Users per application</li>
-                                <li>✅ Strict HWID Lock</li>
-                                <li>❌ Discord Bot Controller</li>
-                                <li>❌ Reseller Accounts</li>
-                            </ul>
-                        </div>
-                        <div id="plan-btn-container-free"></div>
-                    </div>
+                <!-- Sub-Tabs Navigation Bar -->
+                <div class="settings-subtabs-nav" style="display: flex; gap: 10px; margin-bottom: 24px; border-bottom: 1px solid var(--border-glass); padding-bottom: 14px; flex-wrap: wrap;">
+                    <button class="btn btn-primary btn-sm settings-subtab-btn" id="btn-subtab-account" onclick="switchSettingsSubTab('account')">
+                        💎 Plans & Account
+                    </button>
+                    <button class="btn btn-secondary btn-sm settings-subtab-btn" id="btn-subtab-messages" onclick="switchSettingsSubTab('messages')">
+                        💬 18 Custom Messages
+                    </button>
+                    <button class="btn btn-secondary btn-sm settings-subtab-btn" id="btn-subtab-security" onclick="switchSettingsSubTab('security')">
+                        🔒 Security & HWID
+                    </button>
+                    <button class="btn btn-secondary btn-sm settings-subtab-btn" id="btn-subtab-appstate" onclick="switchSettingsSubTab('appstate')">
+                        ⚡ App State & Token
+                    </button>
+                </div>
 
-                    <div class="plan-card spotlight-card" id="plan-card-paid" style="border-color: var(--border-glow);">
-                        <div>
-                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-                                <span class="badge badge-success">PAID </span>
-                                <span class="glowing-pill" style="font-size: 10px; padding: 2px 8px;">ALL UNLOCKED</span>
+                <!-- Sub-Tab 1: Plans & Account (Default Visible) -->
+                <div id="settings-section-account" class="settings-subtab-content">
+                    <div class="plans-grid">
+                        <div class="plan-card spotlight-card" id="plan-card-free">
+                            <div>
+                                <span class="badge badge-purple" style="margin-bottom: 12px;">FREE TRIAL (DEFAULT)</span>
+                                <h3 style="font-size: 24px; font-weight: 900; color: #fff;">$0 <span style="font-size: 13px; color: var(--text-muted); font-weight: 500;">/ forever</span></h3>
+                                <ul style="list-style: none; margin: 20px 0; display: flex; flex-direction: column; gap: 10px; font-size: 13px; color: var(--text-secondary);">
+                                    <li>✅ 3 Applications Max</li>
+                                    <li>✅ 1,000 Users per application</li>
+                                    <li>✅ Strict HWID Lock</li>
+                                    <li>❌ Discord Bot Controller</li>
+                                    <li>❌ Reseller Accounts</li>
+                                </ul>
                             </div>
-                            <h3 style="font-size: 24px; font-weight: 900; color: #fff;">$19.99 <span style="font-size: 13px; color: var(--text-muted); font-weight: 500;">/ month or key</span></h3>
-                            <ul style="list-style: none; margin: 20px 0; display: flex; flex-direction: column; gap: 10px; font-size: 13px; color: #fff;">
-                                <li>✅ <strong>Unlimited Applications</strong></li>
-                                <li>✅ <strong>Unlimited Users</strong></li>
-                                <li>✅ <strong>Discord Bot Automation</strong></li>
-                                <li>✅ <strong>Reseller Sub-Accounts</strong></li>
-                                <li>✅ <strong>CDN File Delivery</strong></li>
-                                <li>✅ <strong>Priority Support</strong></li>
-                            </ul>
+                            <div id="plan-btn-container-free"></div>
                         </div>
-                        <div id="plan-btn-container-paid"></div>
+
+                        <div class="plan-card spotlight-card" id="plan-card-paid" style="border-color: var(--border-glow);">
+                            <div>
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                                    <span class="badge badge-success">PAID </span>
+                                    <span class="glowing-pill" style="font-size: 10px; padding: 2px 8px;">ALL UNLOCKED</span>
+                                </div>
+                                <h3 style="font-size: 24px; font-weight: 900; color: #fff;">$19.99 <span style="font-size: 13px; color: var(--text-muted); font-weight: 500;">/ month or key</span></h3>
+                                <ul style="list-style: none; margin: 20px 0; display: flex; flex-direction: column; gap: 10px; font-size: 13px; color: #fff;">
+                                    <li>✅ <strong>Unlimited Applications</strong></li>
+                                    <li>✅ <strong>Unlimited Users</strong></li>
+                                    <li>✅ <strong>Discord Bot Automation</strong></li>
+                                    <li>✅ <strong>Reseller Sub-Accounts</strong></li>
+                                    <li>✅ <strong>CDN File Delivery</strong></li>
+                                    <li>✅ <strong>Priority Support</strong></li>
+                                </ul>
+                            </div>
+                            <div id="plan-btn-container-paid"></div>
+                        </div>
+                    </div>
+
+                    <!-- Redeem Key Box -->
+                    <div style="margin-top: 28px;">
+                        <div class="redeem-card spotlight-card" style="margin-top: 0; max-width: 600px;">
+                            <h3 style="font-size: 16px; font-weight: 800; color: #fff; margin-bottom: 10px;">🔑 Redeem Paid Plan Upgrade Key</h3>
+                            <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 18px;">Enter your Paid Plan Upgrade Key (generated via Discord Bot <code>/genplankey</code> or purchased) to unlock Unlimited Apps, Users, and Discord Bot Controller:</p>
+                            <div style="display: flex; gap: 10px;">
+                                <input type="text" id="redeem-plan-key-input" class="form-control mono" placeholder="e.g. JOYST-PAID-XXXX-XXXX-XXXX">
+                                <button class="btn btn-primary" onclick="redeemPlanKeySubmit()">Redeem Key</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="stat-card spotlight-card" style="max-width: 600px; padding: 32px; margin-top: 32px;">
+                        <h3 style="font-size: 16px; font-weight: 800; color: #fff; margin-bottom: 20px;">Change Password</h3>
+                        <form id="form-change-password">
+                            <div class="form-group">
+                                <label>Current Password</label>
+                                <input type="password" id="current-password" class="form-control" required>
+                            </div>
+                            <div class="form-group" style="margin-bottom: 24px;">
+                                <label>New Password (Min. 6 Characters)</label>
+                                <input type="password" id="new-password" class="form-control" required minlength="6">
+                            </div>
+                            <button type="submit" class="btn btn-primary">Update Password</button>
+                        </form>
                     </div>
                 </div>
 
-                <!-- Redeem Key Box -->
-                <div style="margin-top: 28px;">
-                    <div class="redeem-card spotlight-card" style="margin-top: 0; max-width: 600px;">
-                        <h3 style="font-size: 16px; font-weight: 800; color: #fff; margin-bottom: 10px;">🔑 Redeem Paid Plan Upgrade Key</h3>
-                        <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 18px;">Enter your Paid Plan Upgrade Key (generated via Discord Bot <code>/genplankey</code> or purchased) to unlock Unlimited Apps, Users, and Discord Bot Controller:</p>
-                        <div style="display: flex; gap: 10px;">
-                            <input type="text" id="redeem-plan-key-input" class="form-control mono" placeholder="e.g. JOYST-PAID-XXXX-XXXX-XXXX">
-                            <button class="btn btn-primary" onclick="redeemPlanKeySubmit()">Redeem Key</button>
-                        </div>
-                    </div>
+                <!-- Sub-Tab 2: 18 Custom Messages -->
+                <div id="settings-section-messages" class="settings-subtab-content" style="display: none;">
+                    <div id="settings-messages-container"></div>
                 </div>
 
-                <div class="stat-card spotlight-card" style="max-width: 600px; padding: 32px; margin-top: 32px;">
-                    <h3 style="font-size: 16px; font-weight: 800; color: #fff; margin-bottom: 20px;">Change Password</h3>
-                    <form id="form-change-password">
-                        <div class="form-group">
-                            <label>Current Password</label>
-                            <input type="password" id="current-password" class="form-control" required>
-                        </div>
-                        <div class="form-group" style="margin-bottom: 24px;">
-                            <label>New Password (Min. 6 Characters)</label>
-                            <input type="password" id="new-password" class="form-control" required minlength="6">
-                        </div>
-                        <button type="submit" class="btn btn-primary">Update Password</button>
-                    </form>
+                <!-- Sub-Tab 3: Security & HWID -->
+                <div id="settings-section-security" class="settings-subtab-content" style="display: none;">
+                    <div id="settings-security-container"></div>
+                </div>
+
+                <!-- Sub-Tab 4: App State & Killswitch -->
+                <div id="settings-section-appstate" class="settings-subtab-content" style="display: none;">
+                    <div id="settings-appstate-container"></div>
                 </div>
             </section>
         </main>

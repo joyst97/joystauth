@@ -1,10 +1,11 @@
 import os
 from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import HTMLResponse, FileResponse
+from fastapi.responses import HTMLResponse, FileResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 
 from .database import init_db
+from .config import send_discord_glitch_alert, send_discord_system_lifecycle_alert
 from .api.client_api import router as client_router
 from .api.admin_api import router as admin_router
 from .api.auth_api import router as auth_router
@@ -27,16 +28,38 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Inbuilt Anti-Stale-Cache & Instant Refresh Middleware
+# Inbuilt Anti-Stale-Cache & Auto Discord Incident Telemetry Middleware
 @app.middleware("http")
-async def add_anti_cache_headers(request: Request, call_next):
-    response = await call_next(request)
-    # Ensure browsers and proxies always fetch the freshest 0-second updated HTML/API
-    if "text/html" in response.headers.get("content-type", "") or "application/json" in response.headers.get("content-type", ""):
-        response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate, max-age=0"
-        response.headers["Pragma"] = "no-cache"
-        response.headers["Expires"] = "0"
-    return response
+async def incident_and_cache_middleware(request: Request, call_next):
+    try:
+        response = await call_next(request)
+        # Ensure browsers and proxies always fetch the freshest 0-second updated HTML/API
+        if "text/html" in response.headers.get("content-type", "") or "application/json" in response.headers.get("content-type", ""):
+            response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate, max-age=0"
+            response.headers["Pragma"] = "no-cache"
+            response.headers["Expires"] = "0"
+        return response
+    except Exception as exc:
+        import traceback
+        tb = traceback.format_exc()
+        client_ip = request.client.host if request.client else "Unknown"
+        send_discord_glitch_alert(
+            route=request.url.path,
+            method=request.method,
+            status_code=500,
+            error_name=exc.__class__.__name__,
+            error_msg=str(exc),
+            stack_trace=tb,
+            client_ip=client_ip
+        )
+        return JSONResponse(
+            status_code=500,
+            content={
+                "success": False,
+                "message": "Internal Server Glitch: Incident intercepted and telemetry dispatched to administrator.",
+                "error_type": exc.__class__.__name__
+            }
+        )
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 STATIC_DIR = os.path.join(BASE_DIR, "static")
@@ -64,10 +87,16 @@ async def on_startup():
         init_db()
     except Exception as e:
         print(f"[JOYST] Database init notice: {e}")
+    send_discord_system_lifecycle_alert("STARTUP", "Joyst Auth Server v2.0.0 is online and healthy.")
     print("=======================================================")
     print("[JOYST CORPORATION] Production Platform is ONLINE [OK]")
     print("[+] Public Gateway:  https://joystauth.cc")
     print("[+] Status Endpoint: https://joystauth.cc/health")
+    print("=======================================================")
+
+@app.on_event("shutdown")
+async def on_shutdown():
+    send_discord_system_lifecycle_alert("RESTART", "Joyst Auth Server container reboot/redeployment in progress.")
     print("=======================================================")
 
 @app.get("/favicon.ico", include_in_schema=False)

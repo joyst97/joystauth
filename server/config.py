@@ -148,3 +148,87 @@ def send_discord_webhook(webhook_url: str, app_name: str, action: str, username:
         requests.post(webhook_url, json=payload, timeout=3)
     except Exception:
         pass
+
+def send_discord_glitch_alert(route: str, method: str, status_code: int, error_name: str, error_msg: str, stack_trace: str = "", client_ip: str = "Unknown"):
+    """Dispatches a modern, clean Cyber Crimson Embed to Discord whenever a server glitch or unhandled exception occurs."""
+    target_webhook = os.getenv("INCIDENT_DISCORD_WEBHOOK_URL", DEFAULT_DISCORD_WEBHOOK_URL)
+    if not target_webhook or not target_webhook.startswith("http"):
+        return
+
+    import threading
+    def _post():
+        fields = [
+            {"name": "🌐 Endpoint Route", "value": f"`{method} {route}`", "inline": True},
+            {"name": "📊 Status Code", "value": f"`{status_code}`", "inline": True},
+            {"name": "💻 Origin Client IP", "value": f"`{client_ip or 'Unknown'}`", "inline": True},
+            {"name": "⚠️ Exception Type", "value": f"**`{error_name}`**", "inline": False},
+            {"name": "📄 Glitch Summary", "value": f"`{error_msg[:300]}`", "inline": False}
+        ]
+
+        if stack_trace:
+            trace_snippet = stack_trace[-750:] if len(stack_trace) > 750 else stack_trace
+            fields.append({
+                "name": "🔍 Stack Trace Forensics",
+                "value": f"```py\n{trace_snippet}\n```",
+                "inline": False
+            })
+
+        payload = {
+            "username": "JOYST INCIDENT GUARDIAN",
+            "avatar_url": "https://joystauth.cc/static/img/joyst_logo.png",
+            "embeds": [
+                {
+                    "title": "🚨 [INCIDENT DETECTED] Server Glitch / Exception Intercepted",
+                    "description": "An automated telemetry event was triggered. The server handled the error and protected sensitive memory.",
+                    "color": 0xEF4444,
+                    "fields": fields,
+                    "footer": {
+                        "text": "JOYST SHIELD AUTO-INCIDENT GUARDIAN • Zero-Downtime Telemetry"
+                    },
+                    "timestamp": datetime.datetime.utcnow().isoformat()
+                }
+            ]
+        }
+        try:
+            requests.post(target_webhook, json=payload, timeout=3)
+        except Exception:
+            pass
+
+    threading.Thread(target=_post, daemon=True).start()
+
+def send_discord_system_lifecycle_alert(event_type: str, details: str = ""):
+    """Dispatches clean operational status embeds (Online, Restart, Recovery)."""
+    target_webhook = os.getenv("INCIDENT_DISCORD_WEBHOOK_URL", DEFAULT_DISCORD_WEBHOOK_URL)
+    if not target_webhook or not target_webhook.startswith("http"):
+        return
+
+    import threading
+    def _post():
+        is_online = event_type == "STARTUP" or event_type == "ONLINE"
+        color = 0x10B981 if is_online else 0xF59E0B
+        title = "🟢 [SYSTEM ONLINE] Joyst Auth Core Operational" if is_online else f"⚠️ [SYSTEM NOTICE] {event_type}"
+
+        payload = {
+            "username": "JOYST SYSTEM TELEMETRY",
+            "avatar_url": "https://joystauth.cc/static/img/joyst_logo.png",
+            "embeds": [
+                {
+                    "title": title,
+                    "description": details or "Server instance initialized and connected to database backend successfully.",
+                    "color": color,
+                    "fields": [
+                        {"name": "🚀 Platform Version", "value": f"`v{PLATFORM_VERSION}`", "inline": True},
+                        {"name": "🛡️ Security Engine", "value": "`AES-256 Active`", "inline": True},
+                        {"name": "⏱️ Timestamp", "value": f"<t:{int(datetime.datetime.utcnow().timestamp())}:R>", "inline": True}
+                    ],
+                    "footer": {"text": "JOYST CLOUD INFRASTRUCTURE MONITOR"},
+                    "timestamp": datetime.datetime.utcnow().isoformat()
+                }
+            ]
+        }
+        try:
+            requests.post(target_webhook, json=payload, timeout=3)
+        except Exception:
+            pass
+
+    threading.Thread(target=_post, daemon=True).start()

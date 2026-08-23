@@ -298,6 +298,8 @@ function loadTabContent(tabId) {
         loadNotifications();
     } else if (tabId === "apps") {
         renderAppsPage();
+    } else if (tabId === "settings") {
+        renderActiveAppSettings();
     } else if (tabId === "logs") {
         loadAuditLogs();
     } else if (tabId === "sdk") {
@@ -1684,129 +1686,89 @@ async function deleteNotification(notifId) {
 
 // ==================== 13. KEYAUTH-GRADE APPLICATION SETTINGS & SECURITY ====================
 function renderAppsPage() {
-    renderActiveAppSettings();
     renderAllAppsList();
 }
 
+let currentSettingsSubTab = "account";
+
+function switchSettingsSubTab(subtabId) {
+    currentSettingsSubTab = subtabId;
+    document.querySelectorAll(".settings-subtab-btn").forEach(btn => {
+        btn.className = "btn btn-secondary btn-sm settings-subtab-btn";
+    });
+    const activeBtn = document.getElementById(`btn-subtab-${subtabId}`);
+    if (activeBtn) activeBtn.className = "btn btn-primary btn-sm settings-subtab-btn";
+
+    document.querySelectorAll(".settings-subtab-content").forEach(sec => {
+        sec.style.display = "none";
+    });
+    const activeSec = document.getElementById(`settings-section-${subtabId}`);
+    if (activeSec) activeSec.style.display = "block";
+
+    if (subtabId !== "account") {
+        renderActiveAppSettings();
+    }
+}
+
 function renderActiveAppSettings() {
-    const container = document.getElementById("active-app-settings-container");
-    if (!container) return;
+    const msgContainer = document.getElementById("settings-messages-container");
+    const secContainer = document.getElementById("settings-security-container");
+    const stateContainer = document.getElementById("settings-appstate-container");
 
     const app = appsList.find(a => a.id === currentAppId);
+
     if (!app) {
-        container.innerHTML = `
+        const noAppHtml = `
             <div class="stat-card spotlight-card" style="padding: 30px; text-align: center; color: var(--text-muted);">
                 <h3>No Application Selected</h3>
                 <p style="margin-top: 6px;">Select an application from the top dropdown or click "➕ New App" to begin.</p>
             </div>
         `;
+        if (msgContainer) msgContainer.innerHTML = noAppHtml;
+        if (secContainer) secContainer.innerHTML = noAppHtml;
+        if (stateContainer) stateContainer.innerHTML = noAppHtml;
         return;
     }
 
-    container.innerHTML = `
-        <div class="stat-card spotlight-card" style="padding: 28px; border: 1px solid rgba(225, 29, 72, 0.4); box-shadow: 0 10px 30px -10px rgba(225, 29, 72, 0.25);">
-            <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 16px; margin-bottom: 22px; border-bottom: 1px solid var(--border-glass); padding-bottom: 18px;">
-                <div>
-                    <div style="display: flex; align-items: center; gap: 10px;">
-                        <h2 style="font-size: 20px; font-weight: 800; color: #fff; margin: 0;">⚙️ ${escapeHtml(app.name)} — KeyAuth Master Settings</h2>
-                        <span class="badge badge-cyan">v${app.version || '1.0'}</span>
-                    </div>
-                    <p style="color: var(--text-secondary); font-size: 13px; margin-top: 4px;">
-                        Configure hardware binding, live cheat/game status, custom login toast responses, and killswitch parameters.
-                    </p>
-                </div>
-                <div style="display: flex; gap: 8px;">
-                    <button class="btn btn-primary btn-sm" onclick="saveAllAppSettings(${app.id})">💾 Save All Settings</button>
-                    <button class="btn btn-secondary btn-sm" onclick="regenerateSecret(${app.id})">🔄 Reset Secret</button>
-                </div>
+    const appSelectorHtml = `
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 14px; margin-bottom: 20px; background: rgba(0,0,0,0.3); padding: 16px 20px; border-radius: 12px; border: 1px solid var(--border-glass);">
+            <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+                <span style="font-size: 13px; font-weight: 700; color: var(--text-secondary);">Application:</span>
+                <select class="form-control" style="width: auto; min-width: 230px; font-weight: 800; background: rgba(14, 5, 10, 0.9); border-color: var(--brand-rose);" onchange="switchAppFromSettingsDropdown(this.value)">
+                    ${appsList.map(a => `<option value="${a.id}" ${a.id === app.id ? 'selected' : ''}>${escapeHtml(a.name)} (v${a.version})</option>`).join('')}
+                </select>
+                <span class="badge badge-${app.status === 'enabled' ? 'success' : 'danger'}">
+                    <span class="badge-dot"></span> ${app.status.toUpperCase()}
+                </span>
             </div>
-
-            <!-- 1. Security & HWID Control Cards -->
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin-bottom: 24px;">
-                <!-- HWID & Anti-Share Policy -->
-                <div style="background: rgba(0,0,0,0.35); padding: 18px; border-radius: 14px; border: 1px solid var(--border-glass);">
-                    <h4 style="font-size: 14.5px; font-weight: 800; color: #ff4d79; margin-bottom: 14px; display: flex; align-items: center; gap: 8px;">
-                        <span>🔒 HWID & Anti-Share Protection</span>
-                    </h4>
-                    
-                    <div style="display: flex; flex-direction: column; gap: 14px;">
-                        <label style="display: flex; align-items: center; justify-content: space-between; cursor: pointer;">
-                            <div>
-                                <strong style="color: #fff; font-size: 13px;">Force Strict HWID Lock</strong>
-                                <div style="color: var(--text-muted); font-size: 11.5px;">Blocks accounts from logging in on different machines</div>
-                            </div>
-                            <input type="checkbox" id="setting-hwid-lock" ${app.hwid_lock_enabled ? 'checked' : ''} style="width: 20px; height: 20px; accent-color: #ff2a5f; cursor: pointer;">
-                        </label>
-
-                        <label style="display: flex; align-items: center; justify-content: space-between; cursor: pointer; border-top: 1px solid var(--border-glass); padding-top: 12px;">
-                            <div>
-                                <strong style="color: #fff; font-size: 13px;">Allow User Self HWID Reset</strong>
-                                <div style="color: var(--text-muted); font-size: 11.5px;">Users can reset HWID once or require admin/Discord bot</div>
-                            </div>
-                            <input type="checkbox" id="setting-user-hwid-reset" ${app.allow_user_hwid_reset ? 'checked' : ''} style="width: 20px; height: 20px; accent-color: #ff2a5f; cursor: pointer;">
-                        </label>
-
-                        <label style="display: flex; align-items: center; justify-content: space-between; cursor: pointer; border-top: 1px solid var(--border-glass); padding-top: 12px;">
-                            <div>
-                                <strong style="color: #fff; font-size: 13px;">VPN & Proxy Blocker</strong>
-                                <div style="color: var(--text-muted); font-size: 11.5px;">Block connections from VPN servers & Tor nodes</div>
-                            </div>
-                            <input type="checkbox" id="setting-vpn-block" ${app.vpn_block_enabled ? 'checked' : ''} style="width: 20px; height: 20px; accent-color: #ff2a5f; cursor: pointer;">
-                        </label>
-                    </div>
-                </div>
-
-                <!-- Application Status & Killswitch -->
-                <div style="background: rgba(0,0,0,0.35); padding: 18px; border-radius: 14px; border: 1px solid var(--border-glass);">
-                    <h4 style="font-size: 14.5px; font-weight: 800; color: #38bdf8; margin-bottom: 14px; display: flex; align-items: center; gap: 8px;">
-                        <span>⚡ Application State & Live Status</span>
-                    </h4>
-
-                    <div class="form-group" style="margin-bottom: 12px;">
-                        <label>Application Master Switch</label>
-                        <select id="setting-app-status" class="form-control" style="font-weight: 800;">
-                            <option value="enabled" ${app.status === 'enabled' ? 'selected' : ''}>🟢 Enabled (Normal Operations)</option>
-                            <option value="paused" ${app.status === 'paused' || app.status === 'maintenance' ? 'selected' : ''}>⏸️ Maintenance / Paused (Shows Custom Notice)</option>
-                            <option value="disabled" ${app.status === 'disabled' ? 'selected' : ''}>🚫 Disabled (Instant Emergency Lock)</option>
-                        </select>
-                    </div>
-
-                    <div class="form-group" style="margin-bottom: 12px;">
-                        <label>Cheat / Game Status Badge</label>
-                        <select id="setting-custom-status" class="form-control" style="font-weight: 800;">
-                            <option value="UNDETECTED" ${app.custom_status === 'UNDETECTED' ? 'selected' : ''}>🟢 UNDETECTED & SAFE</option>
-                            <option value="ONLINE" ${app.custom_status === 'ONLINE' ? 'selected' : ''}>🟢 ONLINE</option>
-                            <option value="UPDATING" ${app.custom_status === 'UPDATING' ? 'selected' : ''}>🟡 UPDATING FOR GAME PATCH</option>
-                            <option value="MAINTENANCE" ${app.custom_status === 'MAINTENANCE' ? 'selected' : ''}>🔴 MAINTENANCE</option>
-                            <option value="OFFLINE" ${app.custom_status === 'OFFLINE' ? 'selected' : ''}>⛔ OFFLINE</option>
-                        </select>
-                    </div>
-
-                    <div class="form-group">
-                        <label>Session Expiry Timeout (Minutes)</label>
-                        <input type="number" id="setting-session-timeout" class="form-control" value="${app.session_timeout_minutes || 60}" min="5" max="1440">
-                    </div>
-                </div>
+            <div style="display: flex; gap: 8px;">
+                <button class="btn btn-primary btn-sm" onclick="saveAllAppSettings(${app.id})">💾 Save Settings</button>
+                <button class="btn btn-secondary btn-sm" onclick="regenerateSecret(${app.id})">🔄 Reset Secret</button>
             </div>
+        </div>
+    `;
 
-            <!-- 2. Master Custom Responses & Notifications Hub (KeyAuth Enterprise Grade) -->
-            <div style="background: rgba(0,0,0,0.35); padding: 24px; border-radius: 14px; border: 1px solid var(--border-glass); margin-bottom: 24px;">
+    // 1. Render Sub-Tab: 18 Custom Messages
+    if (msgContainer) {
+        msgContainer.innerHTML = `
+            ${appSelectorHtml}
+            <div class="stat-card spotlight-card" style="padding: 24px; border: 1px solid rgba(225, 29, 72, 0.35);">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; flex-wrap: wrap; gap: 10px;">
                     <div>
-                        <h4 style="font-size: 15px; font-weight: 800; color: #10b981; margin: 0; display: flex; align-items: center; gap: 8px;">
-                            <span>💬 Master Custom Response Messages & Client Notification Hub</span>
-                        </h4>
+                        <h3 style="font-size: 17px; font-weight: 800; color: #fff; margin: 0; display: flex; align-items: center; gap: 8px;">
+                            <span>💬 Master Custom Response Messages (18 Scenarios)</span>
+                        </h3>
                         <p style="font-size: 12px; color: var(--text-secondary); margin-top: 4px; margin-bottom: 0;">
-                            100% full control over every single string returned to your clients, loaders, and games across all scenarios:
+                            Configure exact custom strings returned to your clients and loaders:
                         </p>
                     </div>
                     <span class="badge badge-success">18 Configurable Responses</span>
                 </div>
 
-                <!-- Group A: Login & Authentication -->
-                <div style="margin-bottom: 20px;">
+                <!-- Group 1: Login & Authentication -->
+                <div style="margin-bottom: 22px;">
                     <div style="font-size: 12.5px; font-weight: 800; color: #38bdf8; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 12px; border-bottom: 1px solid var(--border-glass); padding-bottom: 6px;">
-                        🟢 1. Login & Authentication Responses
+                        🟢 1. Login & Authentication
                     </div>
                     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px;">
                         <div class="form-group">
@@ -1828,10 +1790,10 @@ function renderActiveAppSettings() {
                     </div>
                 </div>
 
-                <!-- Group B: Security & Anti-Cheat Blocks -->
-                <div style="margin-bottom: 20px;">
+                <!-- Group 2: Security & Anti-Cheat -->
+                <div style="margin-bottom: 22px;">
                     <div style="font-size: 12.5px; font-weight: 800; color: #ff2a5f; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 12px; border-bottom: 1px solid var(--border-glass); padding-bottom: 6px;">
-                        🛡️ 2. Security & Anti-Cheat Enforcement Responses
+                        🛡️ 2. Security & Anti-Cheat Enforcement
                     </div>
                     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px;">
                         <div class="form-group">
@@ -1847,24 +1809,24 @@ function renderActiveAppSettings() {
                             <input type="text" id="setting-brute-force-ban-msg" class="form-control" value="${escapeHtml(app.brute_force_ban_message || 'Too many invalid attempts! Your PC hardware and IP are permanently banned.')}">
                         </div>
                         <div class="form-group">
-                            <label>Blacklisted IP / Machine HWID</label>
+                            <label>Blacklisted IP / HWID</label>
                             <input type="text" id="setting-blacklist-msg" class="form-control" value="${escapeHtml(app.blacklist_message || 'Access Denied! Your IP or Machine HWID has been blacklisted.')}">
                         </div>
                         <div class="form-group">
-                            <label>VPN / Proxy Detected Block</label>
+                            <label>VPN / Proxy Block</label>
                             <input type="text" id="setting-vpn-blocked-msg" class="form-control" value="${escapeHtml(app.vpn_blocked_message || 'VPN or Proxy connections are strictly prohibited.')}">
                         </div>
                         <div class="form-group">
-                            <label>Binary Integrity Hash Check Failed</label>
+                            <label>Binary Integrity Hash Mismatch</label>
                             <input type="text" id="setting-hash-mismatch-msg" class="form-control" value="${escapeHtml(app.hash_mismatch_message || 'Executable integrity verification failed! Modified or cracked binary detected.')}">
                         </div>
                     </div>
                 </div>
 
-                <!-- Group C: License Keys & Registration -->
-                <div style="margin-bottom: 20px;">
+                <!-- Group 3: License Keys & User Registration -->
+                <div style="margin-bottom: 22px;">
                     <div style="font-size: 12.5px; font-weight: 800; color: #a855f7; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 12px; border-bottom: 1px solid var(--border-glass); padding-bottom: 6px;">
-                        🔑 3. License Keys & User Registration Responses
+                        🔑 3. License Keys & Registration
                     </div>
                     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px;">
                         <div class="form-group">
@@ -1872,7 +1834,7 @@ function renderActiveAppSettings() {
                             <input type="text" id="setting-register-success-msg" class="form-control" value="${escapeHtml(app.register_success_message || 'Account created successfully! You are now logged in.')}">
                         </div>
                         <div class="form-group">
-                            <label>License Direct Login Success</label>
+                            <label>License Login Success</label>
                             <input type="text" id="setting-license-login-success-msg" class="form-control" value="${escapeHtml(app.license_login_success_message || 'License authenticated successfully!')}">
                         </div>
                         <div class="form-group">
@@ -1880,65 +1842,101 @@ function renderActiveAppSettings() {
                             <input type="text" id="setting-invalid-license-msg" class="form-control" value="${escapeHtml(app.invalid_license_message || 'Invalid license key.')}">
                         </div>
                         <div class="form-group">
-                            <label>License Key Already Used</label>
+                            <label>Already Used Key</label>
                             <input type="text" id="setting-used-license-msg" class="form-control" value="${escapeHtml(app.used_license_message || 'This license key is already used.')}">
                         </div>
                         <div class="form-group">
-                            <label>License Key Paused</label>
+                            <label>Paused License Key</label>
                             <input type="text" id="setting-paused-license-msg" class="form-control" value="${escapeHtml(app.paused_license_message || 'This license key is paused by administrator.')}">
                         </div>
                         <div class="form-group">
-                            <label>License Key Revoked</label>
+                            <label>Revoked License Key</label>
                             <input type="text" id="setting-revoked-license-msg" class="form-control" value="${escapeHtml(app.revoked_license_message || 'This license key has been revoked.')}">
                         </div>
                     </div>
                 </div>
 
-                <!-- Group D: System & Maintenance -->
-                <div>
+                <!-- Group 4: System & Maintenance -->
+                <div style="margin-bottom: 22px;">
                     <div style="font-size: 12.5px; font-weight: 800; color: #f59e0b; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 12px; border-bottom: 1px solid var(--border-glass); padding-bottom: 6px;">
-                        ⏸️ 4. System, Version & Maintenance Responses
+                        ⏸️ 4. Maintenance & Version Control
                     </div>
                     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px;">
                         <div class="form-group">
-                            <label>Emergency Maintenance Killswitch</label>
+                            <label>Maintenance Mode Message</label>
                             <input type="text" id="setting-maintenance-msg" class="form-control" value="${escapeHtml(app.maintenance_message || 'Application is under maintenance. Please check back soon.')}">
                         </div>
                         <div class="form-group">
-                            <label>Version Force-Update Notice</label>
+                            <label>Version Update Required Notice</label>
                             <input type="text" id="setting-version-mismatch-msg" class="form-control" value="${escapeHtml(app.version_mismatch_message || 'Update required! Please download the latest version.')}">
                         </div>
                     </div>
                 </div>
+
+                <div style="display: flex; justify-content: flex-end; margin-top: 14px;">
+                    <button class="btn btn-primary" style="padding: 10px 28px; font-size: 14px;" onclick="saveAllAppSettings(${app.id})">💾 Save All 18 Custom Messages</button>
+                </div>
             </div>
+        `;
+    }
 
-            <!-- 3. Version Enforcement & Hash Integrity -->
-            <div style="background: rgba(0,0,0,0.35); padding: 22px; border-radius: 14px; border: 1px solid var(--border-glass); margin-bottom: 24px;">
-                <h4 style="font-size: 14.5px; font-weight: 800; color: #8b5cf6; margin-bottom: 6px; display: flex; align-items: center; gap: 8px;">
-                    <span>📦 Version Enforcement & Binary Hash Integrity</span>
+    // 2. Render Sub-Tab: Security & HWID
+    if (secContainer) {
+        secContainer.innerHTML = `
+            ${appSelectorHtml}
+            <div class="stat-card spotlight-card" style="padding: 24px; border: 1px solid rgba(225, 29, 72, 0.35); margin-bottom: 24px;">
+                <h3 style="font-size: 17px; font-weight: 800; color: #ff4d79; margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
+                    <span>🔒 Hardware Binding & Anti-Share Protection</span>
+                </h3>
+
+                <div style="display: flex; flex-direction: column; gap: 16px; margin-bottom: 24px;">
+                    <label style="display: flex; align-items: center; justify-content: space-between; cursor: pointer; background: rgba(0,0,0,0.3); padding: 14px 18px; border-radius: 10px; border: 1px solid var(--border-glass);">
+                        <div>
+                            <strong style="color: #fff; font-size: 13.5px;">Force Strict Motherboard HWID Lock</strong>
+                            <div style="color: var(--text-muted); font-size: 12px; margin-top: 2px;">Blocks accounts from running on different computer hardware</div>
+                        </div>
+                        <input type="checkbox" id="setting-hwid-lock" ${app.hwid_lock_enabled ? 'checked' : ''} style="width: 22px; height: 22px; accent-color: #ff2a5f; cursor: pointer;">
+                    </label>
+
+                    <label style="display: flex; align-items: center; justify-content: space-between; cursor: pointer; background: rgba(0,0,0,0.3); padding: 14px 18px; border-radius: 10px; border: 1px solid var(--border-glass);">
+                        <div>
+                            <strong style="color: #fff; font-size: 13.5px;">Allow User Self HWID Reset</strong>
+                            <div style="color: var(--text-muted); font-size: 12px; margin-top: 2px;">Permit users to reset HWID once or require admin reset</div>
+                        </div>
+                        <input type="checkbox" id="setting-user-hwid-reset" ${app.allow_user_hwid_reset ? 'checked' : ''} style="width: 22px; height: 22px; accent-color: #ff2a5f; cursor: pointer;">
+                    </label>
+
+                    <label style="display: flex; align-items: center; justify-content: space-between; cursor: pointer; background: rgba(0,0,0,0.3); padding: 14px 18px; border-radius: 10px; border: 1px solid var(--border-glass);">
+                        <div>
+                            <strong style="color: #fff; font-size: 13.5px;">VPN & Proxy Blocker</strong>
+                            <div style="color: var(--text-muted); font-size: 12px; margin-top: 2px;">Block connections originating from VPNs, datacenter proxies & Tor</div>
+                        </div>
+                        <input type="checkbox" id="setting-vpn-block" ${app.vpn_block_enabled ? 'checked' : ''} style="width: 22px; height: 22px; accent-color: #ff2a5f; cursor: pointer;">
+                    </label>
+                </div>
+
+                <h4 style="font-size: 15px; font-weight: 800; color: #8b5cf6; margin-bottom: 12px;">
+                    📦 Version Enforcement & Binary Integrity Hash
                 </h4>
-                <p style="font-size: 12px; color: var(--text-secondary); margin-bottom: 16px;">
-                    Prevent users from opening outdated or cracked modified .exe versions:
-                </p>
 
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px;">
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; margin-bottom: 20px;">
                     <div class="form-group">
-                        <label>Target Version (Force Update)</label>
-                        <input type="text" id="setting-version" class="form-control mono" value="${escapeHtml(app.version || '1.0')}" placeholder="e.g. 1.0, 1.1">
+                        <label>Target Application Version</label>
+                        <input type="text" id="setting-version" class="form-control mono" value="${escapeHtml(app.version || '1.0')}">
                     </div>
 
                     <div class="form-group">
-                        <label>Auto-Update Direct Download URL</label>
-                        <input type="url" id="setting-download-url" class="form-control mono" value="${escapeHtml(app.download_link || '')}" placeholder="https://mysite.com/cheat_v2.exe">
+                        <label>Auto-Update Direct Download Link</label>
+                        <input type="url" id="setting-download-url" class="form-control mono" value="${escapeHtml(app.download_link || '')}" placeholder="https://mysite.com/update.exe">
                     </div>
 
                     <div class="form-group" style="grid-column: 1 / -1;">
                         <label style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
                             <span>Binary Integrity Hash (MD5 / SHA256)</span>
-                            <span style="font-size: 11px; color: var(--text-muted);">Leave empty to disable hash check</span>
+                            <span style="font-size: 11px; color: var(--text-muted);">Blocks cracked modified executables</span>
                         </label>
                         <div style="display: flex; gap: 10px; align-items: center;">
-                            <input type="text" id="setting-app-hash" class="form-control mono" value="${escapeHtml(app.app_hash || '')}" placeholder="e.g. a3b8e4f5c90d12... (Optional MD5/SHA256 check)">
+                            <input type="text" id="setting-app-hash" class="form-control mono" value="${escapeHtml(app.app_hash || '')}" placeholder="e.g. 7f8a9b4c...">
                             <label style="display: flex; align-items: center; gap: 8px; font-size: 12px; white-space: nowrap; color: #fff; cursor: pointer;">
                                 <input type="checkbox" id="setting-hash-check-toggle" ${app.hash_check_enabled ? 'checked' : ''} style="width: 17px; height: 17px; accent-color: #ff2a5f;">
                                 Enable Hash Check
@@ -1946,15 +1944,65 @@ function renderActiveAppSettings() {
                         </div>
                     </div>
                 </div>
-            </div>
 
-            <!-- Save Bar -->
-            <div style="display: flex; justify-content: flex-end; gap: 12px;">
-                <button class="btn btn-secondary" onclick="loadApps(); renderAppsPage();">↩️ Reset Changes</button>
-                <button class="btn btn-primary" style="padding: 10px 24px; font-size: 14px;" onclick="saveAllAppSettings(${app.id})">💾 Save All Application Settings</button>
+                <div style="display: flex; justify-content: flex-end;">
+                    <button class="btn btn-primary" style="padding: 10px 28px; font-size: 14px;" onclick="saveAllAppSettings(${app.id})">💾 Save Security Policies</button>
+                </div>
             </div>
-        </div>
-    `;
+        `;
+    }
+
+    // 3. Render Sub-Tab: App State & Killswitch
+    if (stateContainer) {
+        stateContainer.innerHTML = `
+            ${appSelectorHtml}
+            <div class="stat-card spotlight-card" style="padding: 24px; border: 1px solid rgba(225, 29, 72, 0.35);">
+                <h3 style="font-size: 17px; font-weight: 800; color: #38bdf8; margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
+                    <span>⚡ Application State, Killswitch & Tokens</span>
+                </h3>
+
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; margin-bottom: 24px;">
+                    <div class="form-group">
+                        <label>Application Master Switch</label>
+                        <select id="setting-app-status" class="form-control" style="font-weight: 800;">
+                            <option value="enabled" ${app.status === 'enabled' ? 'selected' : ''}>🟢 Enabled (Normal Operations)</option>
+                            <option value="paused" ${app.status === 'paused' || app.status === 'maintenance' ? 'selected' : ''}>⏸️ Maintenance / Paused</option>
+                            <option value="disabled" ${app.status === 'disabled' ? 'selected' : ''}>🚫 Disabled (Emergency Lock)</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Cheat / Game Status Badge</label>
+                        <select id="setting-custom-status" class="form-control" style="font-weight: 800;">
+                            <option value="UNDETECTED" ${app.custom_status === 'UNDETECTED' ? 'selected' : ''}>🟢 UNDETECTED & SAFE</option>
+                            <option value="ONLINE" ${app.custom_status === 'ONLINE' ? 'selected' : ''}>🟢 ONLINE</option>
+                            <option value="UPDATING" ${app.custom_status === 'UPDATING' ? 'selected' : ''}>🟡 UPDATING FOR GAME PATCH</option>
+                            <option value="MAINTENANCE" ${app.custom_status === 'MAINTENANCE' ? 'selected' : ''}>🔴 MAINTENANCE</option>
+                            <option value="OFFLINE" ${app.custom_status === 'OFFLINE' ? 'selected' : ''}>⛔ OFFLINE</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Session Timeout (Minutes)</label>
+                        <input type="number" id="setting-session-timeout" class="form-control" value="${app.session_timeout_minutes || 60}" min="5" max="1440">
+                    </div>
+                </div>
+
+                <div class="form-group" style="margin-bottom: 24px;">
+                    <label>Master App Secret Token</label>
+                    <div style="display: flex; gap: 10px;">
+                        <input type="text" value="${app.secret}" id="token-setting-${app.id}" class="form-control mono" readonly style="color: #38bdf8; font-weight: 700;">
+                        <button class="btn btn-secondary" onclick="copyToClipboard('${app.secret}')">📋 Copy</button>
+                        <button class="btn btn-danger" onclick="regenerateSecret(${app.id})">🔄 Reset Secret</button>
+                    </div>
+                </div>
+
+                <div style="display: flex; justify-content: flex-end;">
+                    <button class="btn btn-primary" style="padding: 10px 28px; font-size: 14px;" onclick="saveAllAppSettings(${app.id})">💾 Save App State</button>
+                </div>
+            </div>
+        `;
+    }
 }
 
 function renderAllAppsList() {
@@ -2006,11 +2054,20 @@ function renderAllAppsList() {
     `).join("");
 }
 
+function switchAppFromSettingsDropdown(appId) {
+    if (!appId) return;
+    currentAppId = parseInt(appId);
+    localStorage.setItem("selected_app_id", currentAppId);
+    updateBannerCredentials();
+    renderActiveAppSettings();
+    showToast(`Switched settings view to ${appsList.find(a => a.id === currentAppId)?.name}`, "info");
+}
+
 function selectAppFromCard(appId) {
     currentAppId = appId;
     localStorage.setItem("selected_app_id", appId);
     updateBannerCredentials();
-    renderAppsPage();
+    switchTab('settings');
     showToast(`Switched active application to ${appsList.find(a => a.id === appId)?.name}`, "info");
 }
 
@@ -2553,6 +2610,10 @@ window.loadNotifications = typeof loadNotifications !== "undefined" ? loadNotifi
 window.loadAuditLogs = typeof loadAuditLogs !== "undefined" ? loadAuditLogs : () => {};
 window.clearAuditLogs = typeof clearAuditLogs !== "undefined" ? clearAuditLogs : () => {};
 window.renderAppsPage = renderAppsPage;
+window.renderActiveAppSettings = renderActiveAppSettings;
+window.switchSettingsSubTab = switchSettingsSubTab;
+window.switchAppFromSettingsDropdown = switchAppFromSettingsDropdown;
+window.selectAppFromCard = selectAppFromCard;
 window.setSnippetLang = typeof setSnippetLang !== "undefined" ? setSnippetLang : () => {};
 window.showToast = showToast;
 window.toggleSecretVisibility = toggleSecretVisibility;
