@@ -4,6 +4,59 @@ let appsList = [];
 let devOwnerId = localStorage.getItem("dev_owner_id") || "Loading...";
 let devUsername = localStorage.getItem("dev_username") || "Developer";
 
+function showConfirmDialog({ title = "Confirm Action", message, icon = "⚠️", okText = "Confirm", cancelText = "Cancel", isDanger = true }) {
+    return new Promise((resolve) => {
+        const modal = document.getElementById("modal-app-confirm");
+        const titleEl = document.getElementById("confirm-modal-title");
+        const msgEl = document.getElementById("confirm-modal-message");
+        const iconEl = document.getElementById("confirm-modal-icon");
+        const okBtn = document.getElementById("confirm-modal-ok-btn");
+        const cancelBtn = document.getElementById("confirm-modal-cancel-btn");
+
+        if (!modal || !titleEl || !msgEl || !okBtn || !cancelBtn) {
+            resolve(window.confirm(message));
+            return;
+        }
+
+        titleEl.textContent = title;
+        msgEl.textContent = message;
+        if (iconEl) iconEl.textContent = icon;
+        okBtn.textContent = okText;
+        cancelBtn.textContent = cancelText;
+
+        okBtn.className = isDanger ? "btn btn-danger" : "btn btn-primary";
+        okBtn.style.flex = "1";
+        okBtn.style.padding = "10px 0";
+
+        modal.style.display = "flex";
+
+        function cleanup(result) {
+            modal.style.display = "none";
+            okBtn.removeEventListener("click", onOk);
+            cancelBtn.removeEventListener("click", onCancel);
+            document.removeEventListener("keydown", onKeyDown);
+            resolve(result);
+        }
+
+        function onOk(e) {
+            if (e) e.preventDefault();
+            cleanup(true);
+        }
+        function onCancel(e) {
+            if (e) e.preventDefault();
+            cleanup(false);
+        }
+        function onKeyDown(e) {
+            if (e.key === "Escape") cleanup(false);
+            if (e.key === "Enter") cleanup(true);
+        }
+
+        okBtn.addEventListener("click", onOk);
+        cancelBtn.addEventListener("click", onCancel);
+        document.addEventListener("keydown", onKeyDown);
+    });
+}
+
 function escapeHtml(str) {
     if (!str && str !== 0) return "";
     return String(str)
@@ -445,7 +498,7 @@ async function quickToggleMaintenance() {
     const isCurrentlyMaint = app && (app.status === "maintenance" || app.status === "paused");
     const actionWord = isCurrentlyMaint ? "RESUME ONLINE" : "ACTIVATE EMERGENCY MAINTENANCE (Force-Block all running EXEs)";
 
-    if (!confirm(`Are you sure you want to ${actionWord} for '${app?.name}'?`)) return;
+    if (!await showConfirmDialog({ title: isCurrentlyMaint ? 'Resume Application' : 'Emergency Maintenance', message: `Are you sure you want to ${actionWord} for '${app?.name}'?`, icon: isCurrentlyMaint ? '🟢' : '🚨', okText: isCurrentlyMaint ? 'Resume' : 'Activate', isDanger: !isCurrentlyMaint })) return;
 
     showToast("Updating application mode...", "info");
 
@@ -596,7 +649,7 @@ async function generateKeysSubmit() {
 
 async function bulkDeleteLicenses(type) {
     if (!currentAppId) return;
-    if (!confirm(`Are you sure you want to delete all ${type} license keys?`)) return;
+    if (!await showConfirmDialog({ title: 'Delete License Keys', message: `Are you sure you want to delete all ${type} license keys?`, icon: '🗑️', okText: 'Delete Keys', isDanger: true })) return;
     const res = await apiFetch(`/api/v1/admin/licenses/bulk-delete?app_id=${currentAppId}&delete_type=${type}`, { method: "POST" });
     if (res && res.success) {
         showToast(res.message, "success");
@@ -625,7 +678,7 @@ async function exportLicensesTxt() {
 }
 
 async function deleteLicense(licenseId) {
-    if (!confirm("Are you sure you want to permanently delete this license key?")) return;
+    if (!await showConfirmDialog({ title: 'Delete License Key', message: 'Are you sure you want to permanently delete this license key?', icon: '🗑️', okText: 'Delete Key', isDanger: true })) return;
     const res = await apiFetch(`/api/v1/admin/licenses/${licenseId}`, { method: "DELETE" });
     if (res && res.success) {
         showToast(res.message, "success");
@@ -770,7 +823,7 @@ function updateBatchActionBar() {
 
 async function bulkResetAllHwidSubmit() {
     if (!currentAppId) return;
-    if (!confirm("Are you sure you want to RESET HWID lock for ALL users in this application?")) return;
+    if (!await showConfirmDialog({ title: 'Reset All HWIDs', message: 'Are you sure you want to RESET HWID lock for ALL users in this application?', icon: '🔄', okText: 'Reset All', isDanger: true })) return;
 
     const res = await apiFetch("/api/v1/admin/users/reset-all-hwid", {
         method: "POST",
@@ -786,7 +839,7 @@ async function bulkResetAllHwidSubmit() {
 
 async function bulkPurgeExpiredUsersSubmit() {
     if (!currentAppId) return;
-    if (!confirm("Are you sure you want to permanently DELETE ALL EXPIRED user accounts?")) return;
+    if (!await showConfirmDialog({ title: 'Purge Expired Users', message: 'Are you sure you want to permanently DELETE ALL EXPIRED user accounts?', icon: '🗑️', okText: 'Purge Expired', isDanger: true })) return;
 
     const res = await apiFetch("/api/v1/admin/users/purge-expired", {
         method: "POST",
@@ -822,7 +875,7 @@ window.addEventListener("click", () => {
 
 async function bulkDeleteAllUsersInApp() {
     if (!currentAppId) return;
-    if (!confirm("⚠️ DANGER: Are you sure you want to permanently delete ALL users in this application? This action cannot be undone!")) return;
+    if (!await showConfirmDialog({ title: 'Delete All Users', message: 'DANGER: Are you sure you want to permanently delete ALL users in this application? This action cannot be undone!', icon: '🚨', okText: 'Delete All Users', isDanger: true })) return;
 
     if (rawUsersList.length === 0) {
         showToast("No users found to delete", "info");
@@ -886,7 +939,7 @@ async function submitBulkExtendUsers() {
 async function batchDeleteSelected() {
     const selected = getSelectedUserIds();
     if (selected.length === 0) return;
-    if (!confirm(`Are you sure you want to delete ${selected.length} selected user(s)?`)) return;
+    if (!await showConfirmDialog({ title: 'Delete Selected Users', message: `Are you sure you want to delete ${selected.length} selected user(s)?`, icon: '🗑️', okText: 'Delete', isDanger: true })) return;
 
     const res = await apiFetch("/api/v1/admin/users/bulk-delete", {
         method: "POST",
@@ -924,7 +977,7 @@ async function batchBanSelected() {
 async function batchResetHwidSelected() {
     const selected = getSelectedUserIds();
     if (selected.length === 0) return;
-    if (!confirm(`Reset HWID for ${selected.length} selected user(s)?`)) return;
+    if (!await showConfirmDialog({ title: 'Reset HWIDs', message: `Reset HWID for ${selected.length} selected user(s)?`, icon: '🔄', okText: 'Reset HWID', isDanger: false })) return;
 
     for (const uid of selected) {
         await apiFetch(`/api/v1/admin/users/${uid}/reset-hwid`, { method: "POST" });
@@ -995,7 +1048,7 @@ async function submitManualUser() {
 }
 
 async function resetUserHwid(userId, username) {
-    if (!confirm(`Reset HWID lock for '${username}'? Account will lock to the next machine.`)) return;
+    if (!await showConfirmDialog({ title: 'Reset HWID', message: `Reset HWID lock for '${username}'? Account will lock to the next machine upon login.`, icon: '🔄', okText: 'Reset HWID', isDanger: false })) return;
     const res = await apiFetch(`/api/v1/admin/users/${userId}/reset-hwid`, { method: "POST" });
     if (res && res.success) {
         showToast(res.message, "success");
@@ -1048,8 +1101,8 @@ async function submitExtendUser() {
     }
 }
 
-async function deleteUser(userId) {
-    if (!confirm("Are you sure you want to permanently delete this user account?")) return;
+async async function deleteUser(userId) {
+    if (!await showConfirmDialog({ title: 'Delete User Account', message: 'Are you sure you want to permanently delete this user account?', icon: '🗑️', okText: 'Delete User', isDanger: true })) return;
     const res = await apiFetch(`/api/v1/admin/users/${userId}`, { method: "DELETE" });
     if (res && res.success) {
         showToast(res.message, "success");
@@ -1676,7 +1729,7 @@ async function toggleNotificationStatus(notifId) {
 }
 
 async function deleteNotification(notifId) {
-    if (!confirm("Are you sure you want to delete this in-app notification?")) return;
+    if (!await showConfirmDialog({ title: 'Delete Notification', message: 'Are you sure you want to delete this in-app notification?', icon: '🗑️', okText: 'Delete', isDanger: true })) return;
     const res = await apiFetch(`/api/v1/admin/notifications/${notifId}`, { method: "DELETE" });
     if (res && res.success) {
         showToast(res.message, "success");
@@ -1972,13 +2025,12 @@ function renderActiveAppSettings() {
                     </div>
 
                     <div class="form-group">
-                        <label>Cheat / Game Status Badge</label>
+                        <label>Application Operational Status</label>
                         <select id="setting-custom-status" class="form-control" style="font-weight: 800;">
-                            <option value="UNDETECTED" ${app.custom_status === 'UNDETECTED' ? 'selected' : ''}>🟢 UNDETECTED & SAFE</option>
-                            <option value="ONLINE" ${app.custom_status === 'ONLINE' ? 'selected' : ''}>🟢 ONLINE</option>
-                            <option value="UPDATING" ${app.custom_status === 'UPDATING' ? 'selected' : ''}>🟡 UPDATING FOR GAME PATCH</option>
-                            <option value="MAINTENANCE" ${app.custom_status === 'MAINTENANCE' ? 'selected' : ''}>🔴 MAINTENANCE</option>
-                            <option value="OFFLINE" ${app.custom_status === 'OFFLINE' ? 'selected' : ''}>⛔ OFFLINE</option>
+                            <option value="ONLINE" ${app.custom_status === 'ONLINE' || app.custom_status === 'UNDETECTED' ? 'selected' : ''}>🟢 Operational & Online</option>
+                            <option value="UPDATING" ${app.custom_status === 'UPDATING' ? 'selected' : ''}>🟡 Maintenance / Update in Progress</option>
+                            <option value="MAINTENANCE" ${app.custom_status === 'MAINTENANCE' ? 'selected' : ''}>🔴 Emergency Maintenance</option>
+                            <option value="OFFLINE" ${app.custom_status === 'OFFLINE' ? 'selected' : ''}>⛔ Offline</option>
                         </select>
                     </div>
 
@@ -2011,47 +2063,95 @@ function renderAllAppsList() {
 
     if (appsList.length === 0) {
         container.innerHTML = `
-            <div class="stat-card spotlight-card" style="padding: 30px; text-align: center; color: var(--text-muted); grid-column: 1 / -1;">
-                No applications created yet. Click "➕ New App" to create one.
+            <div class="stat-card spotlight-card" style="padding: 40px; text-align: center; color: var(--text-muted); grid-column: 1 / -1;">
+                <h3 style="color: #fff; font-size: 18px; margin-bottom: 8px;">No Applications Registered</h3>
+                <p style="margin-bottom: 16px;">Create your first application to get your App Secret and start integrating authentication.</p>
+                <button class="btn btn-primary btn-sm" onclick="openModal('modal-create-app')">➕ Create Application</button>
             </div>
         `;
         return;
     }
 
     container.innerHTML = appsList.map(app => `
-        <div class="stat-card spotlight-card" style="padding: 22px; ${app.id === currentAppId ? 'border-color: #ff2a5f; box-shadow: 0 0 20px rgba(255, 42, 95, 0.3);' : ''}">
-            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 14px;">
+        <div class="stat-card spotlight-card" style="padding: 24px; border: 1px solid var(--border-glass); background: rgba(14, 5, 10, 0.75);">
+            <!-- Header: App Name & Version -->
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 18px; border-bottom: 1px solid var(--border-glass); padding-bottom: 14px;">
                 <div>
-                    <h3 style="font-size: 17px; font-weight: 800; color: #fff;">${escapeHtml(app.name)}</h3>
-                    <span class="badge badge-cyan" style="margin-top: 4px;">v${app.version}</span>
+                    <h3 style="font-size: 18px; font-weight: 800; color: #fff; margin: 0; display: flex; align-items: center; gap: 8px;">
+                        <span>📱 ${escapeHtml(app.name)}</span>
+                    </h3>
+                    <div style="display: flex; gap: 6px; margin-top: 6px; align-items: center;">
+                        <span class="badge badge-cyan" style="font-size: 11px;">v${escapeHtml(app.version || '1.0')}</span>
+                        <span class="badge badge-${app.status === 'enabled' ? 'success' : 'danger'}" style="font-size: 11px;">
+                            <span class="badge-dot"></span> ${app.status === 'enabled' ? 'ACTIVE' : app.status.toUpperCase()}
+                        </span>
+                    </div>
                 </div>
-                <span class="badge badge-${app.status === 'enabled' ? 'success' : 'danger'}">
-                    <span class="badge-dot"></span> ${app.status.toUpperCase()}
-                </span>
+                <button class="btn btn-danger btn-sm" title="Delete Application" onclick="deleteApp(${app.id})" style="padding: 6px 10px;">🗑️</button>
             </div>
 
-            <div class="form-group" style="margin-bottom: 12px;">
-                <label>⚡ Master App Token (Secret)</label>
-                <div style="display: flex; gap: 8px;">
-                    <input type="password" value="${app.secret}" id="token-${app.id}" class="form-control mono" readonly style="font-size: 12px; color: #38bdf8;">
-                    <button class="btn btn-secondary btn-sm" onclick="toggleSecretVisibility('token-${app.id}')">👁️</button>
-                    <button class="btn btn-secondary btn-sm" onclick="copyToClipboard('${app.secret}')">📋</button>
+            <!-- Credentials & Parameters for Easy Implementation -->
+            <div style="display: flex; flex-direction: column; gap: 12px; margin-bottom: 18px;">
+                <!-- Application Name -->
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); font-weight: 700;">Application Name</label>
+                    <div style="display: flex; gap: 6px;">
+                        <input type="text" value="${escapeHtml(app.name)}" id="appname-${app.id}" class="form-control mono" readonly style="font-size: 12px; color: #fff; background: rgba(0,0,0,0.4);">
+                        <button class="btn btn-secondary btn-sm" onclick="copyToClipboard('${escapeHtml(app.name)}')">📋</button>
+                    </div>
+                </div>
+
+                <!-- App Secret Token -->
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); font-weight: 700;">App Secret (Token)</label>
+                    <div style="display: flex; gap: 6px;">
+                        <input type="password" value="${app.secret}" id="token-${app.id}" class="form-control mono" readonly style="font-size: 12px; color: #38bdf8; background: rgba(0,0,0,0.4);">
+                        <button class="btn btn-secondary btn-sm" onclick="toggleSecretVisibility('token-${app.id}')">👁️</button>
+                        <button class="btn btn-secondary btn-sm" onclick="copyToClipboard('${app.secret}')">📋</button>
+                    </div>
                 </div>
             </div>
 
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 14px 0; font-size: 12px; color: var(--text-muted);">
-                <div>HWID Lock: <strong style="color: ${app.hwid_lock_enabled ? '#10b981' : '#ef4444'};">${app.hwid_lock_enabled ? 'ENABLED' : 'DISABLED'}</strong></div>
-                <div>Status: <strong style="color: #38bdf8;">${app.custom_status || 'UNDETECTED'}</strong></div>
+            <!-- Security Parameters -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 18px; background: rgba(0,0,0,0.3); padding: 12px 14px; border-radius: 8px; border: 1px solid var(--border-subtle); font-size: 12px;">
+                <div>
+                    <span style="color: var(--text-muted);">HWID Lock:</span>
+                    <strong style="color: ${app.hwid_lock_enabled ? '#10b981' : '#ef4444'}; margin-left: 4px;">${app.hwid_lock_enabled ? 'ENABLED' : 'DISABLED'}</strong>
+                </div>
+                <div>
+                    <span style="color: var(--text-muted);">VPN Blocker:</span>
+                    <strong style="color: ${app.vpn_block_enabled ? '#10b981' : '#ef4444'}; margin-left: 4px;">${app.vpn_block_enabled ? 'ENABLED' : 'DISABLED'}</strong>
+                </div>
             </div>
 
-            <div style="display: flex; gap: 8px; margin-top: 16px; border-top: 1px solid var(--border-subtle); padding-top: 14px;">
-                <button class="btn ${app.id === currentAppId ? 'btn-primary' : 'btn-secondary'} btn-sm" style="flex: 1;" onclick="selectAppFromCard(${app.id})">
-                    ${app.id === currentAppId ? '⭐ Active App' : '⚙️ Manage App'}
+            <!-- Action Navigation Buttons -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 14px; border-top: 1px solid var(--border-glass); padding-top: 14px;">
+                <button class="btn btn-secondary btn-sm" style="font-size: 12px;" onclick="goToAppKeys(${app.id})">
+                    🔑 License Keys
                 </button>
-                <button class="btn btn-danger btn-sm" onclick="deleteApp(${app.id})">🗑️</button>
+                <button class="btn btn-primary btn-sm" style="font-size: 12px;" onclick="goToAppSettings(${app.id})">
+                    ⚙️ App Settings
+                </button>
             </div>
         </div>
     `).join("");
+}
+
+function goToAppSettings(appId) {
+    currentAppId = appId;
+    localStorage.setItem("selected_app_id", appId);
+    updateBannerCredentials();
+    switchTab('settings');
+    switchSettingsSubTab('messages');
+    showToast(`Configuring settings for ${appsList.find(a => a.id === appId)?.name}`, "info");
+}
+
+function goToAppKeys(appId) {
+    currentAppId = appId;
+    localStorage.setItem("selected_app_id", appId);
+    updateBannerCredentials();
+    switchTab('licenses');
+    showToast(`Viewing license keys for ${appsList.find(a => a.id === appId)?.name}`, "info");
 }
 
 function switchAppFromSettingsDropdown(appId) {
@@ -2184,8 +2284,8 @@ async function createAppSubmit() {
     }
 }
 
-async function regenerateSecret(appId) {
-    if (!confirm("Regenerating the App Secret will disconnect all existing SDK clients until updated. Proceed?")) return;
+async async function regenerateSecret(appId) {
+    if (!await showConfirmDialog({ title: 'Reset App Secret', message: 'Regenerating the App Secret will disconnect all existing SDK clients until updated with the new token. Proceed?', icon: '⚠️', okText: 'Reset Secret', isDanger: true })) return;
     const res = await apiFetch(`/api/v1/admin/apps/${appId}/regenerate-secret`, { method: "POST" });
     if (res && res.success) {
         showToast(res.message, "success");
@@ -2194,8 +2294,8 @@ async function regenerateSecret(appId) {
     }
 }
 
-async function deleteApp(appId) {
-    if (!confirm("DANGER: Deleting this app will delete ALL associated users, keys, variables, and logs permanently!")) return;
+async async function deleteApp(appId) {
+    if (!await showConfirmDialog({ title: 'Delete Application', message: 'DANGER: Deleting this app will delete ALL associated users, keys, variables, and logs permanently!', icon: '🚨', okText: 'Delete App', isDanger: true })) return;
     const res = await apiFetch(`/api/v1/admin/apps/${appId}`, { method: "DELETE" });
     if (res && res.success) {
         showToast(res.message, "success");
@@ -2243,9 +2343,9 @@ async function loadAuditLogs() {
     }).join("");
 }
 
-async function clearAuditLogs() {
+async async function clearAuditLogs() {
     if (!currentAppId) return;
-    if (!confirm("Are you sure you want to clear all audit logs for this application?")) return;
+    if (!await showConfirmDialog({ title: 'Clear Audit Logs', message: 'Are you sure you want to clear all audit logs for this application?', icon: '🗑️', okText: 'Clear Logs', isDanger: true })) return;
     const res = await apiFetch(`/api/v1/admin/logs/clear?app_id=${currentAppId}`, { method: "DELETE" });
     if (res && res.success) {
         showToast(res.message, "success");
@@ -2613,9 +2713,12 @@ window.renderAppsPage = renderAppsPage;
 window.renderActiveAppSettings = renderActiveAppSettings;
 window.switchSettingsSubTab = switchSettingsSubTab;
 window.switchAppFromSettingsDropdown = switchAppFromSettingsDropdown;
-window.selectAppFromCard = selectAppFromCard;
+window.goToAppSettings = goToAppSettings;
+window.goToAppKeys = goToAppKeys;
+window.selectAppFromCard = typeof selectAppFromCard !== "undefined" ? selectAppFromCard : () => {};
 window.setSnippetLang = typeof setSnippetLang !== "undefined" ? setSnippetLang : () => {};
 window.showToast = showToast;
 window.toggleSecretVisibility = toggleSecretVisibility;
 window.escapeHtml = escapeHtml;
+window.showConfirmDialog = showConfirmDialog;
 window.regenerateSecret = typeof regenerateSecret !== "undefined" ? regenerateSecret : () => {};
