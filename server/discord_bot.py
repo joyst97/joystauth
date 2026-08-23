@@ -132,6 +132,10 @@ if discord:
             embed.add_field(name="🔒 HWID Binding", value=f"`{hwid_display}`", inline=False)
             embed.add_field(name="🌐 Last Login IP", value=f"`{user.last_ip or 'N/A'}`", inline=True)
             embed.add_field(name="📅 Created At", value=f"`{user.created_at.strftime('%Y-%m-%d')}`", inline=True)
+            await interaction.response.send_message(embed=embed, ephemeral=True)
+        finally:
+            db.close()
+
     # 4. /key_create command
     @bot.tree.command(name="key_create", description="Generate a new license key directly from Discord")
     @app_commands.describe(app_name="The name of your application", days="Subscription duration in days (e.g. 30)", note="Optional reference note")

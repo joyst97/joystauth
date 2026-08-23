@@ -370,6 +370,9 @@ async def update_app(app_id: int, data: UpdateAppRequest, dev: Developer = Depen
     if data.webhook_on_ban is not None:
         app.webhook_on_ban = data.webhook_on_ban
     
+    db.commit()
+    return {"success": True, "message": "Application settings updated successfully"}
+
 @router.post("/apps/{app_id}/toggle-maintenance")
 async def toggle_app_maintenance(app_id: int, dev: Developer = Depends(get_current_developer), db: Session = Depends(get_db)):
     app = db.query(Application).filter(Application.id == app_id, Application.developer_id == dev.id).first()
