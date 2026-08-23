@@ -123,8 +123,8 @@ function escapeHtml(str) {
         .replace(/&/g, "&amp;")
         .replace(/</g, "&lt;")
         .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;")
-        .replace(/'/g, "&#039;");
+        .replace(new RegExp('"', 'g'), "&quot;")
+        .replace(new RegExp("'", 'g'), "&#039;");
 }
 
 function getAuthToken() {
@@ -1879,9 +1879,6 @@ function renderOverviewBroadcasts(notifs) {
             </div>
         `;
     }).join("");
-}
-
-    renderLicensesData(data?.licenses || []);
 }
 
 async function editNotification(notifId) {
