@@ -266,66 +266,72 @@ class AuditLog(Base):
 
 def init_db():
     Base.metadata.create_all(bind=engine)
-    try:
-        raw_conn = engine.raw_connection()
-        cur = raw_conn.cursor()
-        
-        def run_alter(stmt):
-            try:
-                cur.execute(stmt)
-            except Exception:
-                pass
+    from sqlalchemy import text
+    
+    columns = [
+        ("developers", "api_key", "VARCHAR(64)"),
+        ("developers", "discord_id", "VARCHAR(50)"),
+        ("developers", "max_apps", "INTEGER DEFAULT 3"),
+        ("developers", "max_users_per_app", "INTEGER DEFAULT 1000"),
+        ("applications", "custom_status", "VARCHAR(50) DEFAULT 'UNDETECTED'"),
+        ("applications", "vpn_block_enabled", "BOOLEAN DEFAULT FALSE"),
+        ("applications", "allow_user_hwid_reset", "BOOLEAN DEFAULT FALSE"),
+        ("applications", "hash_check_enabled", "BOOLEAN DEFAULT FALSE"),
+        ("applications", "app_hash", "VARCHAR(64) DEFAULT ''"),
+        ("applications", "download_link", "VARCHAR(500) DEFAULT ''"),
+        ("applications", "custom_message", "VARCHAR(500) DEFAULT ''"),
+        ("applications", "login_success_message", "VARCHAR(500) DEFAULT 'Welcome back! Logged in successfully.'"),
+        ("applications", "login_failed_message", "VARCHAR(500) DEFAULT 'Invalid username or password.'"),
+        ("applications", "hwid_mismatch_message", "VARCHAR(500) DEFAULT 'HWID Mismatch! Your account is locked to another computer.'"),
+        ("applications", "maintenance_message", "VARCHAR(500) DEFAULT 'Application is under maintenance. Please check back soon.'"),
+        ("applications", "user_not_found_message", "VARCHAR(500) DEFAULT 'Username does not exist.'"),
+        ("applications", "expired_sub_message", "VARCHAR(500) DEFAULT 'Your subscription has expired! Please renew.'"),
+        ("applications", "banned_user_message", "VARCHAR(500) DEFAULT 'Account is banned!'"),
+        ("applications", "brute_force_ban_message", "VARCHAR(500) DEFAULT 'Too many invalid attempts! Your PC hardware and IP are permanently banned.'"),
+        ("applications", "blacklist_message", "VARCHAR(500) DEFAULT 'Access Denied! Your IP or Machine HWID has been blacklisted.'"),
+        ("applications", "invalid_license_message", "VARCHAR(500) DEFAULT 'Invalid license key.'"),
+        ("applications", "used_license_message", "VARCHAR(500) DEFAULT 'This license key is already used.'"),
+        ("applications", "paused_license_message", "VARCHAR(500) DEFAULT 'This license key is paused by administrator.'"),
+        ("applications", "revoked_license_message", "VARCHAR(500) DEFAULT 'This license key has been revoked.'"),
+        ("applications", "register_success_message", "VARCHAR(500) DEFAULT 'Account created successfully! You are now logged in.'"),
+        ("applications", "license_login_success_message", "VARCHAR(500) DEFAULT 'License authenticated successfully!'"),
+        ("applications", "hash_mismatch_message", "VARCHAR(500) DEFAULT 'Executable integrity verification failed! Modified or cracked binary detected.'"),
+        ("applications", "version_mismatch_message", "VARCHAR(500) DEFAULT 'Update required! Please download the latest version.'"),
+        ("applications", "vpn_blocked_message", "VARCHAR(500) DEFAULT 'VPN or Proxy connections are strictly prohibited.'"),
+        ("applications", "webhook_bot_name", "VARCHAR(100) DEFAULT 'JOYST AUTH SHIELD'"),
+        ("applications", "webhook_avatar_url", "VARCHAR(500) DEFAULT 'https://joystauth.cc/static/img/joyst_logo.png'"),
+        ("applications", "webhook_on_login", "BOOLEAN DEFAULT TRUE"),
+        ("applications", "webhook_on_register", "BOOLEAN DEFAULT TRUE"),
+        ("applications", "webhook_on_hwid_reset", "BOOLEAN DEFAULT TRUE"),
+        ("applications", "webhook_on_failed", "BOOLEAN DEFAULT TRUE"),
+        ("applications", "webhook_on_key_gen", "BOOLEAN DEFAULT TRUE"),
+        ("applications", "webhook_on_ban", "BOOLEAN DEFAULT TRUE"),
+        ("users", "level", "INTEGER DEFAULT 1"),
+        ("licenses", "level_rank", "INTEGER DEFAULT 1"),
+        ("licenses", "created_by_reseller", "VARCHAR(100) DEFAULT ''"),
+        ("app_variables", "is_user_writable", "BOOLEAN DEFAULT FALSE"),
+        ("app_files", "file_url", "VARCHAR(500) DEFAULT ''"),
+        ("app_files", "auth_required", "BOOLEAN DEFAULT TRUE"),
+        ("subscription_tiers", "description", "VARCHAR(255) DEFAULT ''")
+    ]
 
-        run_alter("ALTER TABLE developers ADD COLUMN api_key VARCHAR(64)")
-        run_alter("ALTER TABLE developers ADD COLUMN discord_id VARCHAR(50)")
-        run_alter("ALTER TABLE developers ADD COLUMN max_apps INTEGER DEFAULT 3")
-        run_alter("ALTER TABLE developers ADD COLUMN max_users_per_app INTEGER DEFAULT 1000")
-        run_alter("ALTER TABLE applications ADD COLUMN custom_status VARCHAR(50) DEFAULT 'UNDETECTED'")
-        run_alter("ALTER TABLE applications ADD COLUMN vpn_block_enabled BOOLEAN DEFAULT 0")
-        run_alter("ALTER TABLE applications ADD COLUMN allow_user_hwid_reset BOOLEAN DEFAULT 0")
-        run_alter("ALTER TABLE applications ADD COLUMN hash_check_enabled BOOLEAN DEFAULT 0")
-        run_alter("ALTER TABLE applications ADD COLUMN app_hash VARCHAR(64) DEFAULT ''")
-        run_alter("ALTER TABLE applications ADD COLUMN download_link VARCHAR(500) DEFAULT ''")
-        run_alter("ALTER TABLE applications ADD COLUMN custom_message VARCHAR(500) DEFAULT ''")
-        run_alter("ALTER TABLE applications ADD COLUMN login_success_message VARCHAR(500) DEFAULT 'Welcome back! Logged in successfully.'")
-        run_alter("ALTER TABLE applications ADD COLUMN login_failed_message VARCHAR(500) DEFAULT 'Invalid username or password.'")
-        run_alter("ALTER TABLE applications ADD COLUMN hwid_mismatch_message VARCHAR(500) DEFAULT 'HWID Mismatch! Your account is locked to another computer.'")
-        run_alter("ALTER TABLE applications ADD COLUMN maintenance_message VARCHAR(500) DEFAULT 'Application is under maintenance. Please check back soon.'")
-        run_alter("ALTER TABLE applications ADD COLUMN user_not_found_message VARCHAR(500) DEFAULT 'Username does not exist.'")
-        run_alter("ALTER TABLE applications ADD COLUMN expired_sub_message VARCHAR(500) DEFAULT 'Your subscription has expired! Please renew.'")
-        run_alter("ALTER TABLE applications ADD COLUMN banned_user_message VARCHAR(500) DEFAULT 'Account is banned!'")
-        run_alter("ALTER TABLE applications ADD COLUMN brute_force_ban_message VARCHAR(500) DEFAULT 'Too many invalid attempts! Your PC hardware and IP are permanently banned.'")
-        run_alter("ALTER TABLE applications ADD COLUMN blacklist_message VARCHAR(500) DEFAULT 'Access Denied! Your IP or Machine HWID has been blacklisted.'")
-        run_alter("ALTER TABLE applications ADD COLUMN invalid_license_message VARCHAR(500) DEFAULT 'Invalid license key.'")
-        run_alter("ALTER TABLE applications ADD COLUMN used_license_message VARCHAR(500) DEFAULT 'This license key is already used.'")
-        run_alter("ALTER TABLE applications ADD COLUMN paused_license_message VARCHAR(500) DEFAULT 'This license key is paused by administrator.'")
-        run_alter("ALTER TABLE applications ADD COLUMN revoked_license_message VARCHAR(500) DEFAULT 'This license key has been revoked.'")
-        run_alter("ALTER TABLE applications ADD COLUMN register_success_message VARCHAR(500) DEFAULT 'Account created successfully! You are now logged in.'")
-        run_alter("ALTER TABLE applications ADD COLUMN license_login_success_message VARCHAR(500) DEFAULT 'License authenticated successfully!'")
-        run_alter("ALTER TABLE applications ADD COLUMN hash_mismatch_message VARCHAR(500) DEFAULT 'Executable integrity verification failed! Modified or cracked binary detected.'")
-        run_alter("ALTER TABLE applications ADD COLUMN version_mismatch_message VARCHAR(500) DEFAULT 'Update required! Please download the latest version.'")
-        run_alter("ALTER TABLE applications ADD COLUMN vpn_blocked_message VARCHAR(500) DEFAULT 'VPN or Proxy connections are strictly prohibited.'")
-
-        run_alter("ALTER TABLE applications ADD COLUMN webhook_bot_name VARCHAR(100) DEFAULT 'JOYST AUTH SHIELD'")
-        run_alter("ALTER TABLE applications ADD COLUMN webhook_avatar_url VARCHAR(500) DEFAULT 'https://joystauth.cc/static/img/joyst_logo.png'")
-        run_alter("ALTER TABLE applications ADD COLUMN webhook_on_login BOOLEAN DEFAULT 1")
-        run_alter("ALTER TABLE applications ADD COLUMN webhook_on_register BOOLEAN DEFAULT 1")
-        run_alter("ALTER TABLE applications ADD COLUMN webhook_on_hwid_reset BOOLEAN DEFAULT 1")
-        run_alter("ALTER TABLE applications ADD COLUMN webhook_on_failed BOOLEAN DEFAULT 1")
-        run_alter("ALTER TABLE applications ADD COLUMN webhook_on_key_gen BOOLEAN DEFAULT 1")
-        run_alter("ALTER TABLE applications ADD COLUMN webhook_on_ban BOOLEAN DEFAULT 1")
-        run_alter("ALTER TABLE users ADD COLUMN level INTEGER DEFAULT 1")
-        run_alter("ALTER TABLE licenses ADD COLUMN level_rank INTEGER DEFAULT 1")
-        run_alter("ALTER TABLE licenses ADD COLUMN created_by_reseller VARCHAR(100) DEFAULT ''")
-        run_alter("ALTER TABLE app_variables ADD COLUMN is_user_writable BOOLEAN DEFAULT 0")
-        run_alter("ALTER TABLE app_files ADD COLUMN file_url VARCHAR(500) DEFAULT ''")
-        run_alter("ALTER TABLE app_files ADD COLUMN auth_required BOOLEAN DEFAULT 1")
-        run_alter("ALTER TABLE subscription_tiers ADD COLUMN description VARCHAR(255) DEFAULT ''")
-        
-        raw_conn.commit()
-        raw_conn.close()
-    except Exception as e:
-        print(f"[JOYST MIGRATION] Notice: {e}")
+    for table, col, col_def in columns:
+        # 1. Try PostgreSQL IF NOT EXISTS syntax in isolated connection
+        try:
+            with engine.connect() as conn:
+                conn.execute(text(f"ALTER TABLE {table} ADD COLUMN IF NOT EXISTS {col} {col_def}"))
+                conn.commit()
+                continue
+        except Exception:
+            pass
+            
+        # 2. Fallback for SQLite in isolated connection
+        try:
+            with engine.connect() as conn:
+                conn.execute(text(f"ALTER TABLE {table} ADD COLUMN {col} {col_def}"))
+                conn.commit()
+        except Exception:
+            pass
 
 def get_db():
     db = SessionLocal()
