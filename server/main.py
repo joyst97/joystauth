@@ -166,7 +166,8 @@ async def serve_discord(request: Request):
             return HTMLResponse(content=f.read())
     return HTMLResponse("<h1>Discord Bot</h1>")
 
-@app.get("/health")
+@app.api_route("/health", methods=["GET", "HEAD"])
+@app.api_route("/api/v1/client/health", methods=["GET", "HEAD"])
 async def health_check():
     return {"status": "online", "version": "2.0.0", "service": "Joyst Corporation SaaS"}
 

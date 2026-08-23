@@ -53,6 +53,10 @@ function initCommandPaletteShortcut() {
                 const searchField = document.getElementById("license-search-input") || document.getElementById("user-search-input");
                 if (searchField) searchField.focus();
             }
+        }
+    });
+}
+
 // 4. ReactBits VariableProximity Component Engine (Mouse Proximity Variable Font Physics)
 function initVariableProximity() {
     const proximityElements = document.querySelectorAll("[data-variable-proximity]");

@@ -100,10 +100,10 @@ class Program {
         await auth.init();
 
         if (await auth.login("gamer123", "password123")) {
-            Console.WriteLine($"✅ {auth.response.message}");
-            Console.WriteLine($"User: {auth.user_data.username} | Rank: {auth.user_data.subscription}");
+            Console.WriteLine("✅ " + auth.response.message);
+            Console.WriteLine("User: " + auth.user_data.username + " | Rank: " + auth.user_data.subscription);
         } else {
-            Console.WriteLine($"❌ {auth.response.message}");
+            Console.WriteLine("❌ " + auth.response.message);
         }
     }
 }`,

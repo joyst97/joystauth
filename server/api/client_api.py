@@ -15,6 +15,10 @@ from ..config import log_audit
 
 router = APIRouter(prefix="/api/v1/client", tags=["Joyst Corporation Client SDK API"])
 
+@router.api_route("/health", methods=["GET", "HEAD"])
+async def client_health_check():
+    return {"status": "online", "version": "2.0.0", "service": "Joyst Auth Server"}
+
 # In-memory fast brute force attempt tracker: (app_id, ip) or (app_id, hwid) -> {"count": int, "attempts": list, "last_seen": datetime}
 failed_attempts_tracker = {}
 MAX_FAILED_ATTEMPTS = 7

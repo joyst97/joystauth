@@ -12,11 +12,17 @@ if (!getAuthToken() && window.location.pathname.includes("/dashboard")) {
     window.location.href = "/login";
 }
 
-document.addEventListener("DOMContentLoaded", () => {
+function bootDashboard() {
     if (getAuthToken() && window.location.pathname.includes("/dashboard")) {
         initDashboard();
     }
-});
+}
+
+if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", bootDashboard);
+} else {
+    bootDashboard();
+}
 
 function getHeaders() {
     return {
@@ -345,13 +351,17 @@ function renderAppsDropdowns() {
 
 // 1. Applications Loading
 async function loadApps() {
-    const data = await apiFetch("/api/v1/admin/apps");
-    if (!data || !data.success) return;
-
-    appsList = data.apps || [];
     try {
-        localStorage.setItem("cached_apps_list", JSON.stringify(appsList));
-    } catch(e) {}
+        const data = await apiFetch("/api/v1/admin/apps");
+        if (data && data.success) {
+            appsList = data.apps || [];
+            try {
+                localStorage.setItem("cached_apps_list", JSON.stringify(appsList));
+            } catch(e) {}
+        }
+    } catch (err) {
+        console.error("loadApps error:", err);
+    }
     renderAppsDropdowns();
 }
 
@@ -2247,25 +2257,25 @@ class Program
         // --- Method A: Login with Username & Password ---
         if (await auth.login("testuser", "password123"))
         {
-            Console.WriteLine($"✅ {auth.response.message}");
-            Console.WriteLine($"User: {auth.user_data.username} | Rank: {auth.user_data.subscription} | Expires: {auth.user_data.expiry}");
+            Console.WriteLine("✅ " + auth.response.message);
+            Console.WriteLine("User: " + auth.user_data.username + " | Rank: " + auth.user_data.subscription + " | Expires: " + auth.user_data.expiry);
 
             // Optional: Fetch secure server variable
             // string secretKey = await auth.var("MY_SECRET_VAR");
         }
         else
         {
-            Console.WriteLine($"❌ {auth.response.message}");
+            Console.WriteLine("❌ " + auth.response.message);
         }
 
         // --- Method B: Direct License Key Login ---
         // if (await auth.license("JOYST-XXXX-XXXX")) {
-        //     Console.WriteLine($"✅ Logged in via Key! Rank: {auth.user_data.subscription}");
+        //     Console.WriteLine("✅ Logged in via Key! Rank: " + auth.user_data.subscription);
         // }
 
         // --- Method C: Register New Account ---
         // if (await auth.register("newUser", "newPass", "JOYST-XXXX-XXXX")) {
-        //     Console.WriteLine($"✅ Registered successfully!");
+        //     Console.WriteLine("✅ Registered successfully!");
         // }
     }
 }`;
@@ -2530,3 +2540,29 @@ function toggleSecretVisibility(inputId) {
         input.type = input.type === "password" ? "text" : "password";
     }
 }
+
+// Window Global Bindings for HTML Inline Handlers
+window.switchTab = switchTab;
+window.loadActiveTab = loadActiveTab;
+window.openModal = openModal;
+window.closeModal = closeModal;
+window.quickToggleMaintenance = quickToggleMaintenance;
+window.saveAllAppSettings = saveAllAppSettings;
+window.createAppSubmit = createAppSubmit;
+window.copyToClipboard = copyToClipboard;
+window.copyCurrentSdkSnippet = copyCurrentSdkSnippet;
+window.copyAppToken = copyAppToken;
+window.redeemPlanKeySubmit = typeof redeemPlanKeySubmit !== "undefined" ? redeemPlanKeySubmit : () => {};
+window.loadGlobalStats = loadGlobalStats;
+window.loadLicenses = typeof loadLicenses !== "undefined" ? loadLicenses : () => {};
+window.loadUsers = typeof loadUsers !== "undefined" ? loadUsers : () => {};
+window.loadTiers = typeof loadTiers !== "undefined" ? loadTiers : () => {};
+window.loadBlacklists = typeof loadBlacklists !== "undefined" ? loadBlacklists : () => {};
+window.loadResellers = typeof loadResellers !== "undefined" ? loadResellers : () => {};
+window.loadNotifications = typeof loadNotifications !== "undefined" ? loadNotifications : () => {};
+window.loadAuditLogs = typeof loadAuditLogs !== "undefined" ? loadAuditLogs : () => {};
+window.clearAuditLogs = typeof clearAuditLogs !== "undefined" ? clearAuditLogs : () => {};
+window.renderAppsPage = renderAppsPage;
+window.setSnippetLang = typeof setSnippetLang !== "undefined" ? setSnippetLang : () => {};
+window.showToast = showToast;
+window.toggleSecretVisibility = toggleSecretVisibility;
