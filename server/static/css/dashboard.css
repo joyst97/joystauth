@@ -2035,3 +2035,190 @@ html, body {
 
 
 
+
+
+/* ========================================================
+   COLLAPSIBLE MINI-SIDEBAR & MOBILE RESPONSIVE DRAWER SYSTEM
+   ======================================================== */
+
+.sidebar {
+    transition: width 0.28s cubic-bezier(0.4, 0, 0.2, 1), transform 0.28s cubic-bezier(0.4, 0, 0.2, 1), padding 0.28s ease !important;
+}
+
+.sidebar-collapse-btn {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: #cbd5e1;
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    flex-shrink: 0;
+}
+
+.sidebar-collapse-btn:hover {
+    background: rgba(225, 29, 72, 0.2);
+    border-color: #ff2a5f;
+    color: #fff;
+    box-shadow: 0 0 12px rgba(225, 29, 72, 0.4);
+}
+
+.sidebar-collapse-btn svg {
+    transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* --- COLLAPSED MINI-SIDEBAR STATE (DESKTOP / TABLET) --- */
+.sidebar.collapsed {
+    width: 74px !important;
+    padding: 20px 8px !important;
+}
+
+.sidebar.collapsed .brand-logo {
+    justify-content: center !important;
+    padding: 0 0 16px 0 !important;
+}
+
+.sidebar.collapsed .brand-text {
+    display: none !important;
+}
+
+.sidebar.collapsed .sidebar-collapse-btn svg {
+    transform: rotate(180deg) !important;
+}
+
+.sidebar.collapsed .nav-item {
+    justify-content: center !important;
+    padding: 12px 0 !important;
+    gap: 0 !important;
+}
+
+.sidebar.collapsed .nav-item span {
+    display: none !important;
+}
+
+.sidebar.collapsed .user-info,
+.sidebar.collapsed .btn-logout {
+    display: none !important;
+}
+
+.sidebar.collapsed .user-profile {
+    justify-content: center !important;
+    width: 100% !important;
+}
+
+/* Floating Tooltip in Collapsed Mode */
+.sidebar.collapsed .nav-item:hover::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    left: calc(100% + 14px);
+    top: 50%;
+    transform: translateY(-50%);
+    background: #14050a;
+    border: 1px solid rgba(244, 63, 94, 0.6);
+    color: #ffffff;
+    padding: 6px 12px;
+    border-radius: 8px;
+    font-size: 12.5px;
+    font-weight: 800;
+    white-space: nowrap;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.9), 0 0 20px rgba(225, 29, 72, 0.35);
+    z-index: 999999;
+    pointer-events: none;
+    animation: fadeInTooltip 0.15s ease-out;
+}
+
+.sidebar.collapsed .nav-item:hover::before {
+    content: '';
+    position: absolute;
+    left: calc(100% + 6px);
+    top: 50%;
+    transform: translateY(-50%);
+    border-width: 5px;
+    border-style: solid;
+    border-color: transparent rgba(244, 63, 94, 0.6) transparent transparent;
+    pointer-events: none;
+    z-index: 999999;
+}
+
+@keyframes fadeInTooltip {
+    from { opacity: 0; transform: translateY(-50%) translateX(-4px); }
+    to { opacity: 1; transform: translateY(-50%) translateX(0); }
+}
+
+/* --- MOBILE RESPONSIVE DRAWER (< 960px) --- */
+.mobile-menu-btn {
+    display: none;
+}
+
+.sidebar-backdrop {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.75);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    z-index: 99990;
+    opacity: 0;
+    transition: opacity 0.28s ease;
+}
+
+.sidebar-backdrop.active {
+    display: block;
+    opacity: 1;
+}
+
+@media (max-width: 960px) {
+    .mobile-menu-btn {
+        display: inline-flex !important;
+        align-items: center;
+        justify-content: center;
+        background: rgba(255, 255, 255, 0.06);
+        border: 1px solid var(--border-glass);
+        color: #fff;
+        width: 36px;
+        height: 36px;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .mobile-menu-btn:hover {
+        background: rgba(225, 29, 72, 0.2);
+        border-color: #ff2a5f;
+    }
+
+    .sidebar-collapse-btn {
+        display: none !important;
+    }
+
+    .sidebar {
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        bottom: 0 !important;
+        height: 100vh !important;
+        width: 280px !important;
+        transform: translateX(-100%) !important;
+        z-index: 99999 !important;
+        box-shadow: 15px 0 60px rgba(0, 0, 0, 0.95), 0 0 40px rgba(225, 29, 72, 0.3) !important;
+        border-right: 1.5px solid rgba(244, 63, 94, 0.4) !important;
+    }
+
+    .sidebar.mobile-open {
+        transform: translateX(0) !important;
+    }
+
+    .main-content {
+        width: 100% !important;
+        padding: 16px !important;
+        margin: 0 !important;
+    }
+
+    .top-header {
+        padding: 12px 14px !important;
+    }
+}

@@ -198,6 +198,7 @@ function showToast(message, type = "info") {
 }
 
 async function initDashboard() {
+    initSidebarState();
     setupNavigation();
     setupModals();
     setupChangePassword();
@@ -339,6 +340,9 @@ function setupNavigation() {
 }
 
 function switchTab(tabId) {
+    if (window.innerWidth < 960) {
+        closeMobileSidebar();
+    }
     document.querySelectorAll(".nav-item").forEach(el => el.classList.remove("active"));
     document.querySelectorAll(".page-container").forEach(el => el.classList.remove("active"));
 
@@ -3024,9 +3028,81 @@ function toggleSecretVisibility(inputId) {
 }
 
 
+
+// ==================== COLLAPSIBLE MINI-SIDEBAR & MOBILE SWIPE DRAWER ====================
+function initSidebarState() {
+    const isCollapsed = localStorage.getItem("sidebar_collapsed") === "1";
+    const sidebar = document.getElementById("dashboard-sidebar");
+    if (sidebar && isCollapsed && window.innerWidth >= 960) {
+        sidebar.classList.add("collapsed");
+    }
+
+    // Touch Swipe Gestures for Mobile
+    let touchStartX = 0;
+    let touchStartY = 0;
+
+    document.addEventListener("touchstart", (e) => {
+        touchStartX = e.touches[0].clientX;
+        touchStartY = e.touches[0].clientY;
+    }, { passive: true });
+
+    document.addEventListener("touchend", (e) => {
+        if (window.innerWidth >= 960) return;
+        const touchEndX = e.changedTouches[0].clientX;
+        const touchEndY = e.changedTouches[0].clientY;
+        const diffX = touchEndX - touchStartX;
+        const diffY = touchEndY - touchStartY;
+
+        // Horizontal swipe detected (diffX > 60 and diffY < 50)
+        if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 60) {
+            if (diffX > 0 && touchStartX < 50) {
+                // Swipe right from left edge -> Open Drawer
+                openMobileSidebar();
+            } else if (diffX < 0) {
+                // Swipe left -> Close Drawer
+                closeMobileSidebar();
+            }
+        }
+    }, { passive: true });
+}
+
+function toggleSidebarCollapse() {
+    const sidebar = document.getElementById("dashboard-sidebar");
+    if (!sidebar) return;
+    sidebar.classList.toggle("collapsed");
+    const isCollapsed = sidebar.classList.contains("collapsed");
+    localStorage.setItem("sidebar_collapsed", isCollapsed ? "1" : "0");
+}
+
+function toggleMobileSidebar() {
+    const sidebar = document.getElementById("dashboard-sidebar");
+    const backdrop = document.getElementById("sidebar-backdrop");
+    if (!sidebar) return;
+    const isOpen = sidebar.classList.toggle("mobile-open");
+    if (backdrop) backdrop.classList.toggle("active", isOpen);
+}
+
+function openMobileSidebar() {
+    const sidebar = document.getElementById("dashboard-sidebar");
+    const backdrop = document.getElementById("sidebar-backdrop");
+    if (sidebar) sidebar.classList.add("mobile-open");
+    if (backdrop) backdrop.classList.add("active");
+}
+
+function closeMobileSidebar() {
+    const sidebar = document.getElementById("dashboard-sidebar");
+    const backdrop = document.getElementById("sidebar-backdrop");
+    if (sidebar) sidebar.classList.remove("mobile-open");
+    if (backdrop) backdrop.classList.remove("active");
+}
+
 // Global Window Function Bindings (Guarantees zero onclick missing errors)
 const allGlobalFunctions = {
     switchTab,
+    toggleSidebarCollapse,
+    toggleMobileSidebar,
+    openMobileSidebar,
+    closeMobileSidebar,
     loadActiveTab,
     openModal,
     closeModal,
