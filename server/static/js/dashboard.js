@@ -4,6 +4,16 @@ let appsList = [];
 let devOwnerId = localStorage.getItem("dev_owner_id") || "Loading...";
 let devUsername = localStorage.getItem("dev_username") || "Developer";
 
+function escapeHtml(str) {
+    if (!str && str !== 0) return "";
+    return String(str)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+}
+
 function getAuthToken() {
     return localStorage.getItem("auth_admin_token") || "";
 }
@@ -42,11 +52,8 @@ async function apiFetch(url, options = {}) {
         const res = await fetch(url, options);
         if (res.status === 401) {
             console.warn("Unauthorized API call to:", url);
-            // Only redirect if explicitly in /me validation
-            if (url.includes("/api/v1/auth/me")) {
-                localStorage.removeItem("auth_admin_token");
-                window.location.href = "/login";
-            }
+            localStorage.removeItem("auth_admin_token");
+            window.location.href = "/login";
             return null;
         }
         return await res.json();
@@ -2566,3 +2573,5 @@ window.renderAppsPage = renderAppsPage;
 window.setSnippetLang = typeof setSnippetLang !== "undefined" ? setSnippetLang : () => {};
 window.showToast = showToast;
 window.toggleSecretVisibility = toggleSecretVisibility;
+window.escapeHtml = escapeHtml;
+window.regenerateSecret = typeof regenerateSecret !== "undefined" ? regenerateSecret : () => {};

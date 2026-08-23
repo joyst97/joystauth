@@ -71,6 +71,7 @@ class Application(Base):
     app_hash = Column(String(64), default="")
     session_timeout_minutes = Column(Integer, default=60)
     download_link = Column(String(500), default="")
+    custom_message = Column(String(500), default="")
     # Custom Response Messages Hub (100% Configurable from Dashboard)
     login_success_message = Column(String(500), default="Welcome back! Logged in successfully.")
     login_failed_message = Column(String(500), default="Invalid username or password.")
@@ -265,13 +266,16 @@ class AuditLog(Base):
 
 def init_db():
     Base.metadata.create_all(bind=engine)
-    with engine.connect() as conn:
+    try:
+        raw_conn = engine.raw_connection()
+        cur = raw_conn.cursor()
+        
         def run_alter(stmt):
             try:
-                conn.connection.cursor().execute(stmt)
+                cur.execute(stmt)
             except Exception:
                 pass
-        
+
         run_alter("ALTER TABLE developers ADD COLUMN api_key VARCHAR(64)")
         run_alter("ALTER TABLE developers ADD COLUMN discord_id VARCHAR(50)")
         run_alter("ALTER TABLE developers ADD COLUMN max_apps INTEGER DEFAULT 3")
@@ -317,6 +321,11 @@ def init_db():
         run_alter("ALTER TABLE app_files ADD COLUMN file_url VARCHAR(500) DEFAULT ''")
         run_alter("ALTER TABLE app_files ADD COLUMN auth_required BOOLEAN DEFAULT 1")
         run_alter("ALTER TABLE subscription_tiers ADD COLUMN description VARCHAR(255) DEFAULT ''")
+        
+        raw_conn.commit()
+        raw_conn.close()
+    except Exception as e:
+        print(f"[JOYST MIGRATION] Notice: {e}")
 
 def get_db():
     db = SessionLocal()
