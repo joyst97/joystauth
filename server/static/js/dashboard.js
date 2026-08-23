@@ -1101,7 +1101,7 @@ async function submitExtendUser() {
     }
 }
 
-async async function deleteUser(userId) {
+async function deleteUser(userId) {
     if (!await showConfirmDialog({ title: 'Delete User Account', message: 'Are you sure you want to permanently delete this user account?', icon: '🗑️', okText: 'Delete User', isDanger: true })) return;
     const res = await apiFetch(`/api/v1/admin/users/${userId}`, { method: "DELETE" });
     if (res && res.success) {
@@ -2284,7 +2284,7 @@ async function createAppSubmit() {
     }
 }
 
-async async function regenerateSecret(appId) {
+async function regenerateSecret(appId) {
     if (!await showConfirmDialog({ title: 'Reset App Secret', message: 'Regenerating the App Secret will disconnect all existing SDK clients until updated with the new token. Proceed?', icon: '⚠️', okText: 'Reset Secret', isDanger: true })) return;
     const res = await apiFetch(`/api/v1/admin/apps/${appId}/regenerate-secret`, { method: "POST" });
     if (res && res.success) {
@@ -2294,7 +2294,7 @@ async async function regenerateSecret(appId) {
     }
 }
 
-async async function deleteApp(appId) {
+async function deleteApp(appId) {
     if (!await showConfirmDialog({ title: 'Delete Application', message: 'DANGER: Deleting this app will delete ALL associated users, keys, variables, and logs permanently!', icon: '🚨', okText: 'Delete App', isDanger: true })) return;
     const res = await apiFetch(`/api/v1/admin/apps/${appId}`, { method: "DELETE" });
     if (res && res.success) {
@@ -2343,7 +2343,7 @@ async function loadAuditLogs() {
     }).join("");
 }
 
-async async function clearAuditLogs() {
+async function clearAuditLogs() {
     if (!currentAppId) return;
     if (!await showConfirmDialog({ title: 'Clear Audit Logs', message: 'Are you sure you want to clear all audit logs for this application?', icon: '🗑️', okText: 'Clear Logs', isDanger: true })) return;
     const res = await apiFetch(`/api/v1/admin/logs/clear?app_id=${currentAppId}`, { method: "DELETE" });
