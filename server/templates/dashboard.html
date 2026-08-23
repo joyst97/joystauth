@@ -262,7 +262,7 @@
 
                     <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
                         <button class="btn btn-warning btn-sm" onclick="openModal('modal-create-notif')" style="font-weight: 800; background: linear-gradient(135deg, #f59e0b, #d97706); border: none; color: #000;">
-                            <span>📢 Broadcast Warning / Notice</span>
+                            <span>⚠️ Send Warning / Notice</span>
                         </button>
                         <button class="btn btn-danger btn-sm" id="btn-quick-toggle-maintenance" onclick="quickToggleMaintenance()" style="font-weight: 800; box-shadow: 0 0 15px rgba(225, 29, 72, 0.4);">
                             <span>⏸️ Toggle Maintenance Mode</span>
@@ -285,18 +285,18 @@
                         <div style="display: flex; align-items: center; gap: 10px;">
                             <span style="font-size: 22px;">📢</span>
                             <div>
-                                <strong style="color: #fff; font-size: 15px;">Active Broadcast Warnings & Notices</strong>
+                                <strong style="color: #fff; font-size: 15px;">Active Warnings & Notices</strong>
                                 <p style="color: var(--text-secondary); font-size: 12px; margin-top: 2px;">
-                                    Notices currently live and broadcasting to connected / running client EXEs.
+                                    Active notices and warnings shown in client software.
                                 </p>
                             </div>
                         </div>
                         <button class="btn btn-warning btn-sm" onclick="openModal('modal-create-notif')" style="background: linear-gradient(135deg, #f59e0b, #d97706); color: #000; font-weight: 800; border: none; padding: 7px 14px;">
-                            <span>➕ Broadcast New Warning</span>
+                            <span>➕ Send Warning</span>
                         </button>
                     </div>
                     <div id="overview-broadcasts-list-container">
-                        <div style="text-align: center; color: var(--text-muted); padding: 18px; font-size: 13px;">No active broadcast warnings for this application.</div>
+                        <div style="text-align: center; color: var(--text-muted); padding: 18px; font-size: 13px;">No active warnings for this application.</div>
                     </div>
                 </div>
 
@@ -742,7 +742,7 @@
                     <div style="display: flex; align-items: center; gap: 14px;">
                         <span style="font-size: 28px;">🔔</span>
                         <div>
-                            <strong style="color: #fff; font-size: 15px;">Live Client-Side Broadcast Engine</strong>
+                            <strong style="color: #fff; font-size: 15px;">Live Client Warnings & Alerts</strong>
                             <p style="color: var(--text-secondary); font-size: 12.5px; margin-top: 2px;">
                                 Active notifications are automatically returned during <code>init()</code> &amp; <code>login()</code> and displayed inside C++, Python, C#, and loader GUIs.
                             </p>
@@ -1459,7 +1459,7 @@
             </div>
             <div class="modal-body">
                 <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 14px;">
-                    This notification will be broadcast in real-time inside your software / loader GUI when clients initialize or log in.
+                    This notice will be shown inside your software / loader GUI when clients start or log in.
                 </p>
                 <div class="form-group">
                     <label>Notification Title / Heading</label>
@@ -1487,9 +1487,10 @@
             </div>
             <div class="modal-footer">
                 <button class="btn btn-secondary btn-sm" data-close-modal>Cancel</button>
-                <button class="btn btn-primary btn-sm" onclick="createNotificationSubmit()">🚀 Broadcast Notification</button>
+                <button class="btn btn-primary btn-sm" onclick="createNotificationSubmit()">⚠️ Send Warning</button>
             </div>
         </div>
+    </div>
     <!-- Global In-App Confirmation Modal (Replaces browser chrome popups) -->
     <div id="modal-app-confirm" class="modal-overlay" style="z-index: 999999;">
         <div class="modal-box spotlight-card" style="max-width: 450px; text-align: center; border: 1.5px solid rgba(244, 63, 94, 0.55); padding: 30px; background: linear-gradient(170deg, rgba(22, 6, 12, 0.98) 0%, rgba(10, 3, 6, 0.99) 100%); border-radius: 18px; box-shadow: 0 30px 80px -15px rgba(0, 0, 0, 0.95), 0 0 45px rgba(225, 29, 72, 0.35);">
@@ -1508,7 +1509,7 @@
     <div id="modal-edit-notif" class="modal-overlay" style="z-index: 999999;">
         <div class="modal-box spotlight-card" style="max-width: 500px; border: 1.5px solid rgba(245, 158, 11, 0.5); padding: 26px; background: linear-gradient(170deg, rgba(22, 6, 12, 0.98) 0%, rgba(10, 3, 6, 0.99) 100%); border-radius: 16px; box-shadow: 0 20px 60px rgba(0,0,0,0.9);">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 12px;">
-                <h3 style="font-size: 18px; font-weight: 800; color: #fff; margin: 0;">✏️ Modify Broadcast Notice</h3>
+                <h3 style="font-size: 18px; font-weight: 800; color: #fff; margin: 0;">✏️ Edit Warning / Notice</h3>
                 <button class="modal-close" onclick="closeModal('modal-edit-notif')" style="color: #949ba4; font-size: 22px; background: none; border: none; cursor: pointer;">&times;</button>
             </div>
             <div class="modal-body">
@@ -1527,7 +1528,7 @@
                     </select>
                 </div>
                 <div class="form-group">
-                    <label>Broadcast Message Content</label>
+                    <label>Warning / Notice Message</label>
                     <textarea id="edit-notif-message-input" class="form-control" rows="3" placeholder="Message content delivered to running EXEs"></textarea>
                 </div>
                 <div class="form-group" style="display: flex; align-items: center; gap: 10px; margin-top: 14px;">
@@ -1541,38 +1542,48 @@
             </div>
         </div>
     </div>
+    <!-- CENTER SCREEN CREDENTIALS & DISCORD OUTPUT MODAL -->
     <div id="modal-discord-output" class="modal-overlay" style="z-index: 999999;">
-        <div class="modal-box spotlight-card" style="max-width: 520px; border: 1.5px solid rgba(88, 101, 242, 0.6); padding: 0; overflow: hidden; background: #2f3136; border-radius: 14px; box-shadow: 0 20px 60px rgba(0,0,0,0.9), 0 0 35px rgba(88, 101, 242, 0.3);">
+        <div class="modal-box spotlight-card" style="max-width: 520px; width: 100%; border: 1.5px solid rgba(56, 189, 248, 0.5); padding: 0; overflow: hidden; background: #12070e; border-radius: 16px; box-shadow: 0 25px 70px rgba(0,0,0,0.95), 0 0 40px rgba(225, 29, 72, 0.25);">
             <!-- Top Header Bar -->
-            <div style="background: #202225; padding: 14px 20px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.06);">
-                <div style="display: flex; align-items: center; gap: 8px;">
-                    <span style="font-size: 16px;">💬</span>
-                    <strong style="color: #fff; font-size: 14px; letter-spacing: 0.5px;" id="discord-output-modal-header">JOYST CORPORATION</strong>
+            <div style="background: rgba(22, 6, 12, 0.95); padding: 16px 22px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.08);">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <span style="font-size: 20px;">🛡️</span>
+                    <div>
+                        <strong style="color: #fff; font-size: 15px; letter-spacing: 0.5px;" id="discord-output-modal-header">JOYST CORPORATION</strong>
+                        <span style="display: block; font-size: 11.5px; color: var(--text-muted);" id="discord-card-title">CREDENTIALS OUTPUT</span>
+                    </div>
                 </div>
-                <button class="modal-close" onclick="closeModal('modal-discord-output')" style="color: #949ba4; font-size: 20px; background: none; border: none; cursor: pointer;">&times;</button>
+                <button class="modal-close" onclick="closeModal('modal-discord-output')" style="color: #949ba4; font-size: 22px; background: none; border: none; cursor: pointer;">&times;</button>
             </div>
 
             <div style="padding: 22px 24px;">
-                <!-- Simulated Discord Embed Card -->
-                <div style="border-left: 4px solid #5865F2; background: #2b2d31; padding: 16px 20px; border-radius: 0 8px 8px 0; margin-bottom: 18px;">
-                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
-                        <div style="width: 24px; height: 24px; border-radius: 50%; background: #5865F2; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 900; color: #fff;">J</div>
-                        <span style="color: #f2f3f5; font-size: 14px; font-weight: 800;" id="discord-card-title">JOYST CORPORATION REGISTRATION INFO</span>
+                <!-- Black Terminal / Console Output Box -->
+                <div style="background: #09090b; border: 1px solid rgba(255,255,255,0.12); border-radius: 10px; overflow: hidden; margin-bottom: 14px; box-shadow: inset 0 2px 10px rgba(0,0,0,0.8);">
+                    <!-- Terminal Top Bar -->
+                    <div style="background: #18181b; padding: 7px 12px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.06);">
+                        <div style="display: flex; gap: 6px;">
+                            <span style="width: 10px; height: 10px; border-radius: 50%; background: #ef4444; display: inline-block;"></span>
+                            <span style="width: 10px; height: 10px; border-radius: 50%; background: #f59e0b; display: inline-block;"></span>
+                            <span style="width: 10px; height: 10px; border-radius: 50%; background: #10b981; display: inline-block;"></span>
+                        </div>
+                        <span style="font-size: 10.5px; color: var(--text-muted); font-family: monospace;">output.md</span>
                     </div>
+                    <!-- Terminal Text Content -->
+                    <pre id="discord-card-body" class="mono" style="margin: 0; padding: 14px 16px; font-size: 12.5px; color: #38bdf8; line-height: 1.7; white-space: pre-wrap; word-break: break-word; font-family: 'JetBrains Mono', Consolas, monospace; max-height: 240px; overflow-y: auto;"></pre>
+                </div>
 
-                    <!-- Embed Body Text / Bullet Points -->
-                    <div id="discord-card-body" style="font-size: 13px; color: #dbdee1; line-height: 1.9; white-space: pre-wrap; word-break: break-word;"></div>
-
-                    <div style="margin-top: 14px; font-style: italic; font-size: 12.5px; color: #949ba4; border-top: 1px solid rgba(255,255,255,0.06); padding-top: 10px;">
-                        Thank you for choosing us!
-                    </div>
+                <!-- Auto Copied Notice Banner -->
+                <div style="background: rgba(16, 185, 129, 0.12); border: 1px solid rgba(16, 185, 129, 0.4); border-radius: 8px; padding: 10px 14px; margin-bottom: 18px; display: flex; align-items: center; gap: 10px;">
+                    <span style="font-size: 18px; color: #10b981;">✅</span>
+                    <span style="font-size: 12.5px; color: #10b981; font-weight: 700;">Credentials automatically copied to clipboard! (Ctrl + V to paste)</span>
                 </div>
 
                 <div style="display: flex; gap: 10px;">
-                    <button class="btn btn-primary" id="btn-copy-discord-output" style="flex: 1; padding: 11px 0; font-size: 13.5px; font-weight: 800; background: #5865F2; border-color: #4752C4; box-shadow: 0 0 20px rgba(88, 101, 242, 0.4);">
-                        📋 Copy Discord Formatted Details
+                    <button class="btn btn-primary" id="btn-copy-discord-output" style="flex: 1; padding: 11px 0; font-size: 13.5px; font-weight: 800; box-shadow: 0 0 20px rgba(225, 29, 72, 0.4);">
+                        📋 Copy Details Again
                     </button>
-                    <button class="btn btn-secondary" onclick="closeModal('modal-discord-output')" style="padding: 11px 20px; font-size: 13.5px;">
+                    <button class="btn btn-secondary" onclick="closeModal('modal-discord-output')" style="padding: 11px 22px; font-size: 13.5px; font-weight: 700;">
                         Close
                     </button>
                 </div>
@@ -1582,8 +1593,8 @@
 
     <div id="toast-container"></div>
 
-    <script src="/static/js/particles.js?v=3.0.0"></script>
-    <script src="/static/js/reactbits.js?v=3.0.0"></script>
-    <script src="/static/js/dashboard.js?v=3.0.0"></script>
+    <script src="/static/js/particles.js?v=3.4.0"></script>
+    <script src="/static/js/reactbits.js?v=3.4.0"></script>
+    <script src="/static/js/dashboard.js?v=3.4.0"></script>
 </body>
 </html>

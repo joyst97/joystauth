@@ -4,6 +4,39 @@ let appsList = [];
 let devOwnerId = localStorage.getItem("dev_owner_id") || "Loading...";
 let devUsername = localStorage.getItem("dev_username") || "Developer";
 
+// Global Tab Data Cache (SWR Engine for 0.001s Instant Tab Transitions)
+window.tabDataCache = {
+    users: {},
+    licenses: {},
+    tiers: {},
+    variables: {},
+    files: {},
+    blacklists: {},
+    resellers: {},
+    notifications: {},
+    logs: {}
+};
+
+function getTableSkeletonHtml(colSpan, title = "Loading Application Records...") {
+    return `
+        <tr>
+            <td colspan="${colSpan}" style="text-align: center; padding: 50px 20px;">
+                <div style="display: inline-flex; flex-direction: column; align-items: center; gap: 14px;">
+                    <div style="width: 38px; height: 38px; border: 3.5px solid rgba(244, 63, 94, 0.2); border-top-color: #ff2a5f; border-radius: 50%; animation: spin 0.65s linear infinite;"></div>
+                    <div style="display: flex; flex-direction: column; align-items: center; gap: 4px;">
+                        <strong style="color: #fff; font-size: 14px; letter-spacing: 0.5px;">⚡ ${escapeHtml(title)}</strong>
+                        <span style="color: var(--text-muted); font-size: 12px;">Fetching real-time records...</span>
+                    </div>
+                    <div style="width: 220px; height: 4px; background: rgba(255,255,255,0.08); border-radius: 4px; overflow: hidden; margin-top: 4px;">
+                        <div style="width: 100%; height: 100%; background: linear-gradient(90deg, #ff2a5f, #38bdf8); animation: pulseBar 1.2s ease-in-out infinite;"></div>
+                    </div>
+                </div>
+            </td>
+        </tr>
+    `;
+}
+
+
 
 function showDiscordOutputModal({ header = "JOYST CORPORATION", title, rawText, formattedHtml }) {
     const modal = document.getElementById("modal-discord-output");
@@ -14,17 +47,17 @@ function showDiscordOutputModal({ header = "JOYST CORPORATION", title, rawText, 
 
     if (headerEl) headerEl.textContent = header;
     if (titleEl) titleEl.textContent = title;
-    if (bodyEl) bodyEl.innerHTML = formattedHtml;
+    if (bodyEl) bodyEl.textContent = rawText; // Direct clean raw text in console box
 
     // Auto copy clean Discord markdown to clipboard immediately
     navigator.clipboard.writeText(rawText).then(() => {
-        showToast("📋 Credentials auto-copied to clipboard in Discord format!", "success");
+        showToast("📋 Credentials automatically copied to clipboard!", "success");
     }).catch(() => {});
 
     if (copyBtn) {
         copyBtn.onclick = () => {
             navigator.clipboard.writeText(rawText);
-            showToast("📋 Copied Discord formatted details!", "success");
+            showToast("📋 Copied to clipboard successfully!", "success");
         };
     }
 
@@ -614,29 +647,14 @@ async function loadGlobalStats() {
 }
 
 // 3. Licenses Management
-async function loadLicenses() {
+function renderLicensesData(licenses) {
     const tbody = document.getElementById("licenses-table-body");
     if (!tbody) return;
-
-    if (!currentAppId) {
-        tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: var(--text-muted); padding: 40px;">No application selected. Create an application first.</td></tr>`;
-        return;
-    }
-
-    const search = document.getElementById("license-search-input")?.value || "";
-    const filter = document.getElementById("license-status-filter")?.value || "";
-    
-    let url = `/api/v1/admin/licenses?app_id=${currentAppId}`;
-    if (search) url += `&search=${encodeURIComponent(search)}`;
-    if (filter) url += `&status=${encodeURIComponent(filter)}`;
-
-    const data = await apiFetch(url);
-    if (!data || !data.licenses || data.licenses.length === 0) {
+    if (!licenses || licenses.length === 0) {
         tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: var(--text-muted); padding: 40px;">No license keys found. Click "+ Generate Keys" to create license keys.</td></tr>`;
         return;
     }
-
-    tbody.innerHTML = data.licenses.map(lic => {
+    tbody.innerHTML = licenses.map(lic => {
         let statusBadge = `<span class="badge badge-success"><span class="badge-dot"></span> Unused</span>`;
         if (lic.status === "used") statusBadge = `<span class="badge badge-purple"><span class="badge-dot"></span> Used</span>`;
         if (lic.status === "paused") statusBadge = `<span class="badge badge-warning"><span class="badge-dot"></span> Paused</span>`;
@@ -665,6 +683,39 @@ async function loadLicenses() {
             </tr>
         `;
     }).join("");
+}
+
+async function loadLicenses() {
+    const tbody = document.getElementById("licenses-table-body");
+    if (!tbody) return;
+
+    if (!currentAppId) {
+        tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: var(--text-muted); padding: 40px;">No application selected. Create an application first.</td></tr>`;
+        return;
+    }
+
+    // Instant Cache Render (0ms transition)
+    const cached = window.tabDataCache.licenses[currentAppId];
+    if (cached && cached.length > 0) {
+        renderLicensesData(cached);
+    } else if (!tbody.children.length || tbody.innerHTML.includes("No license keys found")) {
+        tbody.innerHTML = getTableSkeletonHtml(6, "Loading License Keys...");
+    }
+
+    const search = document.getElementById("license-search-input")?.value || "";
+    const filter = document.getElementById("license-status-filter")?.value || "";
+    
+    let url = `/api/v1/admin/licenses?app_id=${currentAppId}`;
+    if (search) url += `&search=${encodeURIComponent(search)}`;
+    if (filter) url += `&status=${encodeURIComponent(filter)}`;
+
+    const data = await apiFetch(url);
+    if (data && data.licenses) {
+        window.tabDataCache.licenses[currentAppId] = data.licenses;
+        renderLicensesData(data.licenses);
+    } else {
+        renderLicensesData([]);
+    }
 }
 
 async function generateKeysSubmit() {
@@ -800,6 +851,15 @@ async function loadUsers() {
         return;
     }
 
+    // Instant Cache Render (0ms transition)
+    const cached = window.tabDataCache.users[currentAppId];
+    if (cached && cached.length > 0) {
+        rawUsersList = cached;
+        filterUsersTable();
+    } else if (!tbody.children.length || tbody.innerHTML.includes("No users")) {
+        tbody.innerHTML = getTableSkeletonHtml(7, "Loading User & HWID Records...");
+    }
+
     const search = document.getElementById("user-search-input")?.value || "";
     let url = `/api/v1/admin/users?app_id=${currentAppId}`;
     if (search) url += `&search=${encodeURIComponent(search)}`;
@@ -808,6 +868,7 @@ async function loadUsers() {
     if (!data || !data.users) return;
 
     rawUsersList = data.users || [];
+    window.tabDataCache.users[currentAppId] = rawUsersList;
     filterUsersTable();
 }
 
@@ -1779,7 +1840,7 @@ function renderOverviewBroadcasts(notifs) {
 
     const activeList = (notifs || []).filter(n => n.app_id === currentAppId && n.is_active);
     if (activeList.length === 0) {
-        container.innerHTML = `<div style="text-align: center; color: var(--text-muted); padding: 18px; font-size: 13px;">No active broadcast warnings currently live. Click "<strong>➕ Broadcast New Warning</strong>" to push a real-time notice to running EXEs.</div>`;
+        container.innerHTML = `<div style="text-align: center; color: var(--text-muted); padding: 18px; font-size: 13px;">No active warnings. Click "<strong>➕ Send Warning</strong>" to send a notice to running users.</div>`;
         return;
     }
 
@@ -1818,6 +1879,9 @@ function renderOverviewBroadcasts(notifs) {
             </div>
         `;
     }).join("");
+}
+
+    renderLicensesData(data?.licenses || []);
 }
 
 async function editNotification(notifId) {
@@ -1883,7 +1947,7 @@ async function loadNotifications() {
         tbody.innerHTML = `
             <tr>
                 <td colspan="6" style="text-align: center; color: var(--text-muted); padding: 40px;">
-                    No client notifications created for this app. Click "<strong>➕ Create Notification</strong>" to broadcast an in-app notice or login alert!
+                    No warnings or notices created for this app. Click "<strong>➕ Send Warning</strong>" to send a notice!
                 </td>
             </tr>
         `;
@@ -1915,7 +1979,7 @@ async function loadNotifications() {
                 </td>
                 <td>
                     <span class="badge badge-${n.is_active ? 'success' : 'danger'}">
-                        <span class="badge-dot"></span> ${n.is_active ? 'BROADCASTING' : 'DISABLED'}
+                        <span class="badge-dot"></span> ${n.is_active ? 'ACTIVE' : 'DISABLED'}
                     </span>
                 </td>
                 <td>
@@ -1953,10 +2017,10 @@ async function createNotificationSubmit() {
     }
 
     const notifBtn = document.querySelector("#modal-create-notif .btn-primary") || document.querySelector("[onclick='createNotificationSubmit()']");
-    const origNotifText = notifBtn ? notifBtn.innerHTML : "🚀 Broadcast Notification";
-    if (notifBtn) { notifBtn.disabled = true; notifBtn.innerHTML = "⏳ Broadcasting..."; }
+    const origNotifText = notifBtn ? notifBtn.innerHTML : "⚠️ Send Warning";
+    if (notifBtn) { notifBtn.disabled = true; notifBtn.innerHTML = "⏳ Sending Warning..."; }
 
-    showToast("⏳ Broadcasting client notification...", "info");
+    showToast("⏳ Sending warning to users...", "info");
 
     let res = null;
     try {
