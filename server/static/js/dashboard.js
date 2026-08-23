@@ -281,6 +281,8 @@ function loadTabContent(tabId) {
         if (isPaid) loadResellers();
     } else if (tabId === "webhooks") {
         // Unlocked for paid users
+    } else if (tabId === "notifications") {
+        loadNotifications();
     } else if (tabId === "apps") {
         renderAppsPage();
     } else if (tabId === "logs") {
@@ -383,6 +385,62 @@ function updateBannerCredentials() {
     const webhookInput = document.getElementById("discord-webhook-url-input");
     if (webhookInput && app.webhook_url) {
         webhookInput.value = app.webhook_url;
+    }
+
+    // Update Overview Emergency Status Badge & Button
+    const statusBadge = document.getElementById("overview-app-status-badge");
+    const toggleBtn = document.getElementById("btn-quick-toggle-maintenance");
+    const isMaint = app.status === "maintenance" || app.status === "paused";
+
+    if (statusBadge) {
+        if (isMaint) {
+            statusBadge.className = "badge badge-danger";
+            statusBadge.innerHTML = `<span class="badge-dot"></span> 🚨 MAINTENANCE ACTIVE`;
+        } else if (app.status === "disabled") {
+            statusBadge.className = "badge badge-danger";
+            statusBadge.innerHTML = `<span class="badge-dot"></span> 🚫 DISABLED`;
+        } else {
+            statusBadge.className = "badge badge-success";
+            statusBadge.innerHTML = `<span class="badge-dot"></span> 🟢 ONLINE & ACTIVE`;
+        }
+    }
+
+    if (toggleBtn) {
+        if (isMaint) {
+            toggleBtn.className = "btn btn-success btn-sm";
+            toggleBtn.innerHTML = `<span>🟢 Resume Online (Turn OFF Maintenance)</span>`;
+        } else {
+            toggleBtn.className = "btn btn-danger btn-sm";
+            toggleBtn.innerHTML = `<span>⏸️ Activate Maintenance Mode</span>`;
+        }
+    }
+}
+
+async function quickToggleMaintenance() {
+    if (!currentAppId) {
+        showToast("Please select an application first", "warning");
+        return;
+    }
+
+    const app = appsList.find(a => a.id === currentAppId);
+    const isCurrentlyMaint = app && (app.status === "maintenance" || app.status === "paused");
+    const actionWord = isCurrentlyMaint ? "RESUME ONLINE" : "ACTIVATE EMERGENCY MAINTENANCE (Force-Block all running EXEs)";
+
+    if (!confirm(`Are you sure you want to ${actionWord} for '${app?.name}'?`)) return;
+
+    showToast("Updating application mode...", "info");
+
+    const res = await apiFetch(`/api/v1/admin/apps/${currentAppId}/toggle-maintenance`, {
+        method: "POST"
+    });
+
+    if (res && res.success) {
+        showToast(res.message, isCurrentlyMaint ? "success" : "error");
+        await loadApps();
+        updateBannerCredentials();
+        renderAppsPage();
+    } else {
+        showToast(res?.detail || "Failed to toggle maintenance mode", "error");
     }
 }
 
@@ -1502,20 +1560,430 @@ function renderAppsPage() {
         return;
     }
 
-    container.innerHTML = appsList.map(app => `
-        <div class="stat-card spotlight-card" style="padding: 24px;">
-            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px;">
+// ==================== 12. IN-APP CLIENT NOTIFICATIONS (KEYAUTH STYLE) ====================
+async function loadNotifications() {
+    const tbody = document.getElementById("notifications-table-body");
+    if (!tbody) return;
+
+    if (!currentAppId) {
+        tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: var(--text-muted); padding: 40px;">No application selected. Select or create an app first.</td></tr>`;
+        return;
+    }
+
+    const data = await apiFetch(`/api/v1/admin/notifications?app_id=${currentAppId}`);
+    if (!data || !data.notifications || data.notifications.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="6" style="text-align: center; color: var(--text-muted); padding: 40px;">
+                    No client notifications created for this app. Click "<strong>➕ Create Notification</strong>" to broadcast an in-app notice or login alert!
+                </td>
+            </tr>
+        `;
+        return;
+    }
+
+    tbody.innerHTML = data.notifications.map(n => {
+        let badgeType = "badge-info";
+        let icon = "ℹ️";
+        if (n.type === "success") { badgeType = "badge-success"; icon = "🟢"; }
+        else if (n.type === "warning") { badgeType = "badge-warning"; icon = "⚠️"; }
+        else if (n.type === "danger") { badgeType = "badge-danger"; icon = "🚨"; }
+
+        return `
+            <tr>
+                <td>
+                    <span class="badge ${badgeType}">
+                        <span class="badge-dot"></span> ${icon} ${n.type.toUpperCase()}
+                    </span>
+                </td>
+                <td><strong style="color: #fff;">${escapeHtml(n.title)}</strong></td>
+                <td style="max-width: 350px; font-size: 12.5px; color: var(--text-secondary); word-break: break-word;">
+                    ${escapeHtml(n.message)}
+                </td>
+                <td>
+                    <span class="badge badge-${n.show_on_login ? 'success' : 'purple'}">
+                        ${n.show_on_login ? '✅ YES (Popup)' : 'NO (Quiet)'}
+                    </span>
+                </td>
+                <td>
+                    <span class="badge badge-${n.is_active ? 'success' : 'danger'}">
+                        <span class="badge-dot"></span> ${n.is_active ? 'BROADCASTING' : 'DISABLED'}
+                    </span>
+                </td>
+                <td>
+                    <div style="display: flex; gap: 6px;">
+                        <button class="btn btn-secondary btn-sm" onclick="toggleNotificationStatus(${n.id})" title="Toggle Active/Disabled">
+                            ${n.is_active ? '⏸️ Pause' : '▶️ Activate'}
+                        </button>
+                        <button class="btn btn-danger btn-sm" onclick="deleteNotification(${n.id})" title="Delete Notification">
+                            🗑️
+                        </button>
+                    </div>
+                </td>
+            </tr>
+        `;
+    }).join("");
+}
+
+async function createNotificationSubmit() {
+    if (!currentAppId) {
+        showToast("Please select an application first", "warning");
+        return;
+    }
+
+    const title = document.getElementById("notif-title-input").value.trim();
+    const type = document.getElementById("notif-type-select").value;
+    const message = document.getElementById("notif-message-input").value.trim();
+    const showOnLogin = document.getElementById("notif-show-login-check").checked;
+
+    if (!title || !message) {
+        showToast("Notification title and message are required", "warning");
+        return;
+    }
+
+    closeModal("modal-create-notif");
+    showToast("Broadcasting notification...", "info");
+
+    const res = await apiFetch("/api/v1/admin/notifications", {
+        method: "POST",
+        body: JSON.stringify({
+            app_id: currentAppId,
+            title: title,
+            type: type,
+            message: message,
+            show_on_login: showOnLogin
+        })
+    });
+
+    if (res && res.success) {
+        showToast(res.message, "success");
+        document.getElementById("notif-title-input").value = "";
+        document.getElementById("notif-message-input").value = "";
+        loadNotifications();
+    } else {
+        showToast(res?.detail || "Failed to create notification", "error");
+    }
+}
+
+async function toggleNotificationStatus(notifId) {
+    const res = await apiFetch(`/api/v1/admin/notifications/${notifId}/toggle`, { method: "PATCH" });
+    if (res && res.success) {
+        showToast(res.message, "success");
+        loadNotifications();
+    }
+}
+
+async function deleteNotification(notifId) {
+    if (!confirm("Are you sure you want to delete this in-app notification?")) return;
+    const res = await apiFetch(`/api/v1/admin/notifications/${notifId}`, { method: "DELETE" });
+    if (res && res.success) {
+        showToast(res.message, "success");
+        loadNotifications();
+    }
+}
+
+// ==================== 13. KEYAUTH-GRADE APPLICATION SETTINGS & SECURITY ====================
+function renderAppsPage() {
+    renderActiveAppSettings();
+    renderAllAppsList();
+}
+
+function renderActiveAppSettings() {
+    const container = document.getElementById("active-app-settings-container");
+    if (!container) return;
+
+    const app = appsList.find(a => a.id === currentAppId);
+    if (!app) {
+        container.innerHTML = `
+            <div class="stat-card spotlight-card" style="padding: 30px; text-align: center; color: var(--text-muted);">
+                <h3>No Application Selected</h3>
+                <p style="margin-top: 6px;">Select an application from the top dropdown or click "➕ New App" to begin.</p>
+            </div>
+        `;
+        return;
+    }
+
+    container.innerHTML = `
+        <div class="stat-card spotlight-card" style="padding: 28px; border: 1px solid rgba(225, 29, 72, 0.4); box-shadow: 0 10px 30px -10px rgba(225, 29, 72, 0.25);">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 16px; margin-bottom: 22px; border-bottom: 1px solid var(--border-glass); padding-bottom: 18px;">
                 <div>
-                    <h3 style="font-size: 18px; font-weight: 800; color: #fff;">${app.name}</h3>
-                    <span class="badge badge-cyan" style="margin-top: 4px;">Active: v${app.version}</span>
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <h2 style="font-size: 20px; font-weight: 800; color: #fff; margin: 0;">⚙️ ${escapeHtml(app.name)} — KeyAuth Master Settings</h2>
+                        <span class="badge badge-cyan">v${app.version || '1.0'}</span>
+                    </div>
+                    <p style="color: var(--text-secondary); font-size: 13px; margin-top: 4px;">
+                        Configure hardware binding, live cheat/game status, custom login toast responses, and killswitch parameters.
+                    </p>
+                </div>
+                <div style="display: flex; gap: 8px;">
+                    <button class="btn btn-primary btn-sm" onclick="saveAllAppSettings(${app.id})">💾 Save All Settings</button>
+                    <button class="btn btn-secondary btn-sm" onclick="regenerateSecret(${app.id})">🔄 Reset Secret</button>
+                </div>
+            </div>
+
+            <!-- 1. Security & HWID Control Cards -->
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin-bottom: 24px;">
+                <!-- HWID & Anti-Share Policy -->
+                <div style="background: rgba(0,0,0,0.35); padding: 18px; border-radius: 14px; border: 1px solid var(--border-glass);">
+                    <h4 style="font-size: 14.5px; font-weight: 800; color: #ff4d79; margin-bottom: 14px; display: flex; align-items: center; gap: 8px;">
+                        <span>🔒 HWID & Anti-Share Protection</span>
+                    </h4>
+                    
+                    <div style="display: flex; flex-direction: column; gap: 14px;">
+                        <label style="display: flex; align-items: center; justify-content: space-between; cursor: pointer;">
+                            <div>
+                                <strong style="color: #fff; font-size: 13px;">Force Strict HWID Lock</strong>
+                                <div style="color: var(--text-muted); font-size: 11.5px;">Blocks accounts from logging in on different machines</div>
+                            </div>
+                            <input type="checkbox" id="setting-hwid-lock" ${app.hwid_lock_enabled ? 'checked' : ''} style="width: 20px; height: 20px; accent-color: #ff2a5f; cursor: pointer;">
+                        </label>
+
+                        <label style="display: flex; align-items: center; justify-content: space-between; cursor: pointer; border-top: 1px solid var(--border-glass); padding-top: 12px;">
+                            <div>
+                                <strong style="color: #fff; font-size: 13px;">Allow User Self HWID Reset</strong>
+                                <div style="color: var(--text-muted); font-size: 11.5px;">Users can reset HWID once or require admin/Discord bot</div>
+                            </div>
+                            <input type="checkbox" id="setting-user-hwid-reset" ${app.allow_user_hwid_reset ? 'checked' : ''} style="width: 20px; height: 20px; accent-color: #ff2a5f; cursor: pointer;">
+                        </label>
+
+                        <label style="display: flex; align-items: center; justify-content: space-between; cursor: pointer; border-top: 1px solid var(--border-glass); padding-top: 12px;">
+                            <div>
+                                <strong style="color: #fff; font-size: 13px;">VPN & Proxy Blocker</strong>
+                                <div style="color: var(--text-muted); font-size: 11.5px;">Block connections from VPN servers & Tor nodes</div>
+                            </div>
+                            <input type="checkbox" id="setting-vpn-block" ${app.vpn_block_enabled ? 'checked' : ''} style="width: 20px; height: 20px; accent-color: #ff2a5f; cursor: pointer;">
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Application Status & Killswitch -->
+                <div style="background: rgba(0,0,0,0.35); padding: 18px; border-radius: 14px; border: 1px solid var(--border-glass);">
+                    <h4 style="font-size: 14.5px; font-weight: 800; color: #38bdf8; margin-bottom: 14px; display: flex; align-items: center; gap: 8px;">
+                        <span>⚡ Application State & Live Status</span>
+                    </h4>
+
+                    <div class="form-group" style="margin-bottom: 12px;">
+                        <label>Application Master Switch</label>
+                        <select id="setting-app-status" class="form-control" style="font-weight: 800;">
+                            <option value="enabled" ${app.status === 'enabled' ? 'selected' : ''}>🟢 Enabled (Normal Operations)</option>
+                            <option value="paused" ${app.status === 'paused' || app.status === 'maintenance' ? 'selected' : ''}>⏸️ Maintenance / Paused (Shows Custom Notice)</option>
+                            <option value="disabled" ${app.status === 'disabled' ? 'selected' : ''}>🚫 Disabled (Instant Emergency Lock)</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group" style="margin-bottom: 12px;">
+                        <label>Cheat / Game Status Badge</label>
+                        <select id="setting-custom-status" class="form-control" style="font-weight: 800;">
+                            <option value="UNDETECTED" ${app.custom_status === 'UNDETECTED' ? 'selected' : ''}>🟢 UNDETECTED & SAFE</option>
+                            <option value="ONLINE" ${app.custom_status === 'ONLINE' ? 'selected' : ''}>🟢 ONLINE</option>
+                            <option value="UPDATING" ${app.custom_status === 'UPDATING' ? 'selected' : ''}>🟡 UPDATING FOR GAME PATCH</option>
+                            <option value="MAINTENANCE" ${app.custom_status === 'MAINTENANCE' ? 'selected' : ''}>🔴 MAINTENANCE</option>
+                            <option value="OFFLINE" ${app.custom_status === 'OFFLINE' ? 'selected' : ''}>⛔ OFFLINE</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Session Expiry Timeout (Minutes)</label>
+                        <input type="number" id="setting-session-timeout" class="form-control" value="${app.session_timeout_minutes || 60}" min="5" max="1440">
+                    </div>
+                </div>
+            </div>
+
+            <!-- 2. Master Custom Responses & Notifications Hub (KeyAuth Enterprise Grade) -->
+            <div style="background: rgba(0,0,0,0.35); padding: 24px; border-radius: 14px; border: 1px solid var(--border-glass); margin-bottom: 24px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; flex-wrap: wrap; gap: 10px;">
+                    <div>
+                        <h4 style="font-size: 15px; font-weight: 800; color: #10b981; margin: 0; display: flex; align-items: center; gap: 8px;">
+                            <span>💬 Master Custom Response Messages & Client Notification Hub</span>
+                        </h4>
+                        <p style="font-size: 12px; color: var(--text-secondary); margin-top: 4px; margin-bottom: 0;">
+                            100% full control over every single string returned to your clients, loaders, and games across all scenarios:
+                        </p>
+                    </div>
+                    <span class="badge badge-success">18 Configurable Responses</span>
+                </div>
+
+                <!-- Group A: Login & Authentication -->
+                <div style="margin-bottom: 20px;">
+                    <div style="font-size: 12.5px; font-weight: 800; color: #38bdf8; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 12px; border-bottom: 1px solid var(--border-glass); padding-bottom: 6px;">
+                        🟢 1. Login & Authentication Responses
+                    </div>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px;">
+                        <div class="form-group">
+                            <label>Login Success</label>
+                            <input type="text" id="setting-login-success-msg" class="form-control" value="${escapeHtml(app.login_success_message || 'Welcome back! Logged in successfully.')}">
+                        </div>
+                        <div class="form-group">
+                            <label>Incorrect Password</label>
+                            <input type="text" id="setting-login-failed-msg" class="form-control" value="${escapeHtml(app.login_failed_message || 'Invalid username or password.')}">
+                        </div>
+                        <div class="form-group">
+                            <label>Username Not Found</label>
+                            <input type="text" id="setting-user-not-found-msg" class="form-control" value="${escapeHtml(app.user_not_found_message || 'Username does not exist.')}">
+                        </div>
+                        <div class="form-group">
+                            <label>Subscription Expired</label>
+                            <input type="text" id="setting-expired-sub-msg" class="form-control" value="${escapeHtml(app.expired_sub_message || 'Your subscription has expired! Please renew.')}">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Group B: Security & Anti-Cheat Blocks -->
+                <div style="margin-bottom: 20px;">
+                    <div style="font-size: 12.5px; font-weight: 800; color: #ff2a5f; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 12px; border-bottom: 1px solid var(--border-glass); padding-bottom: 6px;">
+                        🛡️ 2. Security & Anti-Cheat Enforcement Responses
+                    </div>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px;">
+                        <div class="form-group">
+                            <label>HWID Mismatch Lock</label>
+                            <input type="text" id="setting-hwid-mismatch-msg" class="form-control" value="${escapeHtml(app.hwid_mismatch_message || 'HWID Mismatch! Your account is locked to another computer.')}">
+                        </div>
+                        <div class="form-group">
+                            <label>Banned Account Notice</label>
+                            <input type="text" id="setting-banned-user-msg" class="form-control" value="${escapeHtml(app.banned_user_message || 'Account is banned!')}">
+                        </div>
+                        <div class="form-group">
+                            <label>Brute-Force Auto-Ban (5+ Attempts)</label>
+                            <input type="text" id="setting-brute-force-ban-msg" class="form-control" value="${escapeHtml(app.brute_force_ban_message || 'Too many invalid attempts! Your PC hardware and IP are permanently banned.')}">
+                        </div>
+                        <div class="form-group">
+                            <label>Blacklisted IP / Machine HWID</label>
+                            <input type="text" id="setting-blacklist-msg" class="form-control" value="${escapeHtml(app.blacklist_message || 'Access Denied! Your IP or Machine HWID has been blacklisted.')}">
+                        </div>
+                        <div class="form-group">
+                            <label>VPN / Proxy Detected Block</label>
+                            <input type="text" id="setting-vpn-blocked-msg" class="form-control" value="${escapeHtml(app.vpn_blocked_message || 'VPN or Proxy connections are strictly prohibited.')}">
+                        </div>
+                        <div class="form-group">
+                            <label>Binary Integrity Hash Check Failed</label>
+                            <input type="text" id="setting-hash-mismatch-msg" class="form-control" value="${escapeHtml(app.hash_mismatch_message || 'Executable integrity verification failed! Modified or cracked binary detected.')}">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Group C: License Keys & Registration -->
+                <div style="margin-bottom: 20px;">
+                    <div style="font-size: 12.5px; font-weight: 800; color: #a855f7; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 12px; border-bottom: 1px solid var(--border-glass); padding-bottom: 6px;">
+                        🔑 3. License Keys & User Registration Responses
+                    </div>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px;">
+                        <div class="form-group">
+                            <label>Registration Success</label>
+                            <input type="text" id="setting-register-success-msg" class="form-control" value="${escapeHtml(app.register_success_message || 'Account created successfully! You are now logged in.')}">
+                        </div>
+                        <div class="form-group">
+                            <label>License Direct Login Success</label>
+                            <input type="text" id="setting-license-login-success-msg" class="form-control" value="${escapeHtml(app.license_login_success_message || 'License authenticated successfully!')}">
+                        </div>
+                        <div class="form-group">
+                            <label>Invalid License Key</label>
+                            <input type="text" id="setting-invalid-license-msg" class="form-control" value="${escapeHtml(app.invalid_license_message || 'Invalid license key.')}">
+                        </div>
+                        <div class="form-group">
+                            <label>License Key Already Used</label>
+                            <input type="text" id="setting-used-license-msg" class="form-control" value="${escapeHtml(app.used_license_message || 'This license key is already used.')}">
+                        </div>
+                        <div class="form-group">
+                            <label>License Key Paused</label>
+                            <input type="text" id="setting-paused-license-msg" class="form-control" value="${escapeHtml(app.paused_license_message || 'This license key is paused by administrator.')}">
+                        </div>
+                        <div class="form-group">
+                            <label>License Key Revoked</label>
+                            <input type="text" id="setting-revoked-license-msg" class="form-control" value="${escapeHtml(app.revoked_license_message || 'This license key has been revoked.')}">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Group D: System & Maintenance -->
+                <div>
+                    <div style="font-size: 12.5px; font-weight: 800; color: #f59e0b; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 12px; border-bottom: 1px solid var(--border-glass); padding-bottom: 6px;">
+                        ⏸️ 4. System, Version & Maintenance Responses
+                    </div>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px;">
+                        <div class="form-group">
+                            <label>Emergency Maintenance Killswitch</label>
+                            <input type="text" id="setting-maintenance-msg" class="form-control" value="${escapeHtml(app.maintenance_message || 'Application is under maintenance. Please check back soon.')}">
+                        </div>
+                        <div class="form-group">
+                            <label>Version Force-Update Notice</label>
+                            <input type="text" id="setting-version-mismatch-msg" class="form-control" value="${escapeHtml(app.version_mismatch_message || 'Update required! Please download the latest version.')}">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 3. Version Enforcement & Hash Integrity -->
+            <div style="background: rgba(0,0,0,0.35); padding: 22px; border-radius: 14px; border: 1px solid var(--border-glass); margin-bottom: 24px;">
+                <h4 style="font-size: 14.5px; font-weight: 800; color: #8b5cf6; margin-bottom: 6px; display: flex; align-items: center; gap: 8px;">
+                    <span>📦 Version Enforcement & Binary Hash Integrity</span>
+                </h4>
+                <p style="font-size: 12px; color: var(--text-secondary); margin-bottom: 16px;">
+                    Prevent users from opening outdated or cracked modified .exe versions:
+                </p>
+
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px;">
+                    <div class="form-group">
+                        <label>Target Version (Force Update)</label>
+                        <input type="text" id="setting-version" class="form-control mono" value="${escapeHtml(app.version || '1.0')}" placeholder="e.g. 1.0, 1.1">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Auto-Update Direct Download URL</label>
+                        <input type="url" id="setting-download-url" class="form-control mono" value="${escapeHtml(app.download_link || '')}" placeholder="https://mysite.com/cheat_v2.exe">
+                    </div>
+
+                    <div class="form-group" style="grid-column: 1 / -1;">
+                        <label style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
+                            <span>Binary Integrity Hash (MD5 / SHA256)</span>
+                            <span style="font-size: 11px; color: var(--text-muted);">Leave empty to disable hash check</span>
+                        </label>
+                        <div style="display: flex; gap: 10px; align-items: center;">
+                            <input type="text" id="setting-app-hash" class="form-control mono" value="${escapeHtml(app.app_hash || '')}" placeholder="e.g. a3b8e4f5c90d12... (Optional MD5/SHA256 check)">
+                            <label style="display: flex; align-items: center; gap: 8px; font-size: 12px; white-space: nowrap; color: #fff; cursor: pointer;">
+                                <input type="checkbox" id="setting-hash-check-toggle" ${app.hash_check_enabled ? 'checked' : ''} style="width: 17px; height: 17px; accent-color: #ff2a5f;">
+                                Enable Hash Check
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Save Bar -->
+            <div style="display: flex; justify-content: flex-end; gap: 12px;">
+                <button class="btn btn-secondary" onclick="loadApps(); renderAppsPage();">↩️ Reset Changes</button>
+                <button class="btn btn-primary" style="padding: 10px 24px; font-size: 14px;" onclick="saveAllAppSettings(${app.id})">💾 Save All Application Settings</button>
+            </div>
+        </div>
+    `;
+}
+
+function renderAllAppsList() {
+    const container = document.getElementById("apps-grid-container");
+    if (!container) return;
+
+    if (appsList.length === 0) {
+        container.innerHTML = `
+            <div class="stat-card spotlight-card" style="padding: 30px; text-align: center; color: var(--text-muted); grid-column: 1 / -1;">
+                No applications created yet. Click "➕ New App" to create one.
+            </div>
+        `;
+        return;
+    }
+
+    container.innerHTML = appsList.map(app => `
+        <div class="stat-card spotlight-card" style="padding: 22px; ${app.id === currentAppId ? 'border-color: #ff2a5f; box-shadow: 0 0 20px rgba(255, 42, 95, 0.3);' : ''}">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 14px;">
+                <div>
+                    <h3 style="font-size: 17px; font-weight: 800; color: #fff;">${escapeHtml(app.name)}</h3>
+                    <span class="badge badge-cyan" style="margin-top: 4px;">v${app.version}</span>
                 </div>
                 <span class="badge badge-${app.status === 'enabled' ? 'success' : 'danger'}">
                     <span class="badge-dot"></span> ${app.status.toUpperCase()}
                 </span>
             </div>
 
-            <div class="form-group" style="margin-bottom: 10px;">
-                <label>⚡ Unified Master Token (1-Token SDK Key)</label>
+            <div class="form-group" style="margin-bottom: 12px;">
+                <label>⚡ Master App Token (Secret)</label>
                 <div style="display: flex; gap: 8px;">
                     <input type="password" value="${app.secret}" id="token-${app.id}" class="form-control mono" readonly style="font-size: 12px; color: #38bdf8;">
                     <button class="btn btn-secondary btn-sm" onclick="toggleSecretVisibility('token-${app.id}')">👁️</button>
@@ -1523,47 +1991,104 @@ function renderAppsPage() {
                 </div>
             </div>
 
-            <div class="form-group" style="margin-bottom: 12px;">
-                <label>🏷️ Application Version (Strict Update Enforcement)</label>
-                <div style="display: flex; gap: 8px;">
-                    <input type="text" value="${app.version || '1.0'}" id="ver-input-${app.id}" class="form-control mono" style="font-size: 12px; font-weight: bold; color: #fff;" placeholder="e.g. 1.0, 1.1">
-                    <button class="btn btn-primary btn-sm" onclick="updateAppVersionSubmit(${app.id})">💾 Save Version</button>
-                </div>
-                <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">Changing version will immediately force old .exe clients to update.</div>
-            </div>
-
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 16px 0; font-size: 12px; color: var(--text-muted);">
-                <div>Total Users: <strong style="color: #fff;">${app.stats?.total_users || 0}</strong></div>
-                <div>Unused Keys: <strong style="color: #10b981;">${app.stats?.unused_licenses || 0}</strong></div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 14px 0; font-size: 12px; color: var(--text-muted);">
                 <div>HWID Lock: <strong style="color: ${app.hwid_lock_enabled ? '#10b981' : '#ef4444'};">${app.hwid_lock_enabled ? 'ENABLED' : 'DISABLED'}</strong></div>
-                <div>Timeout: <strong style="color: #fff;">${app.session_timeout_minutes} min</strong></div>
+                <div>Status: <strong style="color: #38bdf8;">${app.custom_status || 'UNDETECTED'}</strong></div>
             </div>
 
-            <div style="display: flex; gap: 8px; margin-top: 18px; border-top: 1px solid var(--border-subtle); padding-top: 16px;">
-                <button class="btn btn-secondary btn-sm" style="flex: 1;" onclick="regenerateSecret(${app.id})">🔄 New Secret</button>
-                <button class="btn btn-danger btn-sm" onclick="deleteApp(${app.id})">🗑️ Delete</button>
+            <div style="display: flex; gap: 8px; margin-top: 16px; border-top: 1px solid var(--border-subtle); padding-top: 14px;">
+                <button class="btn ${app.id === currentAppId ? 'btn-primary' : 'btn-secondary'} btn-sm" style="flex: 1;" onclick="selectAppFromCard(${app.id})">
+                    ${app.id === currentAppId ? '⭐ Active App' : '⚙️ Manage App'}
+                </button>
+                <button class="btn btn-danger btn-sm" onclick="deleteApp(${app.id})">🗑️</button>
             </div>
         </div>
     `).join("");
 }
 
-async function updateAppVersionSubmit(appId) {
-    const verInput = document.getElementById(`ver-input-${appId}`);
-    const newVer = verInput ? verInput.value.trim() : "1.0";
-    if (!newVer) {
-        showToast("Version cannot be empty", "warning");
-        return;
-    }
+function selectAppFromCard(appId) {
+    currentAppId = appId;
+    localStorage.setItem("selected_app_id", appId);
+    updateBannerCredentials();
+    renderAppsPage();
+    showToast(`Switched active application to ${appsList.find(a => a.id === appId)?.name}`, "info");
+}
+
+async function saveAllAppSettings(appId) {
+    const hwidLock = document.getElementById("setting-hwid-lock")?.checked;
+    const userHwidReset = document.getElementById("setting-user-hwid-reset")?.checked;
+    const vpnBlock = document.getElementById("setting-vpn-block")?.checked;
+    const appStatus = document.getElementById("setting-app-status")?.value;
+    const customStatus = document.getElementById("setting-custom-status")?.value;
+    const sessionTimeout = parseInt(document.getElementById("setting-session-timeout")?.value || "60");
+
+    // All 18 Custom Response Messages
+    const loginSuccessMsg = document.getElementById("setting-login-success-msg")?.value.trim();
+    const loginFailedMsg = document.getElementById("setting-login-failed-msg")?.value.trim();
+    const userNotFoundMsg = document.getElementById("setting-user-not-found-msg")?.value.trim();
+    const expiredSubMsg = document.getElementById("setting-expired-sub-msg")?.value.trim();
+    const hwidMismatchMsg = document.getElementById("setting-hwid-mismatch-msg")?.value.trim();
+    const bannedUserMsg = document.getElementById("setting-banned-user-msg")?.value.trim();
+    const bruteForceBanMsg = document.getElementById("setting-brute-force-ban-msg")?.value.trim();
+    const blacklistMsg = document.getElementById("setting-blacklist-msg")?.value.trim();
+    const vpnBlockedMsg = document.getElementById("setting-vpn-blocked-msg")?.value.trim();
+    const hashMismatchMsg = document.getElementById("setting-hash-mismatch-msg")?.value.trim();
+    const registerSuccessMsg = document.getElementById("setting-register-success-msg")?.value.trim();
+    const licenseLoginSuccessMsg = document.getElementById("setting-license-login-success-msg")?.value.trim();
+    const invalidLicenseMsg = document.getElementById("setting-invalid-license-msg")?.value.trim();
+    const usedLicenseMsg = document.getElementById("setting-used-license-msg")?.value.trim();
+    const pausedLicenseMsg = document.getElementById("setting-paused-license-msg")?.value.trim();
+    const revokedLicenseMsg = document.getElementById("setting-revoked-license-msg")?.value.trim();
+    const maintenanceMsg = document.getElementById("setting-maintenance-msg")?.value.trim();
+    const versionMismatchMsg = document.getElementById("setting-version-mismatch-msg")?.value.trim();
+
+    const version = document.getElementById("setting-version")?.value.trim();
+    const downloadUrl = document.getElementById("setting-download-url")?.value.trim();
+    const appHash = document.getElementById("setting-app-hash")?.value.trim();
+    const hashCheckToggle = document.getElementById("setting-hash-check-toggle")?.checked;
+
+    showToast("Saving application settings...", "info");
+
     const res = await apiFetch(`/api/v1/admin/apps/${appId}`, {
         method: "PUT",
-        body: JSON.stringify({ version: newVer })
+        body: JSON.stringify({
+            hwid_lock_enabled: hwidLock,
+            allow_user_hwid_reset: userHwidReset,
+            vpn_block_enabled: vpnBlock,
+            status: appStatus,
+            custom_status: customStatus,
+            session_timeout_minutes: sessionTimeout,
+            login_success_message: loginSuccessMsg,
+            login_failed_message: loginFailedMsg,
+            user_not_found_message: userNotFoundMsg,
+            expired_sub_message: expiredSubMsg,
+            hwid_mismatch_message: hwidMismatchMsg,
+            banned_user_message: bannedUserMsg,
+            brute_force_ban_message: bruteForceBanMsg,
+            blacklist_message: blacklistMsg,
+            vpn_blocked_message: vpnBlockedMsg,
+            hash_mismatch_message: hashMismatchMsg,
+            register_success_message: registerSuccessMsg,
+            license_login_success_message: licenseLoginSuccessMsg,
+            invalid_license_message: invalidLicenseMsg,
+            used_license_message: usedLicenseMsg,
+            paused_license_message: pausedLicenseMsg,
+            revoked_license_message: revokedLicenseMsg,
+            maintenance_message: maintenanceMsg,
+            version_mismatch_message: versionMismatchMsg,
+            version: version,
+            download_link: downloadUrl,
+            app_hash: appHash,
+            hash_check_enabled: hashCheckToggle
+        })
     });
+
     if (res && res.success) {
-        showToast(`✅ App version updated to v${newVer}! Old .exe clients are now blocked.`, "success");
+        showToast("✅ Application settings and login notifications saved successfully!", "success");
         await loadApps();
         renderAppsPage();
     } else {
-        showToast(res?.detail || "Failed to update version", "error");
+        showToast(res?.detail || "Failed to save settings", "error");
     }
 }
 
@@ -1603,7 +2128,7 @@ async function createAppSubmit() {
 }
 
 async function regenerateSecret(appId) {
-    if (!confirm("Regenerating the App Secret will disconnect all existing SDK clients until updated.ceed?")) return;
+    if (!confirm("Regenerating the App Secret will disconnect all existing SDK clients until updated. Proceed?")) return;
     const res = await apiFetch(`/api/v1/admin/apps/${appId}/regenerate-secret`, { method: "POST" });
     if (res && res.success) {
         showToast(res.message, "success");
@@ -1675,33 +2200,34 @@ async function clearAuditLogs() {
 function updateSdkSnippets() {
     const currentApp = appsList.find(a => a.id === currentAppId) || { name: "YourAppName", owner_id: devOwnerId, secret: "your_secret_key", version: "1.0" };
     const appName = currentApp.name;
-    const ownerId = currentApp.owner_id || devOwnerId;
-    const appSecret = currentApp.secret;
+    const appToken = currentApp.secret;
     const version = currentApp.version || "1.0";
     const apiUrl = window.location.origin;
 
     const pythonCode = `# ================== JOYST CORPORATION PYTHON SDK ==================
-from auth_client import api
+from joystauth import JoystAuth
 
-# 1. Initialize Joyst Auth (Exact KeyAuth parameters)
-auth = api(
-    name="${appName}",
-    ownerid="${ownerId}",
-    secret="${appSecret}",
-    version="${version}",
-    url="${apiUrl}"
-)
+# 1. Initialize with App Name and Master App Token
+app = JoystAuth("${appName}", "${appToken}")
 
-# 2. Login with Username & Password (Strict HWID Lock)
-if auth.login("testuser", "password123"):
-    print(f"Login Success! Welcome {auth.user_data.username}")
-    print(f"Subscription: {auth.user_data.subscription}")
-    print(f"HWID: {auth.user_data.hwid}")
+# 2. Authenticate (Choose ONE method):
+# --- Method A: Login with Username & Password ---
+if app.login("testuser", "password123"):
+    print(f"✅ {app.response.message}")
+    print(f"User: {app.user_data.username} | Rank: {app.user_data.subscription} | Expires: {app.user_data.expiry}")
     
-    # 3. Fetch Remote Encrypted Cloud Variable
-    # cheat_offset = auth.var("GAME_OFFSET")
+    # Optional: Fetch encrypted server variable (Offsets / Secrets)
+    # secret_value = app.var("MY_SECRET_VAR")
 else:
-    print(f"Login Failed: {auth.response.message}")
+    print(f"❌ {app.response.message}")
+
+# --- Method B: Direct License Key Login ---
+# if app.license("JOYST-XXXX-XXXX"):
+#     print(f"✅ License Valid! Logged in as: {app.user_data.username}")
+
+# --- Method C: Register New User with Key ---
+# if app.register("newUser", "newPass", "JOYST-XXXX-XXXX"):
+#     print(f"✅ Registered: {app.response.message}")
 `;
 
     const csharpCode = `// ================== JOYST CORPORATION C# .NET SDK ==================
@@ -1709,47 +2235,76 @@ using System;
 using System.Threading.Tasks;
 using JoystAuth;
 
-classgram
+class Program
 {
     static async Task Main(string[] args)
     {
-        // Initialize with Unified Master Token & Version
-        var auth = new api("${appSecret}", "${version}", "${apiUrl}");
-
+        // 1. Initialize Joyst Auth (App Name + Master App Token)
+        var auth = new api("${appName}", "${appToken}");
         await auth.init();
 
+        // 2. Authenticate (Choose ONE method):
+        // --- Method A: Login with Username & Password ---
         if (await auth.login("testuser", "password123"))
         {
-            Console.WriteLine($"✅ Login Success! Welcome {auth.user_data.username}!");
-            Console.WriteLine($"💎 Subscription: {auth.user_data.subscription}");
-            Console.WriteLine($"⏳ Expiry: {auth.user_data.expiry}");
-            
-            // Start automatic 30s session watchdog (Zero CPU)
-            auth.start_heartbeat(30);
+            Console.WriteLine($"✅ {auth.response.message}");
+            Console.WriteLine($"User: {auth.user_data.username} | Rank: {auth.user_data.subscription} | Expires: {auth.user_data.expiry}");
+
+            // Optional: Fetch secure server variable
+            // string secretKey = await auth.var("MY_SECRET_VAR");
         }
         else
         {
-            Console.WriteLine($"❌ Error: {auth.response.message}");
+            Console.WriteLine($"❌ {auth.response.message}");
         }
+
+        // --- Method B: Direct License Key Login ---
+        // if (await auth.license("JOYST-XXXX-XXXX")) {
+        //     Console.WriteLine($"✅ Logged in via Key! Rank: {auth.user_data.subscription}");
+        // }
+
+        // --- Method C: Register New Account ---
+        // if (await auth.register("newUser", "newPass", "JOYST-XXXX-XXXX")) {
+        //     Console.WriteLine($"✅ Registered successfully!");
+        // }
     }
 }`;
 
     const cppCode = `// ================== JOYST CORPORATION C++ SDK ==================
-#include "AuthClient.hpp"
+#include "JoystAuth.hpp"
 #include <iostream>
 
 int main() {
-    // Header-Only (Zero External .lib dependencies!)
-    JoystAuth::api auth("${appSecret}", "${version}", "${apiUrl}");
+    // 1. Initialize Header-Only SDK (App Name + Master App Token)
+    JoystAuth::api auth("${appName}", "${appToken}");
 
-    auth.init();
-
-    if (auth.login("testuser", "password123")) {
-        std::cout << "✅ Login Success! Welcome " << auth.user_data.username << "\\n";
-        std::cout << "💎 Subscription: " << auth.user_data.subscription << "\\n";
-    } else {
-        std::cout << "❌ Login Failed: " << auth.response.message << "\\n";
+    if (!auth.init()) {
+        std::cout << "Init failed: " << auth.response.message << "\\n";
+        return 1;
     }
+
+    // 2. Authenticate (Choose ONE method):
+    // --- Method A: Username & Password Login ---
+    if (auth.login("testuser", "password123")) {
+        std::cout << "✅ " << auth.response.message << "\\n";
+        std::cout << "User: " << auth.user_data.username << " | Rank: " << auth.user_data.subscription << "\\n";
+
+        // Optional: Fetch remote secret variable
+        // std::string secret = auth.var("MY_SECRET_VAR");
+    } else {
+        std::cout << "❌ " << auth.response.message << "\\n";
+    }
+
+    // --- Method B: Direct License Key Login ---
+    // if (auth.license("JOYST-XXXX-XXXX")) {
+    //     std::cout << "✅ Valid Key! Rank: " << auth.user_data.subscription << "\\n";
+    // }
+
+    // --- Method C: Register New User ---
+    // if (auth.register_user("newUser", "newPass", "JOYST-XXXX-XXXX")) {
+    //     std::cout << "✅ Account created successfully!\\n";
+    // }
+
     return 0;
 }`;
 
@@ -1758,15 +2313,19 @@ import com.joyst.api;
 
 public class Main {
     public static void main(String[] args) {
-        api auth = new api("${appSecret}", "${version}", "${apiUrl}");
-
+        api auth = new api("${appName}", "${appToken}");
         auth.init();
 
+        // 1. Login with Username & Password
         if (auth.login("testuser", "password123")) {
-            System.out.println("✅ Login Success! Welcome " + auth.userData.username);
+            System.out.println("✅ " + auth.response.message);
+            System.out.println("User: " + auth.userData.username + " | Rank: " + auth.userData.subscription);
         } else {
-            System.out.println("❌ Login Failed: " + auth.response.message);
+            System.out.println("❌ " + auth.response.message);
         }
+
+        // Direct Key Login:
+        // if (auth.license("JOYST-XXXX-XXXX")) { ... }
     }
 }`;
 
@@ -1775,39 +2334,41 @@ use joyst_auth::api;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let mut auth = api::new("${appSecret}", "${version}", "${apiUrl}");
-
+    let mut auth = api::new("${appName}", "${appToken}", "1.0", "${apiUrl}");
     auth.init().await?;
 
     if auth.login("testuser", "password123").await? {
-        println!("✅ Login Success! Welcome {:?}", auth.user_data.username);
+        println!("✅ {}", auth.response.message);
+        println!("User: {} | Rank: {}", auth.user_data.username, auth.user_data.subscription);
     } else {
-        println!("❌ Login Failed: {}", auth.response.message);
+        println!("❌ {}", auth.response.message);
     }
     Ok(())
 }`;
 
     const nodejsCode = `// ================== JOYST CORPORATION NODE.JS SDK ==================
-const JoystAuth = require('./joyst_auth');
+const JoystAuth = require('./joystauth');
 
 async function main() {
-    const auth = new JoystAuth("${appSecret}", "${version}", "${apiUrl}");
+    const auth = new JoystAuth("${appName}", "${appToken}");
 
-    // 1. Initialize
     const ok = await auth.init();
     if (!ok) {
         console.error("Init failed:", auth.response.message);
         return;
     }
 
-    // 2. Login User
+    // Login with Username & Password
     const loggedIn = await auth.login("testuser", "password123");
     if (loggedIn) {
-        console.log("✅ Login Success! Welcome " + auth.userData.username);
-        console.log("💎 Subscription: " + auth.userData.subscription);
+        console.log("✅ " + auth.response.message);
+        console.log("User: " + auth.userData.username + " | Rank: " + auth.userData.subscription);
     } else {
-        console.log("❌ Login Failed: " + auth.response.message);
+        console.log("❌ " + auth.response.message);
     }
+
+    // Direct Key Login:
+    // const keyOk = await auth.license("JOYST-XXXX-XXXX");
 }
 
 main();`;
@@ -1831,41 +2392,41 @@ const sdkLangMeta = {
         icon: "⚡",
         title: "C++ Windows Native SDK",
         badge: "Header-Only (Release)",
-        desc: "File: <code class='mono' style='color:#38bdf8;'>AuthClient.hpp</code> (Drop directly into Visual Studioject)",
-        downloadUrl: "/static/sdks/cpp/AuthClient.hpp",
-        downloadName: "AuthClient.hpp"
+        desc: "File: <code class='mono' style='color:#38bdf8;'>JoystAuth.hpp</code> (Drop directly into Visual Studio project)",
+        downloadUrl: "/static/sdks/cpp/JoystAuth.hpp",
+        downloadName: "JoystAuth.hpp"
     },
     python: {
         icon: "🐍",
         title: "Python 3 Standalone SDK",
         badge: "1-File Script",
-        desc: "File: <code class='mono' style='color:#38bdf8;'>auth_client.py</code> (Place in Pythonject folder)",
-        downloadUrl: "/static/sdks/python/auth_client.py",
-        downloadName: "auth_client.py"
+        desc: "File: <code class='mono' style='color:#38bdf8;'>joystauth.py</code> (Place in Python project folder)",
+        downloadUrl: "/static/sdks/python/joystauth.py",
+        downloadName: "joystauth.py"
     },
     csharp: {
         icon: "🔷",
         title: "C# .NET / Unity / WPF SDK",
         badge: ".NET 8 / C#",
-        desc: "File: <code class='mono' style='color:#38bdf8;'>AuthClient.cs</code> (Add to Solution Explorer)",
-        downloadUrl: "/static/sdks/csharp/AuthClient.cs",
-        downloadName: "AuthClient.cs"
+        desc: "File: <code class='mono' style='color:#38bdf8;'>JoystAuth.cs</code> (Add to Solution Explorer)",
+        downloadUrl: "/static/sdks/csharp/JoystAuth.cs",
+        downloadName: "JoystAuth.cs"
     },
     nodejs: {
         icon: "🟢",
         title: "Node.js / Electron / Web SDK",
         badge: "Zero-NPM Deps",
-        desc: "File: <code class='mono' style='color:#38bdf8;'>joyst_auth.js</code> (Pure vanilla Node.js crypto)",
-        downloadUrl: "/static/sdks/nodejs/joyst_auth.js",
-        downloadName: "joyst_auth.js"
+        desc: "File: <code class='mono' style='color:#38bdf8;'>joystauth.js</code> (Pure vanilla Node.js crypto)",
+        downloadUrl: "/static/sdks/nodejs/joystauth.js",
+        downloadName: "joystauth.js"
     },
     java: {
         icon: "☕",
         title: "Java Standalone SDK",
         badge: "Java 8+",
-        desc: "File: <code class='mono' style='color:#38bdf8;'>AuthClient.java</code> (Place in src folder)",
-        downloadUrl: "/static/sdks/java/AuthClient.java",
-        downloadName: "AuthClient.java"
+        desc: "File: <code class='mono' style='color:#38bdf8;'>JoystAuth.java</code> (Place in src folder)",
+        downloadUrl: "/static/sdks/java/JoystAuth.java",
+        downloadName: "JoystAuth.java"
     },
     rust: {
         icon: "🦀",

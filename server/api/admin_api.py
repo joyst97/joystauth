@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import desc
 from pydantic import BaseModel
 
-from ..database import get_db, Application, User, License, AppVariable, AppFile, AuditLog, Developer, SubscriptionTier, Blacklist, Reseller, PlanKey
+from ..database import get_db, Application, User, License, AppVariable, AppFile, AuditLog, Developer, SubscriptionTier, Blacklist, Reseller, PlanKey, AppNotification
 from ..security import decode_access_token, generate_random_token, generate_license_key, hash_password
 from ..config import log_audit, send_discord_webhook
 from .auth_api import get_current_developer
@@ -28,12 +28,59 @@ class UpdateAppRequest(BaseModel):
     name: Optional[str] = None
     version: Optional[str] = None
     status: Optional[str] = None
+    custom_status: Optional[str] = None
     hwid_lock_enabled: Optional[bool] = None
+    allow_user_hwid_reset: Optional[bool] = None
     vpn_block_enabled: Optional[bool] = None
+    hash_check_enabled: Optional[bool] = None
+    app_hash: Optional[str] = None
     session_timeout_minutes: Optional[int] = None
     download_link: Optional[str] = None
     custom_message: Optional[str] = None
+
+    # Custom Response Messages
+    login_success_message: Optional[str] = None
+    login_failed_message: Optional[str] = None
+    user_not_found_message: Optional[str] = None
+    hwid_mismatch_message: Optional[str] = None
+    maintenance_message: Optional[str] = None
+    expired_sub_message: Optional[str] = None
+    banned_user_message: Optional[str] = None
+    brute_force_ban_message: Optional[str] = None
+    blacklist_message: Optional[str] = None
+    invalid_license_message: Optional[str] = None
+    used_license_message: Optional[str] = None
+    paused_license_message: Optional[str] = None
+    revoked_license_message: Optional[str] = None
+    register_success_message: Optional[str] = None
+    license_login_success_message: Optional[str] = None
+    hash_mismatch_message: Optional[str] = None
+    version_mismatch_message: Optional[str] = None
+    vpn_blocked_message: Optional[str] = None
+
     webhook_url: Optional[str] = None
+    webhook_bot_name: Optional[str] = None
+    webhook_avatar_url: Optional[str] = None
+    webhook_on_login: Optional[bool] = None
+    webhook_on_register: Optional[bool] = None
+    webhook_on_hwid_reset: Optional[bool] = None
+    webhook_on_failed: Optional[bool] = None
+    webhook_on_key_gen: Optional[bool] = None
+    webhook_on_ban: Optional[bool] = None
+
+class CreateNotificationRequest(BaseModel):
+    app_id: int
+    title: str
+    message: str
+    type: Optional[str] = "info" # info, success, warning, danger
+    show_on_login: Optional[bool] = True
+
+class UpdateNotificationRequest(BaseModel):
+    title: Optional[str] = None
+    message: Optional[str] = None
+    type: Optional[str] = None
+    is_active: Optional[bool] = None
+    show_on_login: Optional[bool] = None
 
 class CreateLicenseRequest(BaseModel):
     app_id: int
@@ -138,12 +185,42 @@ async def list_apps(dev: Developer = Depends(get_current_developer), db: Session
             "secret": app.secret,
             "version": app.version,
             "status": app.status,
+            "custom_status": getattr(app, "custom_status", "UNDETECTED") or "UNDETECTED",
             "hwid_lock_enabled": app.hwid_lock_enabled,
+            "allow_user_hwid_reset": getattr(app, "allow_user_hwid_reset", False),
             "vpn_block_enabled": app.vpn_block_enabled,
+            "hash_check_enabled": getattr(app, "hash_check_enabled", False),
+            "app_hash": getattr(app, "app_hash", "") or "",
             "session_timeout_minutes": app.session_timeout_minutes,
             "download_link": app.download_link,
             "custom_message": app.custom_message,
+            "login_success_message": getattr(app, "login_success_message", "Welcome back! Logged in successfully.") or "Welcome back! Logged in successfully.",
+            "login_failed_message": getattr(app, "login_failed_message", "Invalid username or password.") or "Invalid username or password.",
+            "user_not_found_message": getattr(app, "user_not_found_message", "Username does not exist.") or "Username does not exist.",
+            "hwid_mismatch_message": getattr(app, "hwid_mismatch_message", "HWID Mismatch! Your account is locked to another computer.") or "HWID Mismatch! Your account is locked to another computer.",
+            "maintenance_message": getattr(app, "maintenance_message", "Application is under maintenance. Please check back soon.") or "Application is under maintenance. Please check back soon.",
+            "expired_sub_message": getattr(app, "expired_sub_message", "Your subscription has expired! Please renew.") or "Your subscription has expired! Please renew.",
+            "banned_user_message": getattr(app, "banned_user_message", "Account is banned!") or "Account is banned!",
+            "brute_force_ban_message": getattr(app, "brute_force_ban_message", "Too many invalid attempts! Your PC hardware and IP are permanently banned.") or "Too many invalid attempts! Your PC hardware and IP are permanently banned.",
+            "blacklist_message": getattr(app, "blacklist_message", "Access Denied! Your IP or Machine HWID has been blacklisted.") or "Access Denied! Your IP or Machine HWID has been blacklisted.",
+            "invalid_license_message": getattr(app, "invalid_license_message", "Invalid license key.") or "Invalid license key.",
+            "used_license_message": getattr(app, "used_license_message", "This license key is already used.") or "This license key is already used.",
+            "paused_license_message": getattr(app, "paused_license_message", "This license key is paused by administrator.") or "This license key is paused by administrator.",
+            "revoked_license_message": getattr(app, "revoked_license_message", "This license key has been revoked.") or "This license key has been revoked.",
+            "register_success_message": getattr(app, "register_success_message", "Account created successfully! You are now logged in.") or "Account created successfully! You are now logged in.",
+            "license_login_success_message": getattr(app, "license_login_success_message", "License authenticated successfully!") or "License authenticated successfully!",
+            "hash_mismatch_message": getattr(app, "hash_mismatch_message", "Executable integrity verification failed! Modified or cracked binary detected.") or "Executable integrity verification failed! Modified or cracked binary detected.",
+            "version_mismatch_message": getattr(app, "version_mismatch_message", "Update required! Please download the latest version.") or "Update required! Please download the latest version.",
+            "vpn_blocked_message": getattr(app, "vpn_blocked_message", "VPN or Proxy connections are strictly prohibited.") or "VPN or Proxy connections are strictly prohibited.",
             "webhook_url": app.webhook_url,
+            "webhook_bot_name": getattr(app, "webhook_bot_name", "JOYST AUTH SHIELD") or "JOYST AUTH SHIELD",
+            "webhook_avatar_url": getattr(app, "webhook_avatar_url", "https://joystauth.cc/static/img/joyst_logo.png") or "https://joystauth.cc/static/img/joyst_logo.png",
+            "webhook_on_login": getattr(app, "webhook_on_login", True),
+            "webhook_on_register": getattr(app, "webhook_on_register", True),
+            "webhook_on_hwid_reset": getattr(app, "webhook_on_hwid_reset", True),
+            "webhook_on_failed": getattr(app, "webhook_on_failed", True),
+            "webhook_on_key_gen": getattr(app, "webhook_on_key_gen", True),
+            "webhook_on_ban": getattr(app, "webhook_on_ban", True),
             "created_at": app.created_at.isoformat(),
             "stats": {
                 "total_users": 0,
@@ -220,21 +297,166 @@ async def update_app(app_id: int, data: UpdateAppRequest, dev: Developer = Depen
         app.version = data.version
     if data.status is not None:
         app.status = data.status
+    if data.custom_status is not None:
+        app.custom_status = data.custom_status
     if data.hwid_lock_enabled is not None:
         app.hwid_lock_enabled = data.hwid_lock_enabled
+    if data.allow_user_hwid_reset is not None:
+        app.allow_user_hwid_reset = data.allow_user_hwid_reset
     if data.vpn_block_enabled is not None:
         app.vpn_block_enabled = data.vpn_block_enabled
+    if data.hash_check_enabled is not None:
+        app.hash_check_enabled = data.hash_check_enabled
+    if data.app_hash is not None:
+        app.app_hash = data.app_hash.strip()
     if data.session_timeout_minutes is not None:
         app.session_timeout_minutes = data.session_timeout_minutes
     if data.download_link is not None:
         app.download_link = data.download_link
     if data.custom_message is not None:
         app.custom_message = data.custom_message
+    if data.login_success_message is not None:
+        app.login_success_message = data.login_success_message
+    if data.login_failed_message is not None:
+        app.login_failed_message = data.login_failed_message
+    if data.user_not_found_message is not None:
+        app.user_not_found_message = data.user_not_found_message
+    if data.hwid_mismatch_message is not None:
+        app.hwid_mismatch_message = data.hwid_mismatch_message
+    if data.maintenance_message is not None:
+        app.maintenance_message = data.maintenance_message
+    if data.expired_sub_message is not None:
+        app.expired_sub_message = data.expired_sub_message
+    if data.banned_user_message is not None:
+        app.banned_user_message = data.banned_user_message
+    if data.brute_force_ban_message is not None:
+        app.brute_force_ban_message = data.brute_force_ban_message
+    if data.blacklist_message is not None:
+        app.blacklist_message = data.blacklist_message
+    if data.invalid_license_message is not None:
+        app.invalid_license_message = data.invalid_license_message
+    if data.used_license_message is not None:
+        app.used_license_message = data.used_license_message
+    if data.paused_license_message is not None:
+        app.paused_license_message = data.paused_license_message
+    if data.revoked_license_message is not None:
+        app.revoked_license_message = data.revoked_license_message
+    if data.register_success_message is not None:
+        app.register_success_message = data.register_success_message
+    if data.license_login_success_message is not None:
+        app.license_login_success_message = data.license_login_success_message
+    if data.hash_mismatch_message is not None:
+        app.hash_mismatch_message = data.hash_mismatch_message
+    if data.version_mismatch_message is not None:
+        app.version_mismatch_message = data.version_mismatch_message
+    if data.vpn_blocked_message is not None:
+        app.vpn_blocked_message = data.vpn_blocked_message
     if data.webhook_url is not None:
-        app.webhook_url = data.webhook_url
+        app.webhook_url = data.webhook_url.strip()
+    if data.webhook_bot_name is not None:
+        app.webhook_bot_name = data.webhook_bot_name.strip()
+    if data.webhook_avatar_url is not None:
+        app.webhook_avatar_url = data.webhook_avatar_url.strip()
+    if data.webhook_on_login is not None:
+        app.webhook_on_login = data.webhook_on_login
+    if data.webhook_on_register is not None:
+        app.webhook_on_register = data.webhook_on_register
+    if data.webhook_on_hwid_reset is not None:
+        app.webhook_on_hwid_reset = data.webhook_on_hwid_reset
+    if data.webhook_on_failed is not None:
+        app.webhook_on_failed = data.webhook_on_failed
+    if data.webhook_on_key_gen is not None:
+        app.webhook_on_key_gen = data.webhook_on_key_gen
+    if data.webhook_on_ban is not None:
+        app.webhook_on_ban = data.webhook_on_ban
+    
+@router.post("/apps/{app_id}/toggle-maintenance")
+async def toggle_app_maintenance(app_id: int, dev: Developer = Depends(get_current_developer), db: Session = Depends(get_db)):
+    app = db.query(Application).filter(Application.id == app_id, Application.developer_id == dev.id).first()
+    if not app:
+        raise HTTPException(status_code=404, detail="Application not found")
+    
+    if app.status == "maintenance" or app.status == "paused":
+        app.status = "enabled"
+        msg = f"🟢 Application '{app.name}' is now ONLINE & OPERATIONAL."
+        log_audit(db, app.id, "MAINTENANCE_OFF", details=f"Maintenance mode deactivated by {dev.username}", status="SUCCESS")
+    else:
+        app.status = "maintenance"
+        msg = f"🚨 EMERGENCY MAINTENANCE MODE ACTIVATED for '{app.name}'. All client .exe executables are forcefully blocked."
+        log_audit(db, app.id, "MAINTENANCE_ON", details=f"Maintenance mode activated by {dev.username}", status="DANGER")
     
     db.commit()
-    return {"success": True, "message": "Application updated successfully"}
+    return {"success": True, "message": msg, "new_status": app.status}
+
+# ==================== IN-APP CLIENT NOTIFICATIONS ====================
+@router.get("/notifications")
+async def list_notifications(app_id: int, dev: Developer = Depends(get_current_developer), db: Session = Depends(get_db)):
+    app = db.query(Application).filter(Application.id == app_id, Application.developer_id == dev.id).first()
+    if not app:
+        raise HTTPException(status_code=404, detail="Application not found")
+    
+    notifs = db.query(AppNotification).filter(AppNotification.app_id == app_id).order_by(AppNotification.created_at.desc()).all()
+    return {
+        "success": True,
+        "notifications": [
+            {
+                "id": n.id,
+                "app_id": n.app_id,
+                "title": n.title,
+                "message": n.message,
+                "type": n.type,
+                "is_active": n.is_active,
+                "show_on_login": n.show_on_login,
+                "created_at": n.created_at.isoformat()
+            }
+            for n in notifs
+        ]
+    }
+
+@router.post("/notifications")
+async def create_notification(data: CreateNotificationRequest, dev: Developer = Depends(get_current_developer), db: Session = Depends(get_db)):
+    app = db.query(Application).filter(Application.id == data.app_id, Application.developer_id == dev.id).first()
+    if not app:
+        raise HTTPException(status_code=404, detail="Application not found")
+    
+    title = data.title.strip()
+    message = data.message.strip()
+    if not title or not message:
+        raise HTTPException(status_code=400, detail="Title and message are required")
+    
+    notif = AppNotification(
+        app_id=data.app_id,
+        title=title,
+        message=message,
+        type=data.type or "info",
+        is_active=True,
+        show_on_login=data.show_on_login if data.show_on_login is not None else True
+    )
+    db.add(notif)
+    db.commit()
+    db.refresh(notif)
+    return {"success": True, "message": "Client Notification created successfully!", "notification_id": notif.id}
+
+@router.delete("/notifications/{notif_id}")
+async def delete_notification(notif_id: int, dev: Developer = Depends(get_current_developer), db: Session = Depends(get_db)):
+    notif = db.query(AppNotification).join(Application).filter(AppNotification.id == notif_id, Application.developer_id == dev.id).first()
+    if not notif:
+        raise HTTPException(status_code=404, detail="Notification not found")
+    
+    db.delete(notif)
+    db.commit()
+    return {"success": True, "message": "Notification deleted successfully"}
+
+@router.patch("/notifications/{notif_id}/toggle")
+async def toggle_notification(notif_id: int, dev: Developer = Depends(get_current_developer), db: Session = Depends(get_db)):
+    notif = db.query(AppNotification).join(Application).filter(AppNotification.id == notif_id, Application.developer_id == dev.id).first()
+    if not notif:
+        raise HTTPException(status_code=404, detail="Notification not found")
+    
+    notif.is_active = not notif.is_active
+    db.commit()
+    status_label = "active" if notif.is_active else "disabled"
+    return {"success": True, "message": f"Notification marked as {status_label}", "is_active": notif.is_active}
 
 @router.post("/apps/{app_id}/regenerate-secret")
 async def regenerate_app_secret(app_id: int, dev: Developer = Depends(get_current_developer), db: Session = Depends(get_db)):
@@ -1684,4 +1906,100 @@ async def bot_upgrade_developer_plan(data: BotUpgradePlanRequest, db: Session = 
         "plan": dev.plan,
         "max_apps": dev.max_apps,
         "max_users": dev.max_users_per_app
+    }
+
+class BotMaintenanceRequest(BaseModel):
+    discord_id: str
+    discord_username: Optional[str] = ""
+    app_name: Optional[str] = None
+    state: Optional[str] = "toggle" # "enable", "disable", "toggle"
+    message: Optional[str] = None
+
+@router.post("/bot/maintenance")
+async def bot_toggle_maintenance(data: BotMaintenanceRequest, db: Session = Depends(get_db)):
+    """Toggle Maintenance Mode for an application directly via Discord Bot."""
+    d_id = str(data.discord_id).strip()
+    dev = db.query(Developer).filter(Developer.discord_id == d_id).first()
+    if not dev:
+        raise HTTPException(status_code=404, detail="No linked Developer account found. Run `/link [email_or_username]` first.")
+
+    app = None
+    if data.app_name:
+        app = db.query(Application).filter(Application.developer_id == dev.id, Application.name.ilike(data.app_name)).first()
+    if not app:
+        app = db.query(Application).filter(Application.developer_id == dev.id).first()
+
+    if not app:
+        raise HTTPException(status_code=404, detail="No application found.")
+
+    if data.state == "enable":
+        app.status = "maintenance"
+    elif data.state == "disable":
+        app.status = "enabled"
+    else:
+        app.status = "enabled" if app.status == "maintenance" or app.status == "paused" else "maintenance"
+
+    if data.message:
+        app.maintenance_message = data.message.strip()
+
+    db.commit()
+    is_maint = app.status in ["maintenance", "paused"]
+    status_label = "🔴 MAINTENANCE (ALL EXEs BLOCKED)" if is_maint else "🟢 ONLINE & OPERATIONAL"
+
+    log_audit(db, app.id, "MAINTENANCE_TOGGLE", details=f"Maintenance mode set to '{app.status}' via Discord by @{data.discord_username}", status="DANGER" if is_maint else "SUCCESS")
+
+    return {
+        "success": True,
+        "app_name": app.name,
+        "status": app.status,
+        "status_label": status_label,
+        "is_maintenance": is_maint,
+        "maintenance_message": app.maintenance_message or "Application is currently under maintenance."
+    }
+
+class BotWarningRequest(BaseModel):
+    discord_id: str
+    discord_username: Optional[str] = ""
+    app_name: Optional[str] = None
+    title: str
+    message: str
+    type: Optional[str] = "danger" # danger, warning, info, success
+
+@router.post("/bot/warning")
+async def bot_broadcast_warning(data: BotWarningRequest, db: Session = Depends(get_db)):
+    """Broadcast an Emergency Warning / Notice to all client .exe software from Discord."""
+    d_id = str(data.discord_id).strip()
+    dev = db.query(Developer).filter(Developer.discord_id == d_id).first()
+    if not dev:
+        raise HTTPException(status_code=404, detail="No linked Developer account found. Run `/link [email_or_username]` first.")
+
+    app = None
+    if data.app_name:
+        app = db.query(Application).filter(Application.developer_id == dev.id, Application.name.ilike(data.app_name)).first()
+    if not app:
+        app = db.query(Application).filter(Application.developer_id == dev.id).first()
+
+    if not app:
+        raise HTTPException(status_code=404, detail="No application found.")
+
+    notif = AppNotification(
+        app_id=app.id,
+        title=data.title.strip(),
+        message=data.message.strip(),
+        type=data.type or "danger",
+        is_active=True,
+        show_on_login=True
+    )
+    db.add(notif)
+    db.commit()
+
+    log_audit(db, app.id, "WARNING_BROADCAST", details=f"Live warning '{data.title}' broadcasted via Discord by @{data.discord_username}", status="DANGER" if data.type == "danger" else "WARNING")
+
+    return {
+        "success": True,
+        "message": "Live Warning Broadcasted to all .exe clients!",
+        "app_name": app.name,
+        "title": notif.title,
+        "type": notif.type,
+        "notification_id": notif.id
     }

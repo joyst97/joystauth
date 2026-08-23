@@ -88,6 +88,10 @@
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
                     <span>Overview</span>
                 </li>
+                <li class="nav-item" data-tab="apps">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>
+                    <span>App Settings</span>
+                </li>
                 <li class="nav-item" data-tab="licenses">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
                     <span>License Keys</span>
@@ -112,9 +116,9 @@
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M22 17H2a3 3 0 0 0 3-3V9a7 7 0 0 1 14 0v5a3 3 0 0 0 3 3zm-8.27 4a2 2 0 0 1-3.46 0"></path></svg>
                     <span>Discord Bot & Logs</span>
                 </li>
-                <li class="nav-item" data-tab="apps">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>
-                    <span>App Settings</span>
+                <li class="nav-item" data-tab="notifications">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
+                    <span>Client Notifications</span>
                 </li>
                 <li class="nav-item" data-tab="logs">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
@@ -221,12 +225,42 @@
                     </div>
                 </div>
 
+                <!-- Emergency Live Control Deck (Maintenance & Urgent Broadcast) -->
+                <div class="stat-card spotlight-card" id="overview-emergency-deck" style="padding: 18px 24px; margin-bottom: 22px; background: linear-gradient(135deg, rgba(225, 29, 72, 0.12), rgba(0, 0, 0, 0.4)); border: 1.5px solid rgba(225, 29, 72, 0.35); border-radius: 16px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
+                    <div style="display: flex; align-items: center; gap: 14px;">
+                        <div style="width: 44px; height: 44px; border-radius: 12px; background: rgba(225, 29, 72, 0.2); border: 1px solid rgba(225, 29, 72, 0.4); display: flex; align-items: center; justify-content: center; font-size: 24px;">
+                            🚨
+                        </div>
+                        <div>
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <strong style="font-size: 15px; color: #fff;">Emergency Live Controls</strong>
+                                <span class="badge badge-success" id="overview-app-status-badge">
+                                    <span class="badge-dot"></span> ONLINE
+                                </span>
+                            </div>
+                            <p style="font-size: 12px; color: var(--text-secondary); margin-top: 2px;">
+                                Instantly toggle Maintenance Mode (force-blocks all EXEs) or broadcast urgent live warnings to running clients.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                        <button class="btn btn-warning btn-sm" onclick="openModal('modal-create-notif')" style="font-weight: 800; background: linear-gradient(135deg, #f59e0b, #d97706); border: none; color: #000;">
+                            <span>📢 Broadcast Warning / Notice</span>
+                        </button>
+                        <button class="btn btn-danger btn-sm" id="btn-quick-toggle-maintenance" onclick="quickToggleMaintenance()" style="font-weight: 800; box-shadow: 0 0 15px rgba(225, 29, 72, 0.4);">
+                            <span>⏸️ Toggle Maintenance Mode</span>
+                        </button>
+                    </div>
+                </div>
+
                 <!-- Quick Action Bar -->
                 <div class="quick-actions-bar" style="margin-bottom: 24px;">
                     <button class="quick-action-btn" onclick="openModal('modal-generate-keys')">⚡ Add License Key</button>
                     <button class="quick-action-btn" onclick="openModal('modal-create-user-manual')">👤 Manual Add User</button>
-                    <button class="quick-action-btn" onclick="openModal('modal-create-blacklist')">🚫 Add Blacklist</button>
-                    <button class="quick-action-btn" onclick="switchTab('sdk')">💻 View SDK Snippets</button>
+                    <button class="quick-action-btn" onclick="openModal('modal-create-notif')">🔔 In-App Notice</button>
+                    <button class="quick-action-btn" onclick="switchTab('notifications')">📢 Manage Alerts</button>
+                    <button class="quick-action-btn" onclick="switchTab('apps')">⚙️ KeyAuth Settings</button>
                 </div>
 
                 <!-- Spotlight Stats Grid -->
@@ -654,18 +688,69 @@
                 </div>
             </section>
 
-            <!-- 10. TAB: APPLICATIONS -->
-            <section id="page-apps" class="page-container">
+            <!-- 10. TAB: IN-APP CLIENT NOTIFICATIONS (KEYAUTH STYLE) -->
+            <section id="page-notifications" class="page-container">
                 <div class="page-header">
                     <div class="page-title">
-                        <h2>Applications & Settings</h2>
-                        <p>Configure application parameters, HWID policies, VPN blockers, and maintenance modes.</p>
+                        <h2>Client In-App Notifications & Alerts</h2>
+                        <p>Create real-time announcements, cheat status notices, and login popups shown inside your client software.</p>
                     </div>
-                    <button class="btn btn-primary btn-sm" onclick="openModal('modal-create-app')">
-                        <span>➕ Create Application</span>
+                    <button class="btn btn-primary btn-sm" onclick="openModal('modal-create-notif')">
+                        <span>➕ Create Notification</span>
                     </button>
                 </div>
 
+                <!-- Info Capsule Banner -->
+                <div class="stat-card spotlight-card" style="padding: 20px 24px; margin-bottom: 22px; display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; border-color: rgba(56, 189, 248, 0.4);">
+                    <div style="display: flex; align-items: center; gap: 14px;">
+                        <span style="font-size: 28px;">🔔</span>
+                        <div>
+                            <strong style="color: #fff; font-size: 15px;">Live Client-Side Broadcast Engine</strong>
+                            <p style="color: var(--text-secondary); font-size: 12.5px; margin-top: 2px;">
+                                Active notifications are automatically returned during <code>init()</code> &amp; <code>login()</code> and displayed inside C++, Python, C#, and loader GUIs.
+                            </p>
+                        </div>
+                    </div>
+                    <button class="btn btn-secondary btn-sm" onclick="loadNotifications()">🔄 Refresh</button>
+                </div>
+
+                <div class="table-card spotlight-card">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Severity / Type</th>
+                                <th>Title</th>
+                                <th>Message Content</th>
+                                <th>Show on Login</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="notifications-table-body"></tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- 11. TAB: APPLICATIONS & KEYAUTH-GRADE SECURITY SETTINGS -->
+            <section id="page-apps" class="page-container">
+                <div class="page-header">
+                    <div class="page-title">
+                        <h2>Application Security & Settings</h2>
+                        <p>Master HWID policies, custom login responses, killswitches, hash integrity checks, and maintenance modes.</p>
+                    </div>
+                    <div style="display: flex; gap: 8px;">
+                        <button class="btn btn-secondary btn-sm" onclick="openModal('modal-create-app')">
+                            <span>➕ New App</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Active App Master Settings Card -->
+                <div id="active-app-settings-container" style="margin-bottom: 30px;"></div>
+
+                <h3 style="font-size: 17px; font-weight: 800; color: #fff; margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
+                    <span>📱 All Registered Applications</span>
+                </h3>
                 <div class="stats-grid" id="apps-grid-container"></div>
             </section>
 
@@ -747,11 +832,11 @@
                                 <strong id="sdk-lang-title" style="color: #fff; font-size: 16px;">C++ Windows Native SDK</strong>
                                 <span id="sdk-lang-badge" class="badge badge-cyan">Header-Only</span>
                             </div>
-                            <div id="sdk-lang-desc" style="color: var(--text-secondary); font-size: 13px; margin-top: 2px;">File: <code class="mono" id="sdk-lang-filename" style="color: #38bdf8;">AuthClient.hpp</code> (Drop directly into Visual Studioject)</div>
+                            <div id="sdk-lang-desc" style="color: var(--text-secondary); font-size: 13px; margin-top: 2px;">File: <code class="mono" id="sdk-lang-filename" style="color: #38bdf8;">JoystAuth.hpp</code> (Drop directly into Visual Studio project)</div>
                         </div>
                     </div>
                     <div style="display: flex; gap: 12px; flex-wrap: wrap;">
-                        <a id="sdk-dynamic-download-btn" href="/static/sdks/cpp/AuthClient.hpp" download="AuthClient.hpp" class="btn btn-primary">
+                        <a id="sdk-dynamic-download-btn" href="/static/sdks/cpp/JoystAuth.hpp" download="JoystAuth.hpp" class="btn btn-primary">
                             ⬇️ Download SDK File
                         </a>
                         <button class="btn btn-secondary" onclick="copyCurrentSdkSnippet()">📋 Copy Implementation Code</button>
@@ -1298,6 +1383,47 @@
             <div class="modal-footer">
                 <button class="btn btn-secondary btn-sm" data-close-modal>Cancel</button>
                 <button class="btn btn-primary btn-sm" onclick="submitBulkExtendUsers()">Apply Extension</button>
+            </div>
+        </div>
+    </div>
+    <!-- Create Client In-App Notification Modal (KeyAuth Style) -->
+    <div id="modal-create-notif" class="modal-overlay">
+        <div class="modal-box" style="max-width: 540px;">
+            <div class="modal-header">
+                <h3>🔔 Create In-App Client Notification</h3>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 14px;">
+                    This notification will be broadcast in real-time inside your software / loader GUI when clients initialize or log in.
+                </p>
+                <div class="form-group">
+                    <label>Notification Title / Heading</label>
+                    <input type="text" id="notif-title-input" class="form-control" placeholder="e.g. 🟢 Undetected on Season 5 / Maintenance Notice" required>
+                </div>
+                <div class="form-group">
+                    <label>Severity Type</label>
+                    <select id="notif-type-select" class="form-control" style="font-weight: 700;">
+                        <option value="info">ℹ️ Info (Blue Badge)</option>
+                        <option value="success">🟢 Success / Undetected (Emerald Green)</option>
+                        <option value="warning">⚠️ Warning / Updating (Amber Orange)</option>
+                        <option value="danger">🚨 Critical / Ban Wave Notice (Crimson Red)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Message Content / Announcement Body</label>
+                    <textarea id="notif-message-input" class="form-control" rows="4" placeholder="Enter message to display inside client GUI..." required></textarea>
+                </div>
+                <div class="form-group">
+                    <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; font-size: 13.5px; color: #fff;">
+                        <input type="checkbox" id="notif-show-login-check" checked style="width: 17px; height: 17px; accent-color: #ff2a5f;">
+                        <span>Show as Alert Popup on User Login</span>
+                    </label>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary btn-sm" data-close-modal>Cancel</button>
+                <button class="btn btn-primary btn-sm" onclick="createNotificationSubmit()">🚀 Broadcast Notification</button>
             </div>
         </div>
     </div>

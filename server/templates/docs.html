@@ -99,8 +99,8 @@
                         <h2 style="font-size: 26px; font-weight: 900; color: #fff; margin-top: 4px;">C++ Native Windows SDK</h2>
                     </div>
                     <div style="display: flex; gap: 10px;">
-                        <a href="/static/sdks/cpp/AuthClient.hpp" download="AuthClient.hpp" class="btn btn-primary btn-sm" style="box-shadow: 0 0 20px rgba(225, 29, 72, 0.4);">
-                            📥 Download AuthClient.hpp
+                        <a href="/static/sdks/cpp/JoystAuth.hpp" download="JoystAuth.hpp" class="btn btn-primary btn-sm" style="box-shadow: 0 0 20px rgba(225, 29, 72, 0.4);">
+                            📥 Download JoystAuth.hpp
                         </a>
                         <a href="/static/sdks/cpp/main.cpp" download="main.cpp" class="btn btn-secondary btn-sm">
                             📄 Sample main.cpp
@@ -110,25 +110,21 @@
                 <div style="background: rgba(0,0,0,0.4); padding: 14px 18px; border-radius: 10px; border: 1px solid var(--border-glass); margin-bottom: 18px; font-size: 13px; color: #cbd5e1;">
                     <strong style="color: #fff;">📦 Integration Steps:</strong>
                     <ol style="margin-left: 20px; margin-top: 6px; display: flex; flex-direction: column; gap: 4px;">
-                        <li>Download <code>AuthClient.hpp</code> and paste it into your Visual Studio project directory.</li>
-                        <li>Include <code>#include "AuthClient.hpp"</code> at the top of your code.</li>
-                        <li>Link <code>wininet.lib</code> under <em>Project Properties &gt; Linker &gt; Input &gt; Additional Dependencies</em>.</li>
+                        <li>Download <code>JoystAuth.hpp</code> and paste it into your Visual Studio project directory.</li>
+                        <li>Include <code>#include "JoystAuth.hpp"</code> at the top of your code.</li>
+                        <li>Header-only with zero external dependencies! (WinINet is automatically linked).</li>
                     </ol>
                 </div>
                 <div style="margin-bottom: 14px; font-weight: 700; font-size: 13px; color: #ff4d79;">Implementation Example (main.cpp):</div>
                 <pre class="mono" style="padding: 20px; background: rgba(2, 6, 23, 0.85); border: 1px solid var(--border-glass); border-radius: 12px; color: #cbd5e1; font-size: 13px; line-height: 1.6; overflow-x: auto;">
-#include "AuthClient.hpp"
+#include "JoystAuth.hpp"
 #include &lt;iostream&gt;
 
 int main() {
     // 1. Initialize with your App Name and Master App Token
-    JoystAuth::api auth(
-        "MyApp",              // Application Name
-        "sec_77918750...",    // Master App Token from Dashboard
-        "1.0"                 // Version
-    );
+    JoystAuth::api auth("MyApp", "YOUR_APP_TOKEN");
 
-    // 2. Run Anti-Debug & Dynamic AES-256 Handshake
+    // 2. Run Dynamic Handshake
     if (!auth.init()) {
         std::cout &lt;&lt; "Initialization failed: " &lt;&lt; auth.response.message &lt;&lt; "\n";
         return 1;
@@ -136,18 +132,10 @@ int main() {
 
     // 3. User Login with Motherboard HWID Lock
     if (auth.login("gamer123", "password123")) {
-        std::cout &lt;&lt; "Login Successful! Welcome " &lt;&lt; auth.user_data.username &lt;&lt; "\n";
+        std::cout &lt;&lt; "✅ " &lt;&lt; auth.response.message &lt;&lt; "\n";
         std::cout &lt;&lt; "Subscription Tier: " &lt;&lt; auth.user_data.subscription &lt;&lt; "\n";
-        std::cout &lt;&lt; "Expiry Date: " &lt;&lt; auth.user_data.expiry &lt;&lt; "\n";
-
-        // 4. Start 30-second Session Security Heartbeat Thread
-        auth.start_heartbeat(30);
-
-        // 5. Fetch Secure Encrypted Cloud Variable
-        std::string offset = auth.var("aimbot_offset");
-        std::cout &lt;&lt; "Secure Offset: " &lt;&lt; offset &lt;&lt; "\n";
     } else {
-        std::cout &lt;&lt; "Access Denied: " &lt;&lt; auth.response.message &lt;&lt; "\n";
+        std::cout &lt;&lt; "❌ " &lt;&lt; auth.response.message &lt;&lt; "\n";
     }
 
     return 0;
@@ -162,69 +150,54 @@ int main() {
                         <h2 style="font-size: 26px; font-weight: 900; color: #fff; margin-top: 4px;">Python 3 Client SDK</h2>
                     </div>
                     <div style="display: flex; gap: 10px;">
-                        <a href="/static/sdks/python/auth_client.py" download="auth_client.py" class="btn btn-primary btn-sm">
-                            📥 Download auth_client.py
-                        </a>
-                        <a href="/static/sdks/python/demo_gui.py" download="demo_gui.py" class="btn btn-secondary btn-sm">
-                            📄 Sample demo_gui.py
+                        <a href="/static/sdks/python/joystauth.py" download="joystauth.py" class="btn btn-primary btn-sm">
+                            📥 Download joystauth.py
                         </a>
                     </div>
                 </div>
                 <div style="background: rgba(0,0,0,0.4); padding: 14px 18px; border-radius: 10px; border: 1px solid var(--border-glass); margin-bottom: 18px; font-size: 13px; color: #cbd5e1;">
                     <strong style="color: #fff;">📦 Integration Steps:</strong>
                     <ol style="margin-left: 20px; margin-top: 6px; display: flex; flex-direction: column; gap: 4px;">
-                        <li>Download <code>auth_client.py</code> into your project folder.</li>
+                        <li>Download <code>joystauth.py</code> into your project folder.</li>
                         <li>Install standard requests: <code>pip install requests pycryptodome</code></li>
-                        <li>Import with <code>from auth_client import api</code>.</li>
+                        <li>Import with <code>from joystauth import JoystAuth</code>.</li>
                     </ol>
                 </div>
                 <pre class="mono" style="padding: 20px; background: rgba(2, 6, 23, 0.85); border: 1px solid var(--border-glass); border-radius: 12px; color: #cbd5e1; font-size: 13px; line-height: 1.6; overflow-x: auto;">
-from auth_client import api
+from joystauth import JoystAuth
 
 # 1. Initialize with your App Name and Master App Token
-auth = api(
-    name="MyApp",
-    token="sec_77918750...",
-    version="1.0"
-)
+app = JoystAuth("MyApp", "YOUR_APP_TOKEN")
 
-# 2. Authenticate User (or License Key)
-if auth.login("username123", "password123"):
-    print(f"Logged in as {auth.user_data.username}")
-    print(f"Plan: {auth.user_data.subscription}")
-    print(f"Expires: {auth.user_data.expiry}")
-
-    # 3. Start Background Watchdog Heartbeat
-    auth.start_heartbeat(interval_seconds=30)
-
-    # 4. Access Protected Cloud Variable
-    payload = auth.var("license_config")
-    print("Received Encrypted Payload:", payload)
+# 2. Authenticate User
+if app.login("username123", "password123"):
+    print("✅", app.response.message)
+    print(f"User: {app.user_data.username} | Plan: {app.user_data.subscription}")
 else:
-    print(f"Authentication Failed: {auth.response.message}")</pre>
+    print("❌", app.response.message)</pre>
             </div>
 
             <!-- C# Section -->
             <div class="glass-panel" style="padding: 36px; margin-bottom: 28px;" id="csharp">
                 <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; flex-wrap: wrap; gap: 12px;">
                     <div>
-                        <span style="font-size: 11px; font-weight: 800; color: #a855f7; text-transform: uppercase; letter-spacing: 1px;">.NET 8 & UNITY</span>
+                        <span style="font-size: 11px; font-weight: 800; color: #a855f7; text-transform: uppercase; letter-spacing: 1px;">.NET 8 & WINFORMS / WPF</span>
                         <h2 style="font-size: 26px; font-weight: 900; color: #fff; margin-top: 4px;">C# .NET Client SDK</h2>
                     </div>
                     <div style="display: flex; gap: 10px;">
-                        <a href="/static/sdks/csharp/AuthClient.cs" download="AuthClient.cs" class="btn btn-primary btn-sm">
-                            📥 Download AuthClient.cs
+                        <a href="/static/sdks/csharp/JoystAuth.cs" download="JoystAuth.cs" class="btn btn-primary btn-sm">
+                            📥 Download JoystAuth.cs
                         </a>
-                        <a href="/static/sdks/csharp/Joyst_CSharp_Sample_Project.zip" download="Joyst_CSharp_Sample_Project.zip" class="btn btn-secondary btn-sm">
-                            📦 Sample Project (.zip)
+                        <a href="/static/sdks/csharp/Program.cs" download="Program.cs" class="btn btn-secondary btn-sm">
+                            📄 Sample Program.cs
                         </a>
                     </div>
                 </div>
                 <div style="background: rgba(0,0,0,0.4); padding: 14px 18px; border-radius: 10px; border: 1px solid var(--border-glass); margin-bottom: 18px; font-size: 13px; color: #cbd5e1;">
                     <strong style="color: #fff;">📦 Integration Steps:</strong>
                     <ol style="margin-left: 20px; margin-top: 6px; display: flex; flex-direction: column; gap: 4px;">
-                        <li>Download <code>AuthClient.cs</code> and add it into your C# (.NET 6/7/8 or Unity) project.</li>
-                        <li>Include <code>using JoystAuth;</code> at top.</li>
+                        <li>Download <code>JoystAuth.cs</code> and add it into your C# project.</li>
+                        <li>Include <code>using JoystAuth;</code> at the top.</li>
                     </ol>
                 </div>
                 <pre class="mono" style="padding: 20px; background: rgba(2, 6, 23, 0.85); border: 1px solid var(--border-glass); border-radius: 12px; color: #cbd5e1; font-size: 13px; line-height: 1.6; overflow-x: auto;">
@@ -234,20 +207,13 @@ using JoystAuth;
 
 class Program {
     static async Task Main(string[] args) {
-        var auth = new api(
-            name: "MyApp",
-            token: "sec_77918750...",
-            version: "1.0"
-        );
-
+        var auth = new api("MyApp", "YOUR_APP_TOKEN");
         await auth.init();
 
         if (await auth.login("gamer123", "password123")) {
-            Console.WriteLine($"Welcome {auth.user_data.username}!");
-            Console.WriteLine($"Expires: {auth.user_data.expiry}");
-            auth.start_heartbeat(30);
+            Console.WriteLine($"✅ {auth.response.message}");
         } else {
-            Console.WriteLine($"Access Denied: {auth.response.message}");
+            Console.WriteLine($"❌ {auth.response.message}");
         }
     }
 }</pre>
@@ -260,88 +226,31 @@ class Program {
                         <span style="font-size: 11px; font-weight: 800; color: #f59e0b; text-transform: uppercase; letter-spacing: 1px;">JAVA 17+ & MINECRAFT MODS</span>
                         <h2 style="font-size: 26px; font-weight: 900; color: #fff; margin-top: 4px;">Java Client SDK</h2>
                     </div>
-                    <a href="/static/sdks/java/AuthClient.java" download="AuthClient.java" class="btn btn-primary btn-sm">
-                        📥 Download AuthClient.java
+                    <a href="/static/sdks/java/JoystAuth.java" download="JoystAuth.java" class="btn btn-primary btn-sm">
+                        📥 Download JoystAuth.java
                     </a>
                 </div>
                 <div style="background: rgba(0,0,0,0.4); padding: 14px 18px; border-radius: 10px; border: 1px solid var(--border-glass); margin-bottom: 18px; font-size: 13px; color: #cbd5e1;">
                     <strong style="color: #fff;">📦 Integration Steps:</strong>
                     <ol style="margin-left: 20px; margin-top: 6px; display: flex; flex-direction: column; gap: 4px;">
-                        <li>Download <code>AuthClient.java</code> and put it under package <code>cc.joystauth</code>.</li>
+                        <li>Download <code>JoystAuth.java</code> and put it under package <code>com.joyst</code>.</li>
                         <li>Requires standard Java 17+ (No external Maven dependencies needed).</li>
                     </ol>
                 </div>
                 <pre class="mono" style="padding: 20px; background: rgba(2, 6, 23, 0.85); border: 1px solid var(--border-glass); border-radius: 12px; color: #cbd5e1; font-size: 13px; line-height: 1.6; overflow-x: auto;">
-import cc.joystauth.api;
+import com.joyst.api;
 
 public class Main {
     public static void main(String[] args) {
-        // 1. Initialize API Instance
-        api auth = new api("MyApp", "sec_77918750...", "1.0");
+        api auth = new api("MyApp", "YOUR_APP_TOKEN");
+        auth.init();
 
-        if (!auth.init()) {
-            System.err.println("Init failed: " + auth.response.message);
-            return;
-        }
-
-        // 2. Authenticate License Key or User
-        if (auth.license("JOYST-KEY-XXXX-YYYY")) {
-            System.out.println("Unlocked! Welcome " + auth.userData.username);
-            System.out.println("Valid until: " + auth.userData.expiry);
-            
-            // 3. Start Background Thread Pulse
-            auth.startHeartbeat(30);
+        if (auth.login("gamer123", "password123")) {
+            System.out.println("✅ " + auth.response.message);
         } else {
-            System.out.println("Auth Error: " + auth.response.message);
+            System.out.println("❌ " + auth.response.message);
         }
     }
-}</pre>
-            </div>
-
-            <!-- Rust SDK Section -->
-            <div class="glass-panel" style="padding: 36px; margin-bottom: 28px;" id="rust">
-                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; flex-wrap: wrap; gap: 12px;">
-                    <div>
-                        <span style="font-size: 11px; font-weight: 800; color: #ef4444; text-transform: uppercase; letter-spacing: 1px;">MEMORY-SAFE & SYSTEMS</span>
-                        <h2 style="font-size: 26px; font-weight: 900; color: #fff; margin-top: 4px;">Rust Client SDK (Cargo)</h2>
-                    </div>
-                    <div style="display: flex; gap: 10px;">
-                        <a href="/static/sdks/rust/src/main.rs" download="main.rs" class="btn btn-primary btn-sm">
-                            📥 Download main.rs
-                        </a>
-                        <a href="/static/sdks/rust/Cargo.toml" download="Cargo.toml" class="btn btn-secondary btn-sm">
-                            📄 Cargo.toml
-                        </a>
-                    </div>
-                </div>
-                <div style="background: rgba(0,0,0,0.4); padding: 14px 18px; border-radius: 10px; border: 1px solid var(--border-glass); margin-bottom: 18px; font-size: 13px; color: #cbd5e1;">
-                    <strong style="color: #fff;">📦 Integration Steps:</strong>
-                    <ol style="margin-left: 20px; margin-top: 6px; display: flex; flex-direction: column; gap: 4px;">
-                        <li>Add <code>tokio = { version = "1.0", features = ["full"] }</code> and <code>reqwest = { version = "0.11", features = ["json"] }</code> to your <code>Cargo.toml</code>.</li>
-                        <li>Copy sample <code>main.rs</code> to your <code>src/</code> folder and run <code>cargo run</code>.</li>
-                    </ol>
-                </div>
-                <pre class="mono" style="padding: 20px; background: rgba(2, 6, 23, 0.85); border: 1px solid var(--border-glass); border-radius: 12px; color: #cbd5e1; font-size: 13px; line-height: 1.6; overflow-x: auto;">
-use joyst_auth::JoystApi;
-
-#[tokio::main]
-async fn main() -> Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
-    // 1. Initialize API Client
-    let mut auth = JoystApi::new("MyApp", "sec_77918750...", "1.0");
-    auth.init().await?;
-
-    // 2. Login with HWID Binding
-    if auth.login("gamer123", "password123").await? {
-        println!("User Authenticated: {}", auth.user.username);
-        println!("Rank: {}", auth.user.subscription);
-        
-        // 3. Start Tokio Heartbeat Task
-        auth.start_heartbeat(30);
-    } else {
-        println!("Login Failed: {}", auth.last_error);
-    }
-
-    Ok(())
 }</pre>
             </div>
 
@@ -352,33 +261,30 @@ async fn main() -> Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
                         <span style="font-size: 11px; font-weight: 800; color: #22c55e; text-transform: uppercase; letter-spacing: 1px;">JAVASCRIPT & ELECTRON</span>
                         <h2 style="font-size: 26px; font-weight: 900; color: #fff; margin-top: 4px;">Node.js / Electron SDK</h2>
                     </div>
-                    <a href="/static/sdks/nodejs/joyst_auth.js" download="joyst_auth.js" class="btn btn-primary btn-sm">
-                        📥 Download joyst_auth.js
+                    <a href="/static/sdks/nodejs/joystauth.js" download="joystauth.js" class="btn btn-primary btn-sm">
+                        📥 Download joystauth.js
                     </a>
                 </div>
                 <div style="background: rgba(0,0,0,0.4); padding: 14px 18px; border-radius: 10px; border: 1px solid var(--border-glass); margin-bottom: 18px; font-size: 13px; color: #cbd5e1;">
                     <strong style="color: #fff;">📦 Integration Steps:</strong>
                     <ol style="margin-left: 20px; margin-top: 6px; display: flex; flex-direction: column; gap: 4px;">
-                        <li>Download <code>joyst_auth.js</code> into your Node.js/Electron project.</li>
-                        <li>Install <code>npm install axios crypto-js node-machine-id</code>.</li>
-                        <li>Import with <code>const { JoystAuth } = require('./joyst_auth');</code>.</li>
+                        <li>Download <code>joystauth.js</code> into your Node.js/Electron project.</li>
+                        <li>Pure vanilla Node.js (Zero npm dependencies required!).</li>
+                        <li>Import with <code>const JoystAuth = require('./joystauth');</code>.</li>
                     </ol>
                 </div>
                 <pre class="mono" style="padding: 20px; background: rgba(2, 6, 23, 0.85); border: 1px solid var(--border-glass); border-radius: 12px; color: #cbd5e1; font-size: 13px; line-height: 1.6; overflow-x: auto;">
-const { JoystAuth } = require('./joyst_auth');
+const JoystAuth = require('./joystauth');
 
-const auth = new JoystAuth({
-    name: 'MyApp',
-    token: 'sec_77918750...',
-    version: '1.0'
-});
+const auth = new JoystAuth("MyApp", "YOUR_APP_TOKEN");
 
 async function start() {
     await auth.init();
-    const success = await auth.login('gamer123', 'password123');
+    const success = await auth.login("gamer123", "password123");
     if (success) {
-        console.log(`Unlocked: ${auth.user.username}`);
-        auth.startHeartbeat(30);
+        console.log("✅", auth.response.message);
+    } else {
+        console.log("❌", auth.response.message);
     }
 }
 start();</pre>

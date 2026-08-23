@@ -111,10 +111,11 @@ def check_and_record_failure(db: Session, app_id: int, app_name: str, ip: str, h
     return False
 
 class InitRequest(BaseModel):
-    app_token: Optional[str] = "" # Unified 1-Token parameter
-    name: Optional[str] = ""      # Classic parameter
-    ownerid: Optional[str] = ""   # Classic parameter
-    secret: Optional[str] = ""    # Classic parameter
+    app_token: Optional[str] = ""
+    token: Optional[str] = ""     # Standard token parameter
+    name: Optional[str] = ""      # App Name
+    ownerid: Optional[str] = ""   # Legacy fallback
+    secret: Optional[str] = ""    # Legacy fallback
     version: Optional[str] = "1.0"
     hwid: Optional[str] = ""
 
@@ -136,24 +137,27 @@ async def client_init(data: InitRequest, request: Request, db: Session = Depends
     hwid = normalize_hwid(data.hwid)
 
     app = None
+    app_token_input = (data.token or data.secret or data.app_token or "").strip()
 
-    # 1. Check if unified app_token was provided
-    if data.app_token and data.app_token.strip():
-        token_clean = data.app_token.strip()
-        app = db.query(Application).filter(Application.secret == token_clean).first()
+    # 1. Check if direct app token was matched
+    if app_token_input and not data.name:
+        app = db.query(Application).filter(Application.secret == app_token_input).first()
         if not app:
-            app = db.query(Application).filter(Application.owner_id == token_clean).first()
+            app = db.query(Application).filter(Application.owner_id == app_token_input).first()
     
-    # 2. Check if classic 4-parameters were provided
+    # 2. Check if name and token were provided
     if not app and data.name and data.name.strip():
-        app = db.query(Application).filter(
-            Application.name == data.name.strip(),
-            Application.owner_id == (data.ownerid or "").strip()
-        ).first()
+        if app_token_input:
+            app = db.query(Application).filter(
+                Application.name == data.name.strip(),
+                Application.secret == app_token_input
+            ).first()
 
-        if app and data.secret and app.secret != data.secret.strip():
-            log_audit(db, app.id, "INIT_FAIL", ip_address=ip, hwid=hwid, details="Invalid Secret provided", status="DANGER")
-            return {"success": False, "message": "Invalid Application Secret Key."}
+        if not app and data.ownerid and data.ownerid.strip():
+            app = db.query(Application).filter(
+                Application.name == data.name.strip(),
+                Application.owner_id == data.ownerid.strip()
+            ).first()
 
     if not app:
         return {"success": False, "message": "Application does not exist or invalid credentials provided."}
@@ -162,29 +166,49 @@ async def client_init(data: InitRequest, request: Request, db: Session = Depends
     if hwid:
         bl_hwid = db.query(Blacklist).filter(Blacklist.app_id == app.id, Blacklist.type == "hwid", Blacklist.data == hwid).first()
         if bl_hwid:
-            log_audit(db, app.id, "INIT_BLOCKED", ip_address=ip, hwid=hwid, details=f"HWID Blacklisted: {bl_hwid.reason}", status="DANGER")
-            return {"success": False, "message": f"Your hardware ID is permanently banned from this application! ({bl_hwid.reason})"}
+            msg = getattr(app, "blacklist_message", "") or "Access Denied! Your IP or Machine HWID has been blacklisted."
+            return {"success": False, "message": f"{msg} ({bl_hwid.reason})"}
 
     if ip and ip != "127.0.0.1":
         bl_ip = db.query(Blacklist).filter(Blacklist.app_id == app.id, Blacklist.type == "ip", Blacklist.data == ip).first()
         if bl_ip:
-            return {"success": False, "message": f"Your IP address is permanently blacklisted! ({bl_ip.reason})"}
+            msg = getattr(app, "blacklist_message", "") or "Access Denied! Your IP or Machine HWID has been blacklisted."
+            return {"success": False, "message": f"{msg} ({bl_ip.reason})"}
 
     if app.status == "disabled":
-        return {"success": False, "message": "This application is currently disabled by administrator."}
+        msg = getattr(app, "maintenance_message", "") or "This application is currently disabled by administrator."
+        return {"success": False, "message": msg, "is_maintenance": True}
 
-    if app.status == "paused":
-        return {"success": False, "message": "Application is paused for maintenance. Please try again later."}
+    if app.status == "paused" or app.status == "maintenance":
+        msg = getattr(app, "maintenance_message", "") or "Application is under maintenance. Please check back soon."
+        return {"success": False, "message": msg, "is_maintenance": True}
+
+    # Integrity / Hash Checking if enabled
+    if getattr(app, "hash_check_enabled", False) and app.app_hash:
+        client_hash = data.dict().get("hash") or request.headers.get("X-Client-Hash", "")
+        if client_hash and client_hash.strip().lower() != app.app_hash.strip().lower():
+            log_audit(db, app.id, "INTEGRITY_FAIL", ip_address=ip, hwid=hwid, details="Client executable hash mismatch / modified crack", status="DANGER")
+            msg = getattr(app, "hash_mismatch_message", "") or "Executable integrity verification failed! Modified or cracked binary detected."
+            return {"success": False, "message": msg}
 
     # Strict Version Enforcement Check
     if app.version and data.version and app.version.strip() != data.version.strip():
         log_audit(db, app.id, "VERSION_MISMATCH", ip_address=ip, hwid=hwid, details=f"Client v{data.version} blocked. Latest is v{app.version}", status="WARNING")
+        msg = getattr(app, "version_mismatch_message", "") or f"Update required! Latest version is v{app.version}, your client is v{data.version}."
         return {
             "success": False,
-            "message": f"Update required! Latest version is v{app.version}, your client is v{data.version}.",
+            "message": msg,
             "new_version": app.version,
             "download_url": app.download_link or ""
         }
+
+    # Fetch active in-app notifications
+    from ..database import AppNotification
+    notifs = db.query(AppNotification).filter(AppNotification.app_id == app.id, AppNotification.is_active == True).all()
+    active_notifs = [
+        {"id": n.id, "title": n.title, "message": n.message, "type": n.type, "show_on_login": n.show_on_login}
+        for n in notifs
+    ]
 
     # Generate dynamic session ID and AES-256 session encryption key
     session_id = "sess_" + generate_random_token(32)
@@ -214,7 +238,10 @@ async def client_init(data: InitRequest, request: Request, db: Session = Depends
         "sessionid": session_id,
         "enckey": encrypted_session_key,
         "app_name": app.name,
-        "app_version": app.version
+        "app_version": app.version,
+        "custom_status": getattr(app, "custom_status", "UNDETECTED") or "UNDETECTED",
+        "hwid_lock_enabled": app.hwid_lock_enabled,
+        "notifications": active_notifs
     }
 
 # ================= 2. ENCRYPTED GATEWAY FOR ALL CLIENT ACTIONS =================
@@ -271,29 +298,35 @@ async def client_gateway(req_data: EncryptedPayloadRequest, request: Request, db
 
         user = db.query(User).filter(User.app_id == app.id, User.username == username).first()
         if not user:
-            is_banned = check_and_record_failure(db, app.id, app.name, ip, hwid, username, "Non-existent username")
+            is_banned = check_and_record_failure(db, app.id, app.name, ip, hwid, username, "User not found")
             if is_banned:
-                response_data = {"success": False, "message": "Too many invalid attempts! Your PC hardware and IP are permanently banned."}
+                bf_msg = getattr(app, "brute_force_ban_message", "") or "Too many invalid attempts! Your PC hardware and IP are permanently banned."
+                response_data = {"success": False, "message": bf_msg}
             else:
                 log_audit(db, app.id, "LOGIN_FAILED", username=username, ip_address=ip, hwid=hwid, details="Username not found", status="WARNING")
-                response_data = {"success": False, "message": "Username does not exist."}
+                unf_msg = getattr(app, "user_not_found_message", "") or "Username does not exist."
+                response_data = {"success": False, "message": unf_msg}
 
         elif user.is_banned:
             log_audit(db, app.id, "LOGIN_BLOCKED", username=username, ip_address=ip, hwid=hwid, details=f"Banned: {user.ban_reason}", status="DANGER")
-            response_data = {"success": False, "message": f"Account is banned! Reason: {user.ban_reason or 'No reason provided'}"}
+            ban_prefix = getattr(app, "banned_user_message", "") or "Account is banned!"
+            response_data = {"success": False, "message": f"{ban_prefix} Reason: {user.ban_reason or 'No reason provided'}"}
 
         elif not verify_password(password, user.password_hash or ""):
             is_banned = check_and_record_failure(db, app.id, app.name, ip, hwid, username, "Incorrect password")
             if is_banned:
-                response_data = {"success": False, "message": "Too many invalid attempts! Your PC hardware and IP are permanently banned."}
+                bf_msg = getattr(app, "brute_force_ban_message", "") or "Too many invalid attempts! Your PC hardware and IP are permanently banned."
+                response_data = {"success": False, "message": bf_msg}
             else:
                 log_audit(db, app.id, "LOGIN_FAILED", username=username, ip_address=ip, hwid=hwid, details="Incorrect password", status="WARNING")
-                response_data = {"success": False, "message": "Password is incorrect."}
+                fail_msg = getattr(app, "login_failed_message", "") or "Invalid username or password."
+                response_data = {"success": False, "message": fail_msg}
 
         else:
             if user.expires_at and datetime.datetime.utcnow() > user.expires_at:
                 log_audit(db, app.id, "LOGIN_EXPIRED", username=username, ip_address=ip, hwid=hwid, details="Subscription expired", status="WARNING")
-                response_data = {"success": False, "message": "Your subscription has expired! Please renew."}
+                exp_msg = getattr(app, "expired_sub_message", "") or "Your subscription has expired! Please renew."
+                response_data = {"success": False, "message": exp_msg}
             else:
                 # HWID Check
                 is_hwid_locked = app.hwid_lock_enabled if user.hwid_lock_override is None else user.hwid_lock_override
@@ -304,9 +337,10 @@ async def client_gateway(req_data: EncryptedPayloadRequest, request: Request, db
 
                 if is_hwid_locked and user.hwid and user.hwid != hwid:
                     log_audit(db, app.id, "HWID_MISMATCH", username=username, ip_address=ip, hwid=hwid, details="Hardware ID mismatch", status="DANGER")
+                    mismatch_msg = getattr(app, "hwid_mismatch_message", "") or "HWID Mismatch! Your account is locked to another computer. Contact administrator to reset HWID."
                     response_data = {
                         "success": False,
-                        "message": "HWID Mismatch! Your account is locked to another computer. Contact administrator or use Discord bot to reset HWID."
+                        "message": mismatch_msg
                     }
                 else:
                     user.last_login = datetime.datetime.utcnow()
@@ -325,9 +359,20 @@ async def client_gateway(req_data: EncryptedPayloadRequest, request: Request, db
                         diff = user.expires_at - datetime.datetime.utcnow()
                         time_left_str = f"{diff.days} days, {diff.seconds // 3600} hours"
 
+                    # Active in-app notifications
+                    from ..database import AppNotification
+                    notifs = db.query(AppNotification).filter(AppNotification.app_id == app.id, AppNotification.is_active == True, AppNotification.show_on_login == True).all()
+                    active_notifs = [
+                        {"id": n.id, "title": n.title, "message": n.message, "type": n.type}
+                        for n in notifs
+                    ]
+
+                    success_msg = getattr(app, "login_success_message", "") or f"Logged in successfully! Welcome {user.username}"
+
                     response_data = {
                         "success": True,
-                        "message": f"Logged in successfully! Welcome {user.username}",
+                        "message": success_msg,
+                        "notifications": active_notifs,
                         "info": {
                             "username": user.username,
                             "subscription": user.subscription_tier,
@@ -356,13 +401,16 @@ async def client_gateway(req_data: EncryptedPayloadRequest, request: Request, db
                 if not license_obj:
                     is_banned = check_and_record_failure(db, app.id, app.name, ip, hwid, f"RegKey:{license_key}", "Invalid register license key")
                     if is_banned:
-                        response_data = {"success": False, "message": "Too many invalid attempts! Your PC hardware and IP are permanently banned."}
+                        bf_msg = getattr(app, "brute_force_ban_message", "") or "Too many invalid attempts! Your PC hardware and IP are permanently banned."
+                        response_data = {"success": False, "message": bf_msg}
                     else:
                         log_audit(db, app.id, "REGISTER_FAIL", username=username, ip_address=ip, hwid=hwid, details=f"Invalid key provided: {license_key}", status="WARNING")
-                        response_data = {"success": False, "message": "Invalid license key."}
+                        inv_key_msg = getattr(app, "invalid_license_message", "") or "Invalid license key."
+                        response_data = {"success": False, "message": inv_key_msg}
                 elif license_obj.status != "unused":
                     log_audit(db, app.id, "REGISTER_FAIL", username=username, ip_address=ip, hwid=hwid, details=f"License already {license_obj.status}", status="WARNING")
-                    response_data = {"success": False, "message": f"This license key is already {license_obj.status}."}
+                    used_key_msg = getattr(app, "used_license_message", "") or f"This license key is already {license_obj.status}."
+                    response_data = {"success": False, "message": used_key_msg}
                 else:
                     expires_at = None
                     if license_obj.duration_days > 0 and license_obj.duration_days < 90000:
@@ -397,9 +445,11 @@ async def client_gateway(req_data: EncryptedPayloadRequest, request: Request, db
 
                     log_audit(db, app.id, "REGISTER_SUCCESS", username=username, ip_address=ip, hwid=hwid, details=f"Registered account with key {license_key}", status="SUCCESS")
 
+                    reg_ok_msg = getattr(app, "register_success_message", "") or "Account created successfully! You are now logged in."
+
                     response_data = {
                         "success": True,
-                        "message": "Account created successfully! You are now logged in.",
+                        "message": reg_ok_msg,
                         "info": {
                             "username": new_user.username,
                             "subscription": new_user.subscription_tier,
@@ -416,14 +466,18 @@ async def client_gateway(req_data: EncryptedPayloadRequest, request: Request, db
         if not license_obj:
             is_banned = check_and_record_failure(db, app.id, app.name, ip, hwid, f"Key:{license_key}", "Invalid direct license key")
             if is_banned:
-                response_data = {"success": False, "message": "Too many invalid attempts! Your PC hardware and IP are permanently banned."}
+                bf_msg = getattr(app, "brute_force_ban_message", "") or "Too many invalid attempts! Your PC hardware and IP are permanently banned."
+                response_data = {"success": False, "message": bf_msg}
             else:
                 log_audit(db, app.id, "LICENSE_FAIL", ip_address=ip, hwid=hwid, details=f"Invalid key {license_key}", status="WARNING")
-                response_data = {"success": False, "message": "Invalid license key."}
+                inv_key_msg = getattr(app, "invalid_license_message", "") or "Invalid license key."
+                response_data = {"success": False, "message": inv_key_msg}
         elif license_obj.status == "paused":
-            response_data = {"success": False, "message": "This license key is paused by administrator."}
+            paused_msg = getattr(app, "paused_license_message", "") or "This license key is paused by administrator."
+            response_data = {"success": False, "message": paused_msg}
         elif license_obj.status == "revoked":
-            response_data = {"success": False, "message": "This license key has been revoked."}
+            revoked_msg = getattr(app, "revoked_license_message", "") or "This license key has been revoked."
+            response_data = {"success": False, "message": revoked_msg}
         elif license_obj.status == "used":
             user = db.query(User).filter(User.app_id == app.id, User.username == license_obj.used_by_username).first()
             if not user:
@@ -432,9 +486,11 @@ async def client_gateway(req_data: EncryptedPayloadRequest, request: Request, db
             if not user:
                 response_data = {"success": False, "message": "License was used but user profile is missing."}
             elif user.is_banned:
-                response_data = {"success": False, "message": f"Account banned: {user.ban_reason}"}
+                ban_prefix = getattr(app, "banned_user_message", "") or "Account is banned!"
+                response_data = {"success": False, "message": f"{ban_prefix} Reason: {user.ban_reason or 'No reason provided'}"}
             elif user.expires_at and datetime.datetime.utcnow() > user.expires_at:
-                response_data = {"success": False, "message": "License subscription has expired."}
+                exp_msg = getattr(app, "expired_sub_message", "") or "Your subscription has expired! Please renew."
+                response_data = {"success": False, "message": exp_msg}
             else:
                 is_hwid_locked = app.hwid_lock_enabled if user.hwid_lock_override is None else user.hwid_lock_override
                 if not user.hwid:
@@ -443,7 +499,8 @@ async def client_gateway(req_data: EncryptedPayloadRequest, request: Request, db
 
                 if is_hwid_locked and user.hwid and user.hwid != hwid:
                     log_audit(db, app.id, "HWID_MISMATCH", username=user.username, ip_address=ip, hwid=hwid, details="License HWID mismatch", status="DANGER")
-                    response_data = {"success": False, "message": "HWID Mismatch! This key is bound to another PC."}
+                    mismatch_msg = getattr(app, "hwid_mismatch_message", "") or "HWID Mismatch! This key is bound to another PC."
+                    response_data = {"success": False, "message": mismatch_msg}
                 else:
                     user.last_login = datetime.datetime.utcnow()
                     user.last_ip = ip
@@ -455,9 +512,10 @@ async def client_gateway(req_data: EncryptedPayloadRequest, request: Request, db
                     failed_attempts_tracker.pop(key, None)
 
                     log_audit(db, app.id, "LOGIN_SUCCESS", username=user.username, ip_address=ip, hwid=hwid, details="Logged in via key", status="SUCCESS")
+                    lic_ok_msg = getattr(app, "license_login_success_message", "") or "License authenticated successfully!"
                     response_data = {
                         "success": True,
-                        "message": "License authenticated successfully!",
+                        "message": lic_ok_msg,
                         "info": {
                             "username": user.username,
                             "subscription": user.subscription_tier,
@@ -511,8 +569,29 @@ async def client_gateway(req_data: EncryptedPayloadRequest, request: Request, db
             }
 
     # ---------------- HEARTBEAT / SESSION WATCHDOG ----------------
-    elif action == "heartbeat" or action == "ping":
-        if session.user_id:
+    elif action == "heartbeat" or action == "ping" or action == "check":
+        # 1. Check if application was put into Maintenance Mode or Disabled while client is running
+        if app.status == "maintenance" or app.status == "paused":
+            msg = getattr(app, "maintenance_message", "") or "🚨 Application is currently under maintenance! Session terminated."
+            session.is_valid = False
+            db.commit()
+            response_data = {
+                "success": False,
+                "is_maintenance": True,
+                "status": "maintenance",
+                "message": msg
+            }
+        elif app.status == "disabled":
+            msg = getattr(app, "custom_message", "") or "Application disabled by administrator."
+            session.is_valid = False
+            db.commit()
+            response_data = {
+                "success": False,
+                "is_disabled": True,
+                "status": "disabled",
+                "message": msg
+            }
+        elif session.user_id:
             user = db.query(User).filter(User.id == session.user_id).first()
             if not user or user.is_banned:
                 response_data = {"success": False, "message": "User session revoked or banned."}
@@ -522,55 +601,42 @@ async def client_gateway(req_data: EncryptedPayloadRequest, request: Request, db
                 # Refresh session expiry
                 session.expires_at = datetime.datetime.utcnow() + datetime.timedelta(minutes=app.session_timeout_minutes)
                 db.commit()
-                response_data = {"success": True, "message": "Heartbeat acknowledged.", "timestamp": int(datetime.datetime.utcnow().timestamp())}
+
+                # Fetch active notifications for live push
+                from ..database import AppNotification
+                notifs = db.query(AppNotification).filter(AppNotification.app_id == app.id, AppNotification.is_active == True).all()
+                active_notifs = [
+                    {"id": n.id, "title": n.title, "message": n.message, "type": n.type, "show_on_login": n.show_on_login}
+                    for n in notifs
+                ]
+
+                response_data = {
+                    "success": True,
+                    "status": app.status,
+                    "custom_status": getattr(app, "custom_status", "UNDETECTED") or "UNDETECTED",
+                    "notifications": active_notifs,
+                    "message": "Heartbeat acknowledged.",
+                    "timestamp": int(datetime.datetime.utcnow().timestamp())
+                }
         else:
             session.expires_at = datetime.datetime.utcnow() + datetime.timedelta(minutes=app.session_timeout_minutes)
             db.commit()
-            response_data = {"success": True, "message": "Session active.", "timestamp": int(datetime.datetime.utcnow().timestamp())}
 
-    # ---------------- SECURITY ALERT / TAMPER DETECTED ----------------
-    elif action == "security_alert" or action == "tamper_detected":
-        reason = data.get("reason", "Debugger or Memory Tampering detected on client machine.")
-        threat_name = data.get("threat", "Reverse Engineering Tool Detected")
-        
-        # Log high priority security incident
-        log_audit(
-            db, 
-            app.id, 
-            "TAMPER_DETECTED", 
-            username=session.user.username if session.user else "Anonymous",
-            ip_address=ip, 
-            hwid=hwid, 
-            details=f"🚨 Anti-Cheat Triggered: {threat_name} ({reason})", 
-            status="DANGER"
-        )
-        
-        # Invalidate session immediately
-        session.is_valid = False
-        db.commit()
-        response_data = {"success": False, "message": "Security integrity violation. Session terminated."}
+            from ..database import AppNotification
+            notifs = db.query(AppNotification).filter(AppNotification.app_id == app.id, AppNotification.is_active == True).all()
+            active_notifs = [
+                {"id": n.id, "title": n.title, "message": n.message, "type": n.type, "show_on_login": n.show_on_login}
+                for n in notifs
+            ]
 
-    # ---------------- CLOUD VARIABLE ----------------
-    elif action == "var" or action == "get_var":
-        var_name = data.get("varid") or data.get("var_name", "").strip()
-        var_obj = db.query(AppVariable).filter(AppVariable.app_id == app.id, AppVariable.name == var_name).first()
-        if not var_obj:
-            response_data = {"success": False, "message": f"Variable '{var_name}' not found."}
-        else:
-            response_data = {"success": True, "message": var_obj.value, "value": var_obj.value}
-
-    # ---------------- CHECK SESSION ----------------
-    elif action == "check":
-        if session.user_id:
-            user = db.query(User).filter(User.id == session.user_id).first()
-            if user and user.is_banned:
-                response_data = {"success": False, "message": "User has been banned."}
-            elif user and user.expires_at and datetime.datetime.utcnow() > user.expires_at:
-                response_data = {"success": False, "message": "Subscription expired."}
-            else:
-                response_data = {"success": True, "message": "Session is active and valid."}
-        else:
-            response_data = {"success": True, "message": "Session is active."}
+            response_data = {
+                "success": True,
+                "status": app.status,
+                "custom_status": getattr(app, "custom_status", "UNDETECTED") or "UNDETECTED",
+                "notifications": active_notifs,
+                "message": "Session active.",
+                "timestamp": int(datetime.datetime.utcnow().timestamp())
+            }
 
     # ---------------- CLOUD FILE / DOWNLOAD ----------------
     elif action == "file" or action == "download_file":

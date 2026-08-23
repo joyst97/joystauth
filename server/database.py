@@ -62,17 +62,44 @@ class Application(Base):
     owner_id = Column(String(32), index=True, nullable=False)
     secret = Column(String(64), unique=True, index=True, nullable=False)
     version = Column(String(20), default="1.0")
-    status = Column(String(20), default="enabled") # enabled, disabled, maintenance
+    status = Column(String(20), default="enabled") # enabled, disabled, maintenance, paused
+    custom_status = Column(String(50), default="UNDETECTED") # UNDETECTED, ONLINE, UPDATING, MAINTENANCE, OFFLINE
     hwid_lock_enabled = Column(Boolean, default=True)
+    allow_user_hwid_reset = Column(Boolean, default=False)
     vpn_block_enabled = Column(Boolean, default=False)
+    hash_check_enabled = Column(Boolean, default=False)
+    app_hash = Column(String(64), default="")
     session_timeout_minutes = Column(Integer, default=60)
     download_link = Column(String(500), default="")
-    custom_message = Column(String(500), default="")
+    # Custom Response Messages Hub (100% Configurable from Dashboard)
+    login_success_message = Column(String(500), default="Welcome back! Logged in successfully.")
+    login_failed_message = Column(String(500), default="Invalid username or password.")
+    user_not_found_message = Column(String(500), default="Username does not exist.")
+    hwid_mismatch_message = Column(String(500), default="HWID Mismatch! Your account is locked to another computer.")
+    maintenance_message = Column(String(500), default="Application is under maintenance. Please check back soon.")
+    expired_sub_message = Column(String(500), default="Your subscription has expired! Please renew.")
+    banned_user_message = Column(String(500), default="Account is banned!")
+    brute_force_ban_message = Column(String(500), default="Too many invalid attempts! Your PC hardware and IP are permanently banned.")
+    blacklist_message = Column(String(500), default="Access Denied! Your IP or Machine HWID has been blacklisted.")
+    invalid_license_message = Column(String(500), default="Invalid license key.")
+    used_license_message = Column(String(500), default="This license key is already used.")
+    paused_license_message = Column(String(500), default="This license key is paused by administrator.")
+    revoked_license_message = Column(String(500), default="This license key has been revoked.")
+    register_success_message = Column(String(500), default="Account created successfully! You are now logged in.")
+    license_login_success_message = Column(String(500), default="License authenticated successfully!")
+    hash_mismatch_message = Column(String(500), default="Executable integrity verification failed! Modified or cracked binary detected.")
+    version_mismatch_message = Column(String(500), default="Update required! Please download the latest version.")
+    vpn_blocked_message = Column(String(500), default="VPN or Proxy connections are strictly prohibited.")
+
     webhook_url = Column(String(500), default="")
+    webhook_bot_name = Column(String(100), default="JOYST AUTH SHIELD")
+    webhook_avatar_url = Column(String(500), default="https://joystauth.cc/static/img/joyst_logo.png")
     webhook_on_login = Column(Boolean, default=True)
     webhook_on_register = Column(Boolean, default=True)
     webhook_on_hwid_reset = Column(Boolean, default=True)
     webhook_on_failed = Column(Boolean, default=True)
+    webhook_on_key_gen = Column(Boolean, default=True)
+    webhook_on_ban = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
 
     developer = relationship("Developer", back_populates="applications")
@@ -83,6 +110,7 @@ class Application(Base):
     logs = relationship("AuditLog", back_populates="app", cascade="all, delete-orphan")
     tiers = relationship("SubscriptionTier", back_populates="app", cascade="all, delete-orphan")
     blacklists = relationship("Blacklist", back_populates="app", cascade="all, delete-orphan")
+    notifications = relationship("AppNotification", back_populates="app", cascade="all, delete-orphan")
 
 class User(Base):
     __tablename__ = "users"
@@ -172,6 +200,19 @@ class Blacklist(Base):
 
     app = relationship("Application", back_populates="blacklists")
 
+class AppNotification(Base):
+    __tablename__ = "app_notifications"
+    id = Column(Integer, primary_key=True, index=True)
+    app_id = Column(Integer, ForeignKey("applications.id"), nullable=False)
+    title = Column(String(150), nullable=False)
+    message = Column(Text, nullable=False)
+    type = Column(String(20), default="info") # info, success, warning, danger
+    is_active = Column(Boolean, default=True)
+    show_on_login = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+
+    app = relationship("Application", back_populates="notifications")
+
 class Reseller(Base):
     __tablename__ = "resellers"
     id = Column(Integer, primary_key=True, index=True)
@@ -235,13 +276,25 @@ def init_db():
         run_alter("ALTER TABLE developers ADD COLUMN discord_id VARCHAR(50)")
         run_alter("ALTER TABLE developers ADD COLUMN max_apps INTEGER DEFAULT 3")
         run_alter("ALTER TABLE developers ADD COLUMN max_users_per_app INTEGER DEFAULT 1000")
+        run_alter("ALTER TABLE applications ADD COLUMN custom_status VARCHAR(50) DEFAULT 'UNDETECTED'")
         run_alter("ALTER TABLE applications ADD COLUMN vpn_block_enabled BOOLEAN DEFAULT 0")
+        run_alter("ALTER TABLE applications ADD COLUMN allow_user_hwid_reset BOOLEAN DEFAULT 0")
+        run_alter("ALTER TABLE applications ADD COLUMN hash_check_enabled BOOLEAN DEFAULT 0")
+        run_alter("ALTER TABLE applications ADD COLUMN app_hash VARCHAR(64) DEFAULT ''")
         run_alter("ALTER TABLE applications ADD COLUMN download_link VARCHAR(500) DEFAULT ''")
         run_alter("ALTER TABLE applications ADD COLUMN custom_message VARCHAR(500) DEFAULT ''")
+        run_alter("ALTER TABLE applications ADD COLUMN login_success_message VARCHAR(500) DEFAULT 'Welcome back! Logged in successfully.'")
+        run_alter("ALTER TABLE applications ADD COLUMN login_failed_message VARCHAR(500) DEFAULT 'Invalid username or password.'")
+        run_alter("ALTER TABLE applications ADD COLUMN hwid_mismatch_message VARCHAR(500) DEFAULT 'HWID Mismatch! Your account is locked to another computer.'")
+        run_alter("ALTER TABLE applications ADD COLUMN maintenance_message VARCHAR(500) DEFAULT 'Application is under maintenance. Please check back soon.'")
+        run_alter("ALTER TABLE applications ADD COLUMN webhook_bot_name VARCHAR(100) DEFAULT 'JOYST AUTH SHIELD'")
+        run_alter("ALTER TABLE applications ADD COLUMN webhook_avatar_url VARCHAR(500) DEFAULT 'https://joystauth.cc/static/img/joyst_logo.png'")
         run_alter("ALTER TABLE applications ADD COLUMN webhook_on_login BOOLEAN DEFAULT 1")
         run_alter("ALTER TABLE applications ADD COLUMN webhook_on_register BOOLEAN DEFAULT 1")
         run_alter("ALTER TABLE applications ADD COLUMN webhook_on_hwid_reset BOOLEAN DEFAULT 1")
         run_alter("ALTER TABLE applications ADD COLUMN webhook_on_failed BOOLEAN DEFAULT 1")
+        run_alter("ALTER TABLE applications ADD COLUMN webhook_on_key_gen BOOLEAN DEFAULT 1")
+        run_alter("ALTER TABLE applications ADD COLUMN webhook_on_ban BOOLEAN DEFAULT 1")
         run_alter("ALTER TABLE users ADD COLUMN level INTEGER DEFAULT 1")
         run_alter("ALTER TABLE licenses ADD COLUMN level_rank INTEGER DEFAULT 1")
         run_alter("ALTER TABLE licenses ADD COLUMN created_by_reseller VARCHAR(100) DEFAULT ''")

@@ -52,12 +52,12 @@ function initFaqAccordion() {
 // 2. Multi-Language SDK Studio
 const sdkSnippets = {
     cpp: `// ================== JOYST AUTH C++ WINDOWS NATIVE SDK ==================
-#include "AuthClient.hpp"
+#include "JoystAuth.hpp"
 #include <iostream>
 
 int main() {
-    // 1. Initialize with your Application Credentials
-    JoystAuth::api auth("ApexLoader", "joyst_owner_id", "your_app_secret", "1.0");
+    // 1. Initialize with App Name + Master App Token (Header-Only)
+    JoystAuth::api auth("Apex VVIP Private", "sec_demo_master_token_69");
     
     // 2. Anti-Debug Scan & Dynamic AES-256 Handshake
     if (!auth.init()) {
@@ -67,47 +67,26 @@ int main() {
 
     // 3. Login with Motherboard HWID Lock
     if (auth.login("gamer123", "password123")) {
-        std::cout << "✅ Authenticated! Welcome " << auth.user_data.username << "\\n";
-        std::cout << "💎 Subscription: " << auth.user_data.subscription << "\\n";
-        std::cout << "⏳ Expiry Date:  " << auth.user_data.expiry << "\\n";
-        
-        // 4. Start 30-Second Security Watchdog Heartbeat
-        auth.start_heartbeat(30);
-
-        // 5. Fetch Protected Cloud Variable
-        std::string offset = auth.var("aimbot_offset");
-        std::cout << "Secure Memory Offset: " << offset << "\\n";
+        std::cout << "✅ " << auth.response.message << "\\n";
+        std::cout << "User: " << auth.user_data.username << " | Rank: " << auth.user_data.subscription << "\\n";
     } else {
-        std::cout << "❌ Blocked: " << auth.response.message << "\\n";
+        std::cout << "❌ " << auth.response.message << "\\n";
     }
     return 0;
 }`,
 
     python: `# ================== JOYST AUTH PYTHON CLIENT SDK ==================
-from auth_client import api
+from joystauth import JoystAuth
 
-# 1. Initialize Client Gateway
-auth = api(
-    name="ApexLoader",
-    ownerid="joyst_owner_id",
-    secret="your_app_secret",
-    version="1.0"
-)
+# 1. Initialize Client Gateway (App Name + Master App Token)
+app = JoystAuth("Apex VVIP Private", "sec_demo_master_token_69")
 
 # 2. Authenticate User with Windows Hardware UUID
-if auth.login("gamer123", "password123"):
-    print(f"✅ Login Success! Welcome {auth.user_data.username}")
-    print(f"💎 Subscription: {auth.user_data.subscription}")
-    print(f"⏳ Expiry: {auth.user_data.expiry}")
-    
-    # 3. Start Heartbeat Watchdog Thread
-    auth.start_heartbeat(interval_seconds=30)
-    
-    # 4. Fetch Secure Cloud Variable
-    payload = auth.var("game_config")
-    print("Received Encrypted Config:", payload)
+if app.login("gamer123", "password123"):
+    print("✅", app.response.message)
+    print(f"User: {app.user_data.username} | Rank: {app.user_data.subscription}")
 else:
-    print(f"❌ Access Denied: {auth.response.message}")`,
+    print("❌", app.response.message)`,
 
     csharp: `// ================== JOYST CORPORATION C# .NET SDK ==================
 using System;
@@ -116,29 +95,31 @@ using JoystAuth;
 
 class Program {
     static async Task Main(string[] args) {
-        var auth = new api("SuperCheatPro", "joyst_dev_88a91c", "sec_77918750...", "2.5", "http://127.0.0.1:8000");
+        // 1. Initialize with App Name + Master App Token
+        var auth = new api("Apex VVIP Private", "sec_demo_master_token_69");
         await auth.init();
 
         if (await auth.login("gamer123", "password123")) {
-            Console.WriteLine($"✅ Login Success! Welcome {auth.user_data.username}");
-            Console.WriteLine($"💎 Subscription: {auth.user_data.subscription}");
+            Console.WriteLine($"✅ {auth.response.message}");
+            Console.WriteLine($"User: {auth.user_data.username} | Rank: {auth.user_data.subscription}");
         } else {
-            Console.WriteLine($"❌ Error: {auth.response.message}");
+            Console.WriteLine($"❌ {auth.response.message}");
         }
     }
 }`,
 
     nodejs: `// ================== JOYST CORPORATION NODE.JS SDK ==================
-const JoystAuth = require('./joyst_auth');
+const JoystAuth = require('./joystauth');
 
 async function start() {
-    const auth = new JoystAuth("SuperCheatPro", "joyst_dev_88a91c", "sec_77918750...", "2.5");
+    const auth = new JoystAuth("Apex VVIP Private", "sec_demo_master_token_69");
     await auth.init();
 
     if (await auth.login("gamer123", "password123")) {
-        console.log("✅ Authenticated: " + auth.userData.username);
+        console.log("✅ " + auth.response.message);
+        console.log("User: " + auth.userData.username + " | Rank: " + auth.userData.subscription);
     } else {
-        console.log("❌ Failed: " + auth.response.message);
+        console.log("❌ " + auth.response.message);
     }
 }
 start();`,
@@ -148,13 +129,14 @@ import com.joyst.api;
 
 public class Main {
     public static void main(String[] args) {
-        api auth = new api("SuperCheatPro", "joyst_dev_88a91c", "sec_77918750...", "2.5");
+        api auth = new api("Apex VVIP Private", "sec_demo_master_token_69");
         auth.init();
 
         if (auth.login("gamer123", "password123")) {
-            System.out.println("✅ Authenticated: " + auth.userData.username);
+            System.out.println("✅ " + auth.response.message);
+            System.out.println("User: " + auth.userData.username);
         } else {
-            System.out.println("❌ Blocked: " + auth.response.message);
+            System.out.println("❌ " + auth.response.message);
         }
     }
 }`,

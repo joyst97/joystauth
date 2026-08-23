@@ -229,6 +229,58 @@ class AppSelectView(discord.ui.View):
                 )
                 await interaction.edit_original_response(content=None, embed=embed, view=None)
 
+        elif self.action_type == "maintenance":
+            self.action_data["app_name"] = selected_app
+            res = requests.post(f"{config['api_url']}/api/v1/admin/bot/maintenance", json=self.action_data, timeout=15)
+            data = parse_api_response(res)
+            if res.status_code == 200 and data.get("success"):
+                is_maint = data.get("is_maintenance", False)
+                embed = discord.Embed(
+                    title=f"{'🚨' if is_maint else '🟢'}  APPLICATION MAINTENANCE MODE UPDATED",
+                    description=(
+                        f"### Status: **{data.get('status_label', 'UPDATED')}**\n"
+                        f"{EMOJI['arrow']} **Application:** `{selected_app}`\n"
+                        f"{EMOJI['arrow']} **Client Action:** `{'FORCE-BLOCKING ALL EXEs' if is_maint else 'ALLOWING ALL LOGINS'}`\n"
+                        f"{EMOJI['arrow']} **Notice:** `{data.get('maintenance_message', 'No custom message')}`\n"
+                    ),
+                    color=COLOR_DANGER if is_maint else COLOR_SUCCESS
+                )
+                embed.set_footer(text="Joyst Auth • Zero-Leak Security", icon_url=interaction.user.display_avatar.url)
+                await interaction.edit_original_response(content=None, embed=embed, view=None)
+            else:
+                embed = discord.Embed(
+                    title=f"{EMOJI['cross']}  MAINTENANCE TOGGLE FAILED",
+                    description=f"> {EMOJI['alert']} **Reason:** `{data.get('detail', 'Failed to update maintenance mode.')}`",
+                    color=COLOR_DANGER
+                )
+                await interaction.edit_original_response(content=None, embed=embed, view=None)
+
+        elif self.action_type == "warning":
+            self.action_data["app_name"] = selected_app
+            res = requests.post(f"{config['api_url']}/api/v1/admin/bot/warning", json=self.action_data, timeout=15)
+            data = parse_api_response(res)
+            if res.status_code == 200 and data.get("success"):
+                embed = discord.Embed(
+                    title=f"🚨  LIVE EMERGENCY WARNING BROADCASTED",
+                    description=(
+                        f"### {EMOJI['tick']} Warning Sent to All Running and New Clients!\n"
+                        f"{EMOJI['arrow']} **Target App:** `{selected_app}`\n"
+                        f"{EMOJI['arrow']} **Title:** `{self.action_data.get('title')}`\n"
+                        f"{EMOJI['arrow']} **Notice Body:** `{self.action_data.get('message')}`\n"
+                        f"{EMOJI['arrow']} **Delivery:** `Instant In-App Pop-up on next poll / login`"
+                    ),
+                    color=COLOR_WARNING if self.action_data.get('type') == 'warning' else COLOR_DANGER
+                )
+                embed.set_footer(text="Joyst Auth • Zero-Leak Security", icon_url=interaction.user.display_avatar.url)
+                await interaction.edit_original_response(content=None, embed=embed, view=None)
+            else:
+                embed = discord.Embed(
+                    title=f"{EMOJI['cross']}  BROADCAST FAILED",
+                    description=f"> {EMOJI['alert']} **Reason:** `{data.get('detail', 'Failed to broadcast warning.')}`",
+                    color=COLOR_DANGER
+                )
+                await interaction.edit_original_response(content=None, embed=embed, view=None)
+
 # ==================== SLASH COMMANDS ====================
 
 # 1. /help
@@ -862,6 +914,68 @@ async def addbalance(interaction: discord.Interaction, username: str, credits: i
             color=COLOR_DANGER
         )
         await interaction.followup.send(embed=embed, ephemeral=False)
+
+@bot.tree.command(name="maintenance", description="⏸️ Toggle Maintenance Mode for your App (Force-Blocks all EXEs)")
+@app_commands.allowed_contexts(guilds=True, dms=True, private_channels=True)
+@app_commands.allowed_installs(guilds=True, users=True)
+@app_commands.describe(state="Maintenance state", message="Optional custom maintenance notice")
+@app_commands.choices(state=[
+    app_commands.Choice(name="🚨 Activate Maintenance (Block all EXEs)", value="enable"),
+    app_commands.Choice(name="🟢 Resume Online (Allow EXEs)", value="disable"),
+    app_commands.Choice(name="🔄 Toggle State", value="toggle")
+])
+async def maintenance_cmd(interaction: discord.Interaction, state: str = "toggle", message: str = ""):
+    apps = fetch_developer_apps(interaction.user.id)
+    if not apps:
+        embed = discord.Embed(
+            title=f"{EMOJI['cross']}  NO LINKED ACCOUNT FOUND",
+            description=f"> {EMOJI['alert']} Please run **`/link [email_or_username]`** first to connect your Joyst account.",
+            color=COLOR_WARNING
+        )
+        await interaction.response.send_message(embed=embed, ephemeral=True)
+        return
+
+    action_data = {
+        "discord_id": str(interaction.user.id),
+        "discord_username": str(interaction.user.name),
+        "state": state,
+        "message": message.strip() if message else None
+    }
+
+    view = AppSelectView(apps, "maintenance", action_data)
+    await interaction.response.send_message("⚙️ **Select which Application to toggle Maintenance Mode:**", view=view, ephemeral=False)
+
+@bot.tree.command(name="warning", description="🚨 Broadcast an Emergency Warning / Notice to all .exe client screens")
+@app_commands.allowed_contexts(guilds=True, dms=True, private_channels=True)
+@app_commands.allowed_installs(guilds=True, users=True)
+@app_commands.describe(title="Warning Title / Heading", message="Notice text to show in client pop-up", severity="Severity level")
+@app_commands.choices(severity=[
+    app_commands.Choice(name="🚨 Critical / Ban Wave Alert (Red)", value="danger"),
+    app_commands.Choice(name="⚠️ Maintenance / Patch Warning (Orange)", value="warning"),
+    app_commands.Choice(name="ℹ️ Info Notice (Blue)", value="info"),
+    app_commands.Choice(name="🟢 Status Update (Green)", value="success")
+])
+async def warning_cmd(interaction: discord.Interaction, title: str, message: str, severity: str = "danger"):
+    apps = fetch_developer_apps(interaction.user.id)
+    if not apps:
+        embed = discord.Embed(
+            title=f"{EMOJI['cross']}  NO LINKED ACCOUNT FOUND",
+            description=f"> {EMOJI['alert']} Please run **`/link [email_or_username]`** first to connect your Joyst account.",
+            color=COLOR_WARNING
+        )
+        await interaction.response.send_message(embed=embed, ephemeral=True)
+        return
+
+    action_data = {
+        "discord_id": str(interaction.user.id),
+        "discord_username": str(interaction.user.name),
+        "title": title.strip(),
+        "message": message.strip(),
+        "type": severity
+    }
+
+    view = AppSelectView(apps, "warning", action_data)
+    await interaction.response.send_message("📢 **Select which Application to Broadcast this Warning to:**", view=view, ephemeral=False)
 
 if __name__ == "__main__":
     token = os.environ.get("DISCORD_BOT_TOKEN") or config.get("token")

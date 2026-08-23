@@ -1,21 +1,19 @@
 #include <iostream>
-#include "AuthClient.hpp"
+#include "JoystAuth.hpp"
 
 int main() {
     std::cout << "==================================================\n";
-    std::cout << "       ZERO-LEAK AUTH - C++ CLIENT DEMO           \n";
+    std::cout << "       JOYST AUTH - C++ NATIVE CLIENT DEMO        \n";
     std::cout << "==================================================\n";
 
-    std::string app_name = "DemoApp";
-    std::string app_secret = "demo-secret-key-1234567890abcdef";
-    std::string server_url = "http://127.0.0.1:8000";
+    // ⚡ Clean 2-parameter init
+    JoystAuth::api auth("Apex VVIP Private", "sec_demo_master_token_69");
 
-    CustomAuth::AuthClient auth(app_name, app_secret, "1.0.0", server_url);
-    std::cout << "[+] Detected HWID: " << auth.GetHwidString() << "\n";
+    std::cout << "[+] Detected Motherboard HWID: " << auth.get_hwid() << "\n";
     std::cout << "[*] Initializing session with server...\n";
 
-    if (auth.Init()) {
-        std::cout << "[+] Successfully connected to Auth Server!\n\n";
+    if (auth.init()) {
+        std::cout << "[+] Successfully connected to Joyst Sentinel!\n\n";
         
         std::cout << "Enter username: ";
         std::string user;
@@ -25,15 +23,15 @@ int main() {
         std::string pass;
         std::cin >> pass;
 
-        auto res = auth.Login(user, pass);
-        if (res.success) {
-            std::cout << "\n[+] Welcome " << res.user_info.username << "!\n";
-            std::cout << "[+] Subscription: " << res.user_info.subscription << "\n";
+        if (auth.login(user, pass)) {
+            std::cout << "\n✅ " << auth.response.message << "\n";
+            std::cout << "[+] User: " << auth.user_data.username << "\n";
+            std::cout << "[+] Subscription: " << auth.user_data.subscription << "\n";
         } else {
-            std::cout << "\n[-] Error: " << res.message << "\n";
+            std::cout << "\n❌ " << auth.response.message << "\n";
         }
     } else {
-        std::cout << "[-] Failed to connect to server. Is the auth server running?\n";
+        std::cout << "[-] " << auth.response.message << "\n";
     }
 
     std::cout << "\nPress Enter to exit...";

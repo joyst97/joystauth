@@ -61,68 +61,90 @@ def log_audit(db: Session, app_id: int = None, action: str = "ACTION", username:
 
         target_webhook = DEFAULT_DISCORD_WEBHOOK_URL
         app_name = "JOYST AUTH"
+        bot_name = "JOYST AUTH SHIELD"
+        avatar_url = "https://joystauth.cc/static/img/joyst_logo.png"
+
         if app_id:
             app = db.query(Application).filter(Application.id == app_id).first()
             if app:
                 app_name = app.name
+                if app.webhook_bot_name:
+                    bot_name = app.webhook_bot_name
+                if app.webhook_avatar_url:
+                    avatar_url = app.webhook_avatar_url
                 if app.webhook_url and app.webhook_url.startswith("http"):
                     target_webhook = app.webhook_url
+
+                # Granular Event Filtering Check
+                if action == "LOGIN_SUCCESS" and not getattr(app, "webhook_on_login", True):
+                    return
+                if (action == "LOGIN_FAILED" or action == "LOGIN_BLOCKED") and not getattr(app, "webhook_on_failed", True):
+                    return
+                if (action == "HWID_MISMATCH" or action == "HWID_RESET") and not getattr(app, "webhook_on_hwid_reset", True):
+                    return
+                if (action == "REGISTER" or action == "REGISTER_SUCCESS" or action == "LICENSE_REDEEM") and not getattr(app, "webhook_on_register", True):
+                    return
+                if (action == "KEYS_GENERATED") and not getattr(app, "webhook_on_key_gen", True):
+                    return
+                if ("BAN" in action or action == "SECURITY_BAN") and not getattr(app, "webhook_on_ban", True):
+                    return
 
         if target_webhook:
             import threading
             threading.Thread(
                 target=send_discord_webhook,
-                args=(target_webhook, app_name, action, username, ip_address, hwid, status, details, extra_data),
+                args=(target_webhook, app_name, action, username, ip_address, hwid, status, details, extra_data, bot_name, avatar_url),
                 daemon=True
             ).start()
     except Exception as e:
         print(f"[AUDIT LOG ERROR] {e}")
 
-def send_discord_webhook(webhook_url: str, app_name: str, action: str, username: str, ip: str, hwid: str, status: str, details: str, extra_data: dict = None):
-    """Send clean, rich Discord webhook embed in background non-blocking thread."""
+def send_discord_webhook(webhook_url: str, app_name: str, action: str, username: str, ip: str, hwid: str, status: str, details: str, extra_data: dict = None, bot_name: str = "JOYST AUTH SHIELD", avatar_url: str = "https://joystauth.cc/static/img/joyst_logo.png"):
+    """Send clean, rich Discord webhook embed with KeyAuth-grade aesthetic styling in background thread."""
     if not webhook_url or not webhook_url.startswith("http"):
         return
 
-    color = 0x10B981 # Emerald Green
+    color = 0x10B981 # Emerald Green for Success
     if action == "SECURITY_BAN" or status == "DANGER" or "MISMATCH" in action or "BAN" in action or "BLOCKED" in action:
-        color = 0xDC2626 # Dark Red
+        color = 0xDC2626 # Crimson Red for Security / Ban
     elif status == "WARNING" or "FAIL" in action or "EXPIRED" in action:
-        color = 0xF59E0B # Amber Orange
+        color = 0xF59E0B # Amber Orange for Warnings / Failed logins
     elif "KEY" in action or "APP" in action or "RESELLER" in action:
-        color = 0xE11D48 # Rose Red
+        color = 0x8B5CF6 # Electric Purple for Administrative actions
 
     title = ACTION_TITLES.get(action, f"🔔 Event: {action}")
 
     fields = [
         {"name": "📱 Application", "value": f"**{app_name}**", "inline": True},
-        {"name": "👤 Username / Input", "value": f"`{username or 'N/A'}`", "inline": True},
+        {"name": "👤 Client User", "value": f"`{username or 'N/A'}`", "inline": True},
         {"name": "🌐 IP Address", "value": f"`{ip or 'Unknown'}`", "inline": True}
     ]
 
     if hwid:
-        masked_hwid = f"`{hwid}`"
-        fields.append({"name": "💻 PC Hardware ID (HWID)", "value": masked_hwid, "inline": False})
+        fields.append({"name": "💻 Motherboard HWID", "value": f"`{hwid}`", "inline": False})
 
     if extra_data:
         for k, v in extra_data.items():
             fields.append({"name": k, "value": str(v), "inline": True})
 
     if details:
-        fields.append({"name": "📋 Details", "value": details, "inline": False})
+        fields.append({"name": "📋 Audit Details", "value": details, "inline": False})
 
     payload = {
+        "username": bot_name or "JOYST AUTH SHIELD",
+        "avatar_url": avatar_url or "https://joystauth.cc/static/img/joyst_logo.png",
         "embeds": [
             {
                 "title": title,
                 "color": color,
                 "fields": fields,
-                "footer": {"text": "JOYST CORPORATION AUTH | Security Shield"},
+                "footer": {"text": f"JOYST CORPORATION AUTH • {app_name} Security Enclave"},
                 "timestamp": datetime.datetime.utcnow().isoformat()
             }
         ]
     }
 
     try:
-        requests.post(webhook_url, json=payload, timeout=2)
+        requests.post(webhook_url, json=payload, timeout=3)
     except Exception:
         pass
