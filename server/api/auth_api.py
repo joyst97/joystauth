@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Header
+from fastapi import APIRouter, Depends, HTTPException, status, Header, Request
 from fastapi.responses import HTMLResponse
 from sqlalchemy.orm import Session
 from pydantic import BaseModel, EmailStr
@@ -360,26 +360,42 @@ async def google_callback_redirect():
     """)
 
 @router.get("/discord/login")
-async def discord_oauth_login():
+async def discord_oauth_login(request: Request):
     """Redirect developer to official Discord OAuth authorization portal."""
     import urllib.parse
     from ..config import DISCORD_CLIENT_ID, DISCORD_REDIRECT_URI
+    
+    base_url = str(request.base_url).rstrip("/")
+    if "localhost" in base_url or "127.0.0.1" in base_url:
+        redirect_uri = f"{base_url}/api/v1/auth/discord/callback"
+    else:
+        redirect_uri = DISCORD_REDIRECT_URI or "https://joystauth.cc/api/v1/auth/discord/callback"
+        
     params = {
         "client_id": DISCORD_CLIENT_ID,
-        "redirect_uri": DISCORD_REDIRECT_URI,
+        "redirect_uri": redirect_uri,
         "response_type": "code",
-        "scope": "identify email guilds.join applications.commands",
-        "integration_type": "1",
+        "scope": "identify email",
         "prompt": "consent"
     }
     discord_auth_url = "https://discord.com/oauth2/authorize?" + urllib.parse.urlencode(params)
-    return HTMLResponse("<script>window.location.href = '" + discord_auth_url + "';</script>")
+    return HTMLResponse(f"<script>window.location.href = '{discord_auth_url}';</script>")
 
 @router.get("/discord/callback")
-async def discord_oauth_callback(code: str, db: Session = Depends(get_db)):
+async def discord_oauth_callback(request: Request, code: Optional[str] = None, error: Optional[str] = None, db: Session = Depends(get_db)):
     """Exchange Discord OAuth code, create/login account, auto-join official server."""
+    if error or not code:
+        err_msg = error or "Authorization cancelled"
+        return HTMLResponse(f"<script>window.location.href='/login?error={err_msg}';</script>")
+
     import requests
     from ..config import DISCORD_CLIENT_ID, DISCORD_CLIENT_SECRET, DISCORD_REDIRECT_URI, DISCORD_GUILD_ID, DISCORD_BOT_TOKEN
+    
+    base_url = str(request.base_url).rstrip("/")
+    if "localhost" in base_url or "127.0.0.1" in base_url:
+        redirect_uri = f"{base_url}/api/v1/auth/discord/callback"
+    else:
+        redirect_uri = DISCORD_REDIRECT_URI or "https://joystauth.cc/api/v1/auth/discord/callback"
     
     # 1. Exchange code for access token
     token_url = "https://discord.com/api/v10/oauth2/token"
@@ -388,12 +404,28 @@ async def discord_oauth_callback(code: str, db: Session = Depends(get_db)):
         "client_secret": DISCORD_CLIENT_SECRET,
         "grant_type": "authorization_code",
         "code": code,
-        "redirect_uri": DISCORD_REDIRECT_URI
+        "redirect_uri": redirect_uri
     }
     headers = {"Content-Type": "application/x-www-form-urlencoded"}
     token_res = requests.post(token_url, data=token_data, headers=headers)
     if token_res.status_code != 200:
-        return HTMLResponse("<script>window.location.href='/login?error=discord_failed';</script>")
+        err_detail = token_res.text
+        print(f"[DISCORD OAUTH ERROR] Token exchange failed ({token_res.status_code}): {err_detail}")
+        return HTMLResponse(f"""
+        <!DOCTYPE html>
+        <html>
+        <head><title>Discord Login Error</title></head>
+        <body style="background:#09090b;color:#fff;font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;padding:20px;text-align:center;">
+            <div style="max-width:500px;background:#18181b;border:1px solid #ef4444;border-radius:12px;padding:26px;">
+                <h3 style="color:#ef4444;margin-top:0;">Discord Sign-In Error</h3>
+                <p style="font-size:13.5px;color:#cbd5e1;line-height:1.5;">Discord rejected the authorization. Ensure <strong>DISCORD_CLIENT_SECRET</strong> is set in your server environment and the Redirect URI below is added in your Discord Developer Portal:</p>
+                <div style="background:#09090b;padding:10px;border-radius:6px;font-family:monospace;font-size:12px;color:#38bdf8;word-break:break-all;margin:12px 0;">{redirect_uri}</div>
+                <div style="background:#09090b;padding:10px;border-radius:6px;font-family:monospace;font-size:12px;color:#f87171;word-break:break-word;margin:12px 0;">{err_detail}</div>
+                <a href="/login" style="display:inline-block;background:#ff2a5f;color:#fff;padding:10px 20px;border-radius:8px;text-decoration:none;font-weight:700;font-size:13px;margin-top:8px;">&larr; Back to Login</a>
+            </div>
+        </body>
+        </html>
+        """)
 
     token_json = token_res.json()
     discord_access_token = token_json.get("access_token")

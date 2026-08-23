@@ -254,13 +254,24 @@
             }
         }
 
-        const DISCORD_CLIENT_ID = "1540058805138882730";
-        const DISCORD_REDIRECT_URI = "https://joystauth.cc/api/v1/auth/discord/callback";
+        
+        // Check URL for OAuth errors on page load
+        window.addEventListener("DOMContentLoaded", () => {
+            const params = new URLSearchParams(window.location.search);
+            const err = params.get("error");
+            if (err) {
+                let msg = "Authentication failed. Please try again.";
+                if (err === "discord_failed") msg = "Discord authentication was rejected. Please try again.";
+                else if (err === "discord_user_failed") msg = "Could not retrieve Discord user profile.";
+                else if (err === "google_failed") msg = "Google sign-in failed. Please try again.";
+                else msg = err.replace(/_/g, " ");
+                showToast(msg, "error");
+            }
+        });
 
         function handleDiscordSignInClick() {
             localStorage.clear();
-            const discordUrl = `https://discord.com/oauth2/authorize?client_id=${DISCORD_CLIENT_ID}&response_type=code&redirect_uri=${encodeURIComponent(DISCORD_REDIRECT_URI)}&scope=identify+email+guilds.join+applications.commands&integration_type=1&prompt=consent`;
-            window.location.href = discordUrl;
+            window.location.href = "/api/v1/auth/discord/login";
         }
 
         document.getElementById("login-form").addEventListener("submit", async (e) => {
