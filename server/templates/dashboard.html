@@ -175,6 +175,22 @@
 
             <!-- 1. TAB: OVERVIEW -->
             <section id="page-overview" class="page-container active">
+                <!-- Prominent Maintenance Active Emergency Banner (Shown ONLY when Maintenance is ON) -->
+                <div id="overview-maintenance-alert-banner" style="display: none; background: linear-gradient(135deg, rgba(239, 68, 68, 0.3), rgba(20, 4, 8, 0.98)); border: 2px solid #ef4444; border-radius: 16px; padding: 22px 26px; margin-bottom: 24px; box-shadow: 0 0 40px rgba(239, 68, 68, 0.5); align-items: center; justify-content: space-between; gap: 18px; flex-wrap: wrap;">
+                    <div style="display: flex; align-items: center; gap: 16px;">
+                        <div style="font-size: 38px;">🚨</div>
+                        <div>
+                            <h3 style="color: #ef4444; font-size: 18px; font-weight: 900; margin: 0; letter-spacing: 0.5px;">MAINTENANCE MODE ACTIVE</h3>
+                            <p style="color: #e2e8f0; font-size: 13.5px; margin-top: 4px; line-height: 1.4;">
+                                All client EXEs and login handshakes are currently <strong>BLOCKED</strong>. Running clients will be disconnected upon heartbeat ping.
+                            </p>
+                        </div>
+                    </div>
+                    <button class="btn btn-success" onclick="quickToggleMaintenance()" style="background: #10b981; border-color: #059669; color: #000; font-weight: 900; padding: 12px 24px; font-size: 14px; box-shadow: 0 0 25px rgba(16, 185, 129, 0.6); cursor: pointer;">
+                        ▶️ Disable Maintenance / Resume Online
+                    </button>
+                </div>
+
                 <div class="page-header">
                     <div class="page-title">
                         <h2>Dashboard Overview</h2>
@@ -261,6 +277,27 @@
                     <button class="quick-action-btn" onclick="openModal('modal-create-notif')">🔔 In-App Notice</button>
                     <button class="quick-action-btn" onclick="switchTab('notifications')">📢 Manage Alerts</button>
                     <button class="quick-action-btn" onclick="switchTab('apps')">⚙️ KeyAuth Settings</button>
+                </div>
+
+                <!-- Active Live Broadcast Warnings & Notices Deck -->
+                <div id="overview-broadcasts-deck" class="stat-card spotlight-card" style="padding: 20px 24px; margin-bottom: 26px; border: 1.5px solid rgba(245, 158, 11, 0.4); background: linear-gradient(135deg, rgba(245, 158, 11, 0.07), rgba(18, 7, 14, 0.7)); border-radius: 16px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 16px; border-bottom: 1px solid rgba(255,255,255,0.06); padding-bottom: 12px;">
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <span style="font-size: 22px;">📢</span>
+                            <div>
+                                <strong style="color: #fff; font-size: 15px;">Active Broadcast Warnings & Notices</strong>
+                                <p style="color: var(--text-secondary); font-size: 12px; margin-top: 2px;">
+                                    Notices currently live and broadcasting to connected / running client EXEs.
+                                </p>
+                            </div>
+                        </div>
+                        <button class="btn btn-warning btn-sm" onclick="openModal('modal-create-notif')" style="background: linear-gradient(135deg, #f59e0b, #d97706); color: #000; font-weight: 800; border: none; padding: 7px 14px;">
+                            <span>➕ Broadcast New Warning</span>
+                        </button>
+                    </div>
+                    <div id="overview-broadcasts-list-container">
+                        <div style="text-align: center; color: var(--text-muted); padding: 18px; font-size: 13px;">No active broadcast warnings for this application.</div>
+                    </div>
                 </div>
 
                 <!-- Spotlight Stats Grid -->
@@ -1454,22 +1491,99 @@
             </div>
         </div>
     <!-- Global In-App Confirmation Modal (Replaces browser chrome popups) -->
-    <div id="modal-app-confirm" class="modal-overlay" style="display: none; z-index: 999999;">
-        <div class="modal-content spotlight-card" style="max-width: 440px; text-align: center; border: 1px solid var(--border-glow); padding: 28px; background: rgba(18, 7, 14, 0.95); backdrop-filter: blur(20px); border-radius: 16px; box-shadow: 0 20px 50px rgba(0,0,0,0.8);">
-            <div id="confirm-modal-icon" style="font-size: 40px; margin-bottom: 12px;">⚠️</div>
-            <h3 id="confirm-modal-title" style="font-size: 19px; font-weight: 800; color: #fff; margin-bottom: 10px;">Confirm Action</h3>
-            <p id="confirm-modal-message" style="font-size: 13.5px; color: var(--text-secondary); line-height: 1.5; margin-bottom: 24px;"></p>
-            <div style="display: flex; gap: 10px; justify-content: center;">
-                <button id="confirm-modal-cancel-btn" class="btn btn-secondary" style="flex: 1; padding: 10px 0; font-weight: 700;">Cancel</button>
-                <button id="confirm-modal-ok-btn" class="btn btn-danger" style="flex: 1; padding: 10px 0; font-weight: 700;">Confirm</button>
+    <div id="modal-app-confirm" class="modal-overlay" style="z-index: 999999;">
+        <div class="modal-box spotlight-card" style="max-width: 450px; text-align: center; border: 1.5px solid rgba(244, 63, 94, 0.55); padding: 30px; background: linear-gradient(170deg, rgba(22, 6, 12, 0.98) 0%, rgba(10, 3, 6, 0.99) 100%); border-radius: 18px; box-shadow: 0 30px 80px -15px rgba(0, 0, 0, 0.95), 0 0 45px rgba(225, 29, 72, 0.35);">
+            <div id="confirm-modal-icon" style="font-size: 44px; margin-bottom: 14px;">⚠️</div>
+            <h3 id="confirm-modal-title" style="font-size: 20px; font-weight: 800; color: #fff; margin-bottom: 10px;">Confirm Action</h3>
+            <p id="confirm-modal-message" style="font-size: 14px; color: var(--text-secondary); line-height: 1.5; margin-bottom: 24px;"></p>
+            <div style="display: flex; gap: 12px; justify-content: center;">
+                <button id="confirm-modal-cancel-btn" class="btn btn-secondary" style="flex: 1; padding: 11px 0; font-weight: 800; font-size: 14px;">Cancel</button>
+                <button id="confirm-modal-ok-btn" class="btn btn-danger" style="flex: 1; padding: 11px 0; font-weight: 800; font-size: 14px;">Confirm Action</button>
+            </div>
+        </div>
+    </div>
+
+        <!-- DISCORD-STYLE EMBED OUTPUT MODAL (AUTO COPY & CLEAN SHAREABLE CARD) -->
+        <!-- EDIT BROADCAST NOTIFICATION MODAL -->
+    <div id="modal-edit-notif" class="modal-overlay" style="z-index: 999999;">
+        <div class="modal-box spotlight-card" style="max-width: 500px; border: 1.5px solid rgba(245, 158, 11, 0.5); padding: 26px; background: linear-gradient(170deg, rgba(22, 6, 12, 0.98) 0%, rgba(10, 3, 6, 0.99) 100%); border-radius: 16px; box-shadow: 0 20px 60px rgba(0,0,0,0.9);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 12px;">
+                <h3 style="font-size: 18px; font-weight: 800; color: #fff; margin: 0;">✏️ Modify Broadcast Notice</h3>
+                <button class="modal-close" onclick="closeModal('modal-edit-notif')" style="color: #949ba4; font-size: 22px; background: none; border: none; cursor: pointer;">&times;</button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="edit-notif-id">
+                <div class="form-group">
+                    <label>Notice Title</label>
+                    <input type="text" id="edit-notif-title-input" class="form-control" placeholder="e.g. Emergency Maintenance Notice">
+                </div>
+                <div class="form-group">
+                    <label>Severity Type</label>
+                    <select id="edit-notif-type-select" class="form-control">
+                        <option value="warning">⚠️ Warning (Yellow / Amber)</option>
+                        <option value="danger">🚨 Urgent / Danger (Crimson Red)</option>
+                        <option value="info">ℹ️ Info / Update (Cyan Blue)</option>
+                        <option value="success">🟢 Announcement (Emerald Green)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Broadcast Message Content</label>
+                    <textarea id="edit-notif-message-input" class="form-control" rows="3" placeholder="Message content delivered to running EXEs"></textarea>
+                </div>
+                <div class="form-group" style="display: flex; align-items: center; gap: 10px; margin-top: 14px;">
+                    <input type="checkbox" id="edit-notif-show-login" style="width: 18px; height: 18px; cursor: pointer;">
+                    <label for="edit-notif-show-login" style="margin: 0; cursor: pointer; color: #fff; font-size: 13px;">Show popup dialog upon user login</label>
+                </div>
+            </div>
+            <div class="modal-footer" style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 22px;">
+                <button class="btn btn-secondary" onclick="closeModal('modal-edit-notif')">Cancel</button>
+                <button class="btn btn-primary" onclick="submitEditNotification()">💾 Save Changes</button>
+            </div>
+        </div>
+    </div>
+    <div id="modal-discord-output" class="modal-overlay" style="z-index: 999999;">
+        <div class="modal-box spotlight-card" style="max-width: 520px; border: 1.5px solid rgba(88, 101, 242, 0.6); padding: 0; overflow: hidden; background: #2f3136; border-radius: 14px; box-shadow: 0 20px 60px rgba(0,0,0,0.9), 0 0 35px rgba(88, 101, 242, 0.3);">
+            <!-- Top Header Bar -->
+            <div style="background: #202225; padding: 14px 20px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.06);">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <span style="font-size: 16px;">💬</span>
+                    <strong style="color: #fff; font-size: 14px; letter-spacing: 0.5px;" id="discord-output-modal-header">JOYST CORPORATION</strong>
+                </div>
+                <button class="modal-close" onclick="closeModal('modal-discord-output')" style="color: #949ba4; font-size: 20px; background: none; border: none; cursor: pointer;">&times;</button>
+            </div>
+
+            <div style="padding: 22px 24px;">
+                <!-- Simulated Discord Embed Card -->
+                <div style="border-left: 4px solid #5865F2; background: #2b2d31; padding: 16px 20px; border-radius: 0 8px 8px 0; margin-bottom: 18px;">
+                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
+                        <div style="width: 24px; height: 24px; border-radius: 50%; background: #5865F2; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 900; color: #fff;">J</div>
+                        <span style="color: #f2f3f5; font-size: 14px; font-weight: 800;" id="discord-card-title">JOYST CORPORATION REGISTRATION INFO</span>
+                    </div>
+
+                    <!-- Embed Body Text / Bullet Points -->
+                    <div id="discord-card-body" style="font-size: 13px; color: #dbdee1; line-height: 1.9; white-space: pre-wrap; word-break: break-word;"></div>
+
+                    <div style="margin-top: 14px; font-style: italic; font-size: 12.5px; color: #949ba4; border-top: 1px solid rgba(255,255,255,0.06); padding-top: 10px;">
+                        Thank you for choosing us!
+                    </div>
+                </div>
+
+                <div style="display: flex; gap: 10px;">
+                    <button class="btn btn-primary" id="btn-copy-discord-output" style="flex: 1; padding: 11px 0; font-size: 13.5px; font-weight: 800; background: #5865F2; border-color: #4752C4; box-shadow: 0 0 20px rgba(88, 101, 242, 0.4);">
+                        📋 Copy Discord Formatted Details
+                    </button>
+                    <button class="btn btn-secondary" onclick="closeModal('modal-discord-output')" style="padding: 11px 20px; font-size: 13.5px;">
+                        Close
+                    </button>
+                </div>
             </div>
         </div>
     </div>
 
     <div id="toast-container"></div>
 
-    <script src="/static/js/particles.js?v=2.6.0"></script>
-    <script src="/static/js/reactbits.js?v=2.6.0"></script>
-    <script src="/static/js/dashboard.js?v=2.6.0"></script>
+    <script src="/static/js/particles.js?v=3.0.0"></script>
+    <script src="/static/js/reactbits.js?v=3.0.0"></script>
+    <script src="/static/js/dashboard.js?v=3.0.0"></script>
 </body>
 </html>

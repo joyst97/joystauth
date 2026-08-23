@@ -4,6 +4,33 @@ let appsList = [];
 let devOwnerId = localStorage.getItem("dev_owner_id") || "Loading...";
 let devUsername = localStorage.getItem("dev_username") || "Developer";
 
+
+function showDiscordOutputModal({ header = "JOYST CORPORATION", title, rawText, formattedHtml }) {
+    const modal = document.getElementById("modal-discord-output");
+    const headerEl = document.getElementById("discord-output-modal-header");
+    const titleEl = document.getElementById("discord-card-title");
+    const bodyEl = document.getElementById("discord-card-body");
+    const copyBtn = document.getElementById("btn-copy-discord-output");
+
+    if (headerEl) headerEl.textContent = header;
+    if (titleEl) titleEl.textContent = title;
+    if (bodyEl) bodyEl.innerHTML = formattedHtml;
+
+    // Auto copy clean Discord markdown to clipboard immediately
+    navigator.clipboard.writeText(rawText).then(() => {
+        showToast("📋 Credentials auto-copied to clipboard in Discord format!", "success");
+    }).catch(() => {});
+
+    if (copyBtn) {
+        copyBtn.onclick = () => {
+            navigator.clipboard.writeText(rawText);
+            showToast("📋 Copied Discord formatted details!", "success");
+        };
+    }
+
+    if (modal) modal.classList.add("active");
+}
+
 function showConfirmDialog({ title = "Confirm Action", message, icon = "⚠️", okText = "Confirm", cancelText = "Cancel", isDanger = true }) {
     return new Promise((resolve) => {
         const modal = document.getElementById("modal-app-confirm");
@@ -28,10 +55,10 @@ function showConfirmDialog({ title = "Confirm Action", message, icon = "⚠️",
         okBtn.style.flex = "1";
         okBtn.style.padding = "10px 0";
 
-        modal.style.display = "flex";
+        modal.classList.add("active");
 
         function cleanup(result) {
-            modal.style.display = "none";
+            modal.classList.remove("active");
             okBtn.removeEventListener("click", onOk);
             cancelBtn.removeEventListener("click", onCancel);
             document.removeEventListener("keydown", onKeyDown);
@@ -459,32 +486,67 @@ function updateBannerCredentials() {
         webhookInput.value = app.webhook_url;
     }
 
-    // Update Overview Emergency Status Badge & Button
+    // Update Overview Emergency Status Badge & Prominent Maintenance Alert Banner
+    const isMaint = app.status === "maintenance" || app.status === "paused";
+    const maintBanner = document.getElementById("overview-maintenance-alert-banner");
     const statusBadge = document.getElementById("overview-app-status-badge");
     const toggleBtn = document.getElementById("btn-quick-toggle-maintenance");
-    const isMaint = app.status === "maintenance" || app.status === "paused";
+    const emergencyDeck = document.getElementById("overview-emergency-deck");
+
+    // Big Top Banner only displays when Maintenance is actually Active
+    if (maintBanner) {
+        maintBanner.style.display = isMaint ? "flex" : "none";
+    }
 
     if (statusBadge) {
         if (isMaint) {
             statusBadge.className = "badge badge-danger";
+            statusBadge.style.fontSize = "13px";
+            statusBadge.style.padding = "4px 10px";
             statusBadge.innerHTML = `<span class="badge-dot"></span> 🚨 MAINTENANCE ACTIVE`;
-        } else if (app.status === "disabled") {
-            statusBadge.className = "badge badge-danger";
-            statusBadge.innerHTML = `<span class="badge-dot"></span> 🚫 DISABLED`;
         } else {
             statusBadge.className = "badge badge-success";
-            statusBadge.innerHTML = `<span class="badge-dot"></span> 🟢 ONLINE & ACTIVE`;
+            statusBadge.style.fontSize = "12px";
+            statusBadge.innerHTML = `<span class="badge-dot"></span> ONLINE`;
+        }
+    }
+
+    if (emergencyDeck) {
+        if (isMaint) {
+            emergencyDeck.style.background = "linear-gradient(135deg, rgba(239, 68, 68, 0.25), rgba(15, 3, 6, 0.95))";
+            emergencyDeck.style.borderColor = "#ef4444";
+            emergencyDeck.style.boxShadow = "0 0 35px rgba(239, 68, 68, 0.45)";
+        } else {
+            emergencyDeck.style.background = "linear-gradient(135deg, rgba(225, 29, 72, 0.12), rgba(0, 0, 0, 0.4))";
+            emergencyDeck.style.borderColor = "rgba(225, 29, 72, 0.35)";
+            emergencyDeck.style.boxShadow = "none";
         }
     }
 
     if (toggleBtn) {
         if (isMaint) {
             toggleBtn.className = "btn btn-success btn-sm";
-            toggleBtn.innerHTML = `<span>🟢 Resume Online (Turn OFF Maintenance)</span>`;
+            toggleBtn.style.background = "#10b981";
+            toggleBtn.style.borderColor = "#059669";
+            toggleBtn.style.color = "#000";
+            toggleBtn.style.fontWeight = "900";
+            toggleBtn.style.padding = "8px 18px";
+            toggleBtn.style.boxShadow = "0 0 25px rgba(16, 185, 129, 0.6)";
+            toggleBtn.innerHTML = `<span>▶️ Disable Maintenance / Resume Online</span>`;
         } else {
             toggleBtn.className = "btn btn-danger btn-sm";
+            toggleBtn.style.background = "";
+            toggleBtn.style.borderColor = "";
+            toggleBtn.style.color = "";
+            toggleBtn.style.fontWeight = "800";
+            toggleBtn.style.padding = "";
+            toggleBtn.style.boxShadow = "0 0 15px rgba(225, 29, 72, 0.4)";
             toggleBtn.innerHTML = `<span>⏸️ Activate Maintenance Mode</span>`;
         }
+    }
+
+    if (typeof loadNotifications === "function") {
+        loadNotifications();
     }
 }
 
@@ -627,23 +689,54 @@ async function generateKeysSubmit() {
         notes: notes
     };
 
-    const res = await apiFetch("/api/v1/admin/licenses", {
-        method: "POST",
-        body: JSON.stringify(payload)
-    });
+    const genBtn = document.querySelector("#modal-generate-keys .btn-primary") || document.querySelector("[onclick='generateKeysSubmit()']");
+    const origGenText = genBtn ? genBtn.innerHTML : "Generate Keys";
+    if (genBtn) { genBtn.disabled = true; genBtn.innerHTML = "⏳ Generating Keys..."; }
 
-    if (res && res.success) {
-        showToast(res.message, "success");
-        closeModal("modal-generate-keys");
-        loadLicenses();
-        loadGlobalStats();
+    showToast(`⏳ Generating ${count} cryptographically secure license key(s)...`, "info");
 
-        if (res.keys && res.keys.length > 0) {
-            document.getElementById("generated-keys-output").value = res.keys.join("\n");
-            openModal("modal-view-generated");
+    try {
+        const res = await apiFetch("/api/v1/admin/licenses", {
+            method: "POST",
+            body: JSON.stringify(payload)
+        });
+
+        if (res && res.success) {
+            showToast(res.message, "success");
+            closeModal("modal-generate-keys");
+            loadLicenses();
+            loadGlobalStats();
+
+            if (res.keys && res.keys.length > 0) {
+                const appName = appsList.find(a => a.id === currentAppId)?.name || "Joyst Auth";
+                const nowStr = new Date().toLocaleString();
+                const durStr = duration > 90000 ? "Lifetime" : `${duration} Days`;
+                const keysRaw = res.keys.join("\n");
+
+                const rawDiscordText = `**JOYST CORPORATION**\n` +
+                    `**${appName.toUpperCase()} LICENSE KEY INFO**\n\n` +
+                    `• **License Key(s) (${res.keys.length}):**\n\`\`\`\n${keysRaw}\n\`\`\`\n` +
+                    `• **Duration:** \`${durStr}\`\n` +
+                    `• **Created At:** \`${nowStr}\`\n\n` +
+                    `*Thank you for choosing JOYST CORPORATION!*`;
+
+                const formattedHtml = `• <strong>Generated License Keys (${res.keys.length}):</strong><br>` +
+                    `<div style="background:#1e1f22; padding:10px 14px; border-radius:6px; margin:8px 0; color:#38bdf8; font-family:monospace; max-height:130px; overflow-y:auto;">${res.keys.map(k => escapeHtml(k)).join("<br>")}</div>` +
+                    `• <strong>Duration:</strong> <code style="background:#1e1f22; padding:2px 6px; border-radius:4px; color:#10b981;">${durStr}</code><br>` +
+                    `• <strong>Created At:</strong> <code style="background:#1e1f22; padding:2px 6px; border-radius:4px;">${nowStr}</code>`;
+
+                showDiscordOutputModal({
+                    header: `JOYST CORPORATION`,
+                    title: `${appName.toUpperCase()} LICENSE KEYS`,
+                    rawText: rawDiscordText,
+                    formattedHtml: formattedHtml
+                });
+            }
+        } else {
+            showToast(res?.detail || "Failed to generate keys", "error");
         }
-    } else {
-        showToast(res?.detail || "Failed to generate keys", "error");
+    } finally {
+        if (genBtn) { genBtn.disabled = false; genBtn.innerHTML = origGenText; }
     }
 }
 
@@ -1021,29 +1114,68 @@ async function submitManualUser() {
         return;
     }
 
-    closeModal("modal-create-user-manual");
-    showToast("Creating user...", "info");
+    const createBtn = document.querySelector("#modal-create-user-manual .btn-primary") || document.querySelector("[onclick='submitManualUser()']");
+    const origBtnText = createBtn ? createBtn.innerHTML : "Create User";
+    if (createBtn) { createBtn.disabled = true; createBtn.innerHTML = "⏳ Generating User..."; }
 
-    const res = await apiFetch("/api/v1/admin/users/manual-create", {
-        method: "POST",
-        body: JSON.stringify({
-            app_id: currentAppId,
-            username: username,
-            password: password,
-            duration_days: days,
-            subscription_tier: tier,
-            level: 1,
-            hwid: hwid || null
-        })
-    });
+    showToast(`⏳ Generating user account '${username}'...`, "info");
 
-    if (res && res.success) {
-        showToast(res.message, "success");
-        loadUsers();
-        loadGlobalStats();
-    } else {
-        showToast(res?.detail || "Failed to create user", "error");
-        loadUsers();
+    try {
+        const res = await apiFetch("/api/v1/admin/users/manual-create", {
+            method: "POST",
+            body: JSON.stringify({
+                app_id: currentAppId,
+                username: username,
+                password: password,
+                duration_days: days,
+                subscription_tier: tier,
+                level: 1,
+                hwid: hwid || null
+            })
+        });
+
+        if (res && res.success) {
+            closeModal("modal-create-user-manual");
+            document.getElementById("manual-user-name").value = "";
+            document.getElementById("manual-user-pass").value = "";
+            showToast(`✅ User '${username}' created successfully!`, "success");
+            await loadUsers();
+            loadGlobalStats();
+
+            // Open Discord-Style Shareable Embed Modal with Auto Copy
+            const appName = appsList.find(a => a.id === currentAppId)?.name || "Joyst Auth";
+            const nowStr = new Date().toLocaleString();
+            const expDate = new Date();
+            expDate.setDate(expDate.getDate() + days);
+            const expStr = days > 90000 ? "Lifetime (Never Expires)" : expDate.toISOString().split("T")[0];
+
+            const rawDiscordText = `**JOYST CORPORATION**\n` +
+                `**${appName.toUpperCase()} REGISTRATION INFO**\n\n` +
+                `• **Username:** \`${username}\`\n` +
+                `• **Password:** \`${password}\`\n` +
+                `• **Duration:** \`${days} Days\`\n` +
+                `• **Expiry Date:** \`${expStr}\`\n` +
+                `• **Created At:** \`${nowStr}\`\n\n` +
+                `*Thank you for choosing JOYST CORPORATION!*`;
+
+            const formattedHtml = `• <strong>Username:</strong> <code style="background:#1e1f22; padding:2px 6px; border-radius:4px; color:#fff;">${escapeHtml(username)}</code><br>` +
+                `• <strong>Password:</strong> <code style="background:#1e1f22; padding:2px 6px; border-radius:4px; color:#38bdf8;">${escapeHtml(password)}</code><br>` +
+                `• <strong>Duration:** <code style="background:#1e1f22; padding:2px 6px; border-radius:4px; color:#10b981;">${days} Days</code><br>` +
+                `• <strong>Expiry Date:</strong> <code style="background:#1e1f22; padding:2px 6px; border-radius:4px;">${expStr}</code><br>` +
+                `• <strong>Created At:</strong> <code style="background:#1e1f22; padding:2px 6px; border-radius:4px;">${nowStr}</code>`;
+
+            showDiscordOutputModal({
+                header: `JOYST CORPORATION`,
+                title: `${appName.toUpperCase()} USER CREDENTIALS`,
+                rawText: rawDiscordText,
+                formattedHtml: formattedHtml
+            });
+        } else {
+            showToast(res?.detail || "Failed to create user", "error");
+            await loadUsers();
+        }
+    } finally {
+        if (createBtn) { createBtn.disabled = false; createBtn.innerHTML = origBtnText; }
     }
 }
 
@@ -1515,6 +1647,29 @@ async function createResellerSubmit() {
         showToast(res.message, "success");
         closeModal("modal-create-reseller");
         loadResellers();
+
+        const nowStr = new Date().toLocaleString();
+        const rawDiscordText = `**JOYST CORPORATION**\n` +
+            `**RESELLER ACCOUNT INFO**\n\n` +
+            `• **Username:** \`${user}\`\n` +
+            `• **Password:** \`${pass}\`\n` +
+            `• **Role:** \`Official Reseller\`\n` +
+            `• **Credit Balance:** \`${bal} Credits\`\n` +
+            `• **Created At:** \`${nowStr}\`\n\n` +
+            `*Thank you for choosing JOYST CORPORATION!*`;
+
+        const formattedHtml = `• <strong>Username:</strong> <code style="background:#1e1f22; padding:2px 6px; border-radius:4px; color:#fff;">${escapeHtml(user)}</code><br>` +
+            `• <strong>Password:</strong> <code style="background:#1e1f22; padding:2px 6px; border-radius:4px; color:#38bdf8;">${escapeHtml(pass)}</code><br>` +
+            `• <strong>Role:</strong> <code style="background:#1e1f22; padding:2px 6px; border-radius:4px;">Official Reseller</code><br>` +
+            `• <strong>Credit Balance:</strong> <code style="background:#1e1f22; padding:2px 6px; border-radius:4px; color:#10b981;">${bal} Credits</code><br>` +
+            `• <strong>Created At:</strong> <code style="background:#1e1f22; padding:2px 6px; border-radius:4px;">${nowStr}</code>`;
+
+        showDiscordOutputModal({
+            header: `JOYST CORPORATION`,
+            title: `JOYST CORPORATION RESELLER INFO`,
+            rawText: rawDiscordText,
+            formattedHtml: formattedHtml
+        });
     } else {
         showToast(res?.detail || "Failed to create reseller", "error");
     }
@@ -1616,16 +1771,114 @@ async function generatePlanKeysSubmit() {
 }
 
 // ==================== 12. IN-APP CLIENT NOTIFICATIONS (KEYAUTH STYLE) ====================
+let rawNotificationsList = [];
+
+function renderOverviewBroadcasts(notifs) {
+    const container = document.getElementById("overview-broadcasts-list-container");
+    if (!container) return;
+
+    const activeList = (notifs || []).filter(n => n.app_id === currentAppId && n.is_active);
+    if (activeList.length === 0) {
+        container.innerHTML = `<div style="text-align: center; color: var(--text-muted); padding: 18px; font-size: 13px;">No active broadcast warnings currently live. Click "<strong>➕ Broadcast New Warning</strong>" to push a real-time notice to running EXEs.</div>`;
+        return;
+    }
+
+    container.innerHTML = activeList.map(n => {
+        let badgeType = "badge-info";
+        let icon = "ℹ️";
+        if (n.type === "warning") { badgeType = "badge-warning"; icon = "⚠️"; }
+        else if (n.type === "danger") { badgeType = "badge-danger"; icon = "🚨"; }
+        else if (n.type === "success") { badgeType = "badge-success"; icon = "🟢"; }
+
+        return `
+            <div style="background: rgba(0,0,0,0.45); border: 1px solid rgba(245, 158, 11, 0.35); border-radius: 12px; padding: 14px 18px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+                <div style="display: flex; align-items: center; gap: 14px; flex: 1; min-width: 250px;">
+                    <span class="badge ${badgeType}" style="padding: 6px 12px; font-weight: 800;">
+                        <span class="badge-dot"></span> ${icon} ${n.type.toUpperCase()}
+                    </span>
+                    <div>
+                        <strong style="color: #fff; font-size: 14px; display: block;">${escapeHtml(n.title)}</strong>
+                        <span style="color: #cbd5e1; font-size: 12.5px; line-height: 1.4; word-break: break-word; display: block; margin-top: 2px;">${escapeHtml(n.message)}</span>
+                    </div>
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <span class="badge badge-${n.show_on_login ? 'success' : 'purple'}" style="font-size: 11px;">
+                        ${n.show_on_login ? 'Popup on Login' : 'Silent Push'}
+                    </span>
+                    <button class="btn btn-secondary btn-sm" onclick="editNotification(${n.id})" title="Modify Notice">
+                        ✏️ Modify
+                    </button>
+                    <button class="btn btn-secondary btn-sm" onclick="toggleNotificationStatus(${n.id})" title="Pause Notice">
+                        ⏸️ Pause
+                    </button>
+                    <button class="btn btn-danger btn-sm" onclick="deleteNotification(${n.id})" title="Delete Notice">
+                        🗑️
+                    </button>
+                </div>
+            </div>
+        `;
+    }).join("");
+}
+
+async function editNotification(notifId) {
+    const notif = rawNotificationsList.find(n => n.id === notifId);
+    if (!notif) return;
+
+    document.getElementById("edit-notif-id").value = notif.id;
+    document.getElementById("edit-notif-title-input").value = notif.title;
+    document.getElementById("edit-notif-type-select").value = notif.type || "warning";
+    document.getElementById("edit-notif-message-input").value = notif.message;
+    document.getElementById("edit-notif-show-login").checked = !!notif.show_on_login;
+
+    openModal("modal-edit-notif");
+}
+
+async function submitEditNotification() {
+    const notifId = document.getElementById("edit-notif-id").value;
+    const title = document.getElementById("edit-notif-title-input").value.trim();
+    const type = document.getElementById("edit-notif-type-select").value;
+    const message = document.getElementById("edit-notif-message-input").value.trim();
+    const showOnLogin = document.getElementById("edit-notif-show-login").checked;
+
+    if (!title || !message) {
+        showToast("Title and message content are required", "warning");
+        return;
+    }
+
+    const res = await apiFetch(`/api/v1/admin/notifications/${notifId}`, {
+        method: "PUT",
+        body: JSON.stringify({
+            title: title,
+            type: type,
+            message: message,
+            show_on_login: showOnLogin
+        })
+    });
+
+    if (res && res.success) {
+        showToast(res.message, "success");
+        closeModal("modal-edit-notif");
+        loadNotifications();
+    } else {
+        showToast(res?.detail || "Failed to update notice", "error");
+    }
+}
+
 async function loadNotifications() {
     const tbody = document.getElementById("notifications-table-body");
-    if (!tbody) return;
 
     if (!currentAppId) {
-        tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: var(--text-muted); padding: 40px;">No application selected. Select or create an app first.</td></tr>`;
+        if (tbody) tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: var(--text-muted); padding: 40px;">No application selected. Select or create an app first.</td></tr>`;
+        renderOverviewBroadcasts([]);
         return;
     }
 
     const data = await apiFetch(`/api/v1/admin/notifications?app_id=${currentAppId}`);
+    rawNotificationsList = (data && data.notifications) || [];
+    renderOverviewBroadcasts(rawNotificationsList);
+
+    if (!tbody) return;
+
     if (!data || !data.notifications || data.notifications.length === 0) {
         tbody.innerHTML = `
             <tr>
@@ -1667,6 +1920,9 @@ async function loadNotifications() {
                 </td>
                 <td>
                     <div style="display: flex; gap: 6px;">
+                        <button class="btn btn-secondary btn-sm" onclick="editNotification(${n.id})" title="Modify Notice">
+                            ✏️ Edit
+                        </button>
                         <button class="btn btn-secondary btn-sm" onclick="toggleNotificationStatus(${n.id})" title="Toggle Active/Disabled">
                             ${n.is_active ? '⏸️ Pause' : '▶️ Activate'}
                         </button>
@@ -1696,19 +1952,28 @@ async function createNotificationSubmit() {
         return;
     }
 
-    closeModal("modal-create-notif");
-    showToast("Broadcasting notification...", "info");
+    const notifBtn = document.querySelector("#modal-create-notif .btn-primary") || document.querySelector("[onclick='createNotificationSubmit()']");
+    const origNotifText = notifBtn ? notifBtn.innerHTML : "🚀 Broadcast Notification";
+    if (notifBtn) { notifBtn.disabled = true; notifBtn.innerHTML = "⏳ Broadcasting..."; }
 
-    const res = await apiFetch("/api/v1/admin/notifications", {
-        method: "POST",
-        body: JSON.stringify({
-            app_id: currentAppId,
-            title: title,
-            type: type,
-            message: message,
-            show_on_login: showOnLogin
-        })
-    });
+    showToast("⏳ Broadcasting client notification...", "info");
+
+    let res = null;
+    try {
+        res = await apiFetch("/api/v1/admin/notifications", {
+            method: "POST",
+            body: JSON.stringify({
+                app_id: currentAppId,
+                title: title,
+                type: type,
+                message: message,
+                show_on_login: showOnLogin
+            })
+        });
+        closeModal("modal-create-notif");
+    } finally {
+        if (notifBtn) { notifBtn.disabled = false; notifBtn.innerHTML = origNotifText; }
+    }
 
     if (res && res.success) {
         showToast(res.message, "success");
@@ -2260,18 +2525,27 @@ async function createAppSubmit() {
         return;
     }
 
-    closeModal("modal-create-app");
-    showToast("Creating application...", "info");
+    const appBtn = document.querySelector("#modal-create-app .btn-primary") || document.querySelector("[onclick='createAppSubmit()']");
+    const origAppText = appBtn ? appBtn.innerHTML : "Create App";
+    if (appBtn) { appBtn.disabled = true; appBtn.innerHTML = "⏳ Creating Enclave..."; }
 
-    const res = await apiFetch("/api/v1/admin/apps", {
-        method: "POST",
-        body: JSON.stringify({
-            name: name,
-            version: version,
-            hwid_lock_enabled: hwidLock,
-            webhook_url: webhook
-        })
-    });
+    showToast(`⏳ Creating secure application '${name}'...`, "info");
+
+    let res = null;
+    try {
+        res = await apiFetch("/api/v1/admin/apps", {
+            method: "POST",
+            body: JSON.stringify({
+                name: name,
+                version: version,
+                hwid_lock_enabled: hwidLock,
+                webhook_url: webhook
+            })
+        });
+        closeModal("modal-create-app");
+    } finally {
+        if (appBtn) { appBtn.disabled = false; appBtn.innerHTML = origAppText; }
+    }
 
     if (res && res.success) {
         showToast(res.message, "success");
@@ -2688,37 +2962,86 @@ function toggleSecretVisibility(inputId) {
     }
 }
 
-// Window Global Bindings for HTML Inline Handlers
-window.switchTab = switchTab;
-window.loadActiveTab = loadActiveTab;
-window.openModal = openModal;
-window.closeModal = closeModal;
-window.quickToggleMaintenance = quickToggleMaintenance;
-window.saveAllAppSettings = saveAllAppSettings;
-window.createAppSubmit = createAppSubmit;
-window.copyToClipboard = copyToClipboard;
-window.copyCurrentSdkSnippet = copyCurrentSdkSnippet;
-window.copyAppToken = copyAppToken;
-window.redeemPlanKeySubmit = typeof redeemPlanKeySubmit !== "undefined" ? redeemPlanKeySubmit : () => {};
-window.loadGlobalStats = loadGlobalStats;
-window.loadLicenses = typeof loadLicenses !== "undefined" ? loadLicenses : () => {};
-window.loadUsers = typeof loadUsers !== "undefined" ? loadUsers : () => {};
-window.loadTiers = typeof loadTiers !== "undefined" ? loadTiers : () => {};
-window.loadBlacklists = typeof loadBlacklists !== "undefined" ? loadBlacklists : () => {};
-window.loadResellers = typeof loadResellers !== "undefined" ? loadResellers : () => {};
-window.loadNotifications = typeof loadNotifications !== "undefined" ? loadNotifications : () => {};
-window.loadAuditLogs = typeof loadAuditLogs !== "undefined" ? loadAuditLogs : () => {};
-window.clearAuditLogs = typeof clearAuditLogs !== "undefined" ? clearAuditLogs : () => {};
-window.renderAppsPage = renderAppsPage;
-window.renderActiveAppSettings = renderActiveAppSettings;
-window.switchSettingsSubTab = switchSettingsSubTab;
-window.switchAppFromSettingsDropdown = switchAppFromSettingsDropdown;
-window.goToAppSettings = goToAppSettings;
-window.goToAppKeys = goToAppKeys;
-window.selectAppFromCard = typeof selectAppFromCard !== "undefined" ? selectAppFromCard : () => {};
-window.setSnippetLang = typeof setSnippetLang !== "undefined" ? setSnippetLang : () => {};
-window.showToast = showToast;
-window.toggleSecretVisibility = toggleSecretVisibility;
-window.escapeHtml = escapeHtml;
-window.showConfirmDialog = showConfirmDialog;
-window.regenerateSecret = typeof regenerateSecret !== "undefined" ? regenerateSecret : () => {};
+
+// Global Window Function Bindings (Guarantees zero onclick missing errors)
+const allGlobalFunctions = {
+    switchTab,
+    loadActiveTab,
+    openModal,
+    closeModal,
+    quickToggleMaintenance,
+    saveAllAppSettings,
+    createAppSubmit,
+    deleteApp,
+    regenerateSecret,
+    copyToClipboard,
+    copyCurrentSdkSnippet,
+    copyAppToken,
+    redeemPlanKeySubmit: typeof redeemPlanKeySubmit !== "undefined" ? redeemPlanKeySubmit : () => {},
+    loadGlobalStats,
+    loadLicenses: typeof loadLicenses !== "undefined" ? loadLicenses : () => {},
+    loadUsers: typeof loadUsers !== "undefined" ? loadUsers : () => {},
+    loadTiers: typeof loadTiers !== "undefined" ? loadTiers : () => {},
+    loadBlacklists: typeof loadBlacklists !== "undefined" ? loadBlacklists : () => {},
+    loadResellers: typeof loadResellers !== "undefined" ? loadResellers : () => {},
+    loadNotifications: typeof loadNotifications !== "undefined" ? loadNotifications : () => {},
+    loadAuditLogs: typeof loadAuditLogs !== "undefined" ? loadAuditLogs : () => {},
+    clearAuditLogs: typeof clearAuditLogs !== "undefined" ? clearAuditLogs : () => {},
+    renderAppsPage,
+    renderActiveAppSettings,
+    switchSettingsSubTab,
+    switchAppFromSettingsDropdown,
+    goToAppSettings,
+    goToAppKeys,
+    selectAppFromCard: typeof selectAppFromCard !== "undefined" ? selectAppFromCard : () => {},
+    setSnippetLang: typeof setSnippetLang !== "undefined" ? setSnippetLang : () => {},
+    showToast,
+    toggleSecretVisibility,
+    escapeHtml,
+    showConfirmDialog,
+    showDiscordOutputModal,
+    submitManualUser,
+    generateKeysSubmit,
+    createNotificationSubmit,
+    editNotification: typeof editNotification !== "undefined" ? editNotification : () => {},
+    submitEditNotification: typeof submitEditNotification !== "undefined" ? submitEditNotification : () => {},
+    renderOverviewBroadcasts: typeof renderOverviewBroadcasts !== "undefined" ? renderOverviewBroadcasts : () => {},
+    toggleNotificationStatus: typeof toggleNotificationStatus !== "undefined" ? toggleNotificationStatus : () => {},
+    deleteNotification: typeof deleteNotification !== "undefined" ? deleteNotification : () => {},
+    deleteLicense: typeof deleteLicense !== "undefined" ? deleteLicense : () => {},
+    toggleLicensePause: typeof toggleLicensePause !== "undefined" ? toggleLicensePause : () => {},
+    bulkDeleteLicenses: typeof bulkDeleteLicenses !== "undefined" ? bulkDeleteLicenses : () => {},
+    exportLicensesTxt: typeof exportLicensesTxt !== "undefined" ? exportLicensesTxt : () => {},
+    exportUsersTxt: typeof exportUsersTxt !== "undefined" ? exportUsersTxt : () => {},
+    resetUserHwid: typeof resetUserHwid !== "undefined" ? resetUserHwid : () => {},
+    deleteUser: typeof deleteUser !== "undefined" ? deleteUser : () => {},
+    toggleUserBan: typeof toggleUserBan !== "undefined" ? toggleUserBan : () => {},
+    bulkResetAllHwidSubmit: typeof bulkResetAllHwidSubmit !== "undefined" ? bulkResetAllHwidSubmit : () => {},
+    bulkPurgeExpiredUsersSubmit: typeof bulkPurgeExpiredUsersSubmit !== "undefined" ? bulkPurgeExpiredUsersSubmit : () => {},
+    bulkDeleteAllUsersInApp: typeof bulkDeleteAllUsersInApp !== "undefined" ? bulkDeleteAllUsersInApp : () => {},
+    toggleUsersBulkDeleteDropdown: typeof toggleUsersBulkDeleteDropdown !== "undefined" ? toggleUsersBulkDeleteDropdown : () => {},
+    createTierSubmit: typeof createTierSubmit !== "undefined" ? createTierSubmit : () => {},
+    deleteTier: typeof deleteTier !== "undefined" ? deleteTier : () => {},
+    createVariableSubmit: typeof createVariableSubmit !== "undefined" ? createVariableSubmit : () => {},
+    deleteVariable: typeof deleteVariable !== "undefined" ? deleteVariable : () => {},
+    createFileSubmit: typeof createFileSubmit !== "undefined" ? createFileSubmit : () => {},
+    deleteFile: typeof deleteFile !== "undefined" ? deleteFile : () => {},
+    createBlacklistSubmit: typeof createBlacklistSubmit !== "undefined" ? createBlacklistSubmit : () => {},
+    deleteBlacklist: typeof deleteBlacklist !== "undefined" ? deleteBlacklist : () => {},
+    createResellerSubmit: typeof createResellerSubmit !== "undefined" ? createResellerSubmit : () => {},
+    deleteReseller: typeof deleteReseller !== "undefined" ? deleteReseller : () => {},
+    saveDiscordWebhookUrl: typeof saveDiscordWebhookUrl !== "undefined" ? saveDiscordWebhookUrl : () => {},
+    sendTestWebhook: typeof sendTestWebhook !== "undefined" ? sendTestWebhook : () => {},
+    openBulkExtendUsersModal: typeof openBulkExtendUsersModal !== "undefined" ? openBulkExtendUsersModal : () => {},
+    submitBulkExtendUsers: typeof submitBulkExtendUsers !== "undefined" ? submitBulkExtendUsers : () => {},
+    submitExtendUser: typeof submitExtendUser !== "undefined" ? submitExtendUser : () => {},
+    openExtendModal: typeof openExtendModal !== "undefined" ? openExtendModal : () => {},
+    batchBanSelected: typeof batchBanSelected !== "undefined" ? batchBanSelected : () => {},
+    batchDeleteSelected: typeof batchDeleteSelected !== "undefined" ? batchDeleteSelected : () => {},
+    batchExtendSelected: typeof batchExtendSelected !== "undefined" ? batchExtendSelected : () => {},
+    batchResetHwidSelected: typeof batchResetHwidSelected !== "undefined" ? batchResetHwidSelected : () => {}
+};
+
+Object.entries(allGlobalFunctions).forEach(([name, fn]) => {
+    window[name] = fn;
+});

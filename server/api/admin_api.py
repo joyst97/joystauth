@@ -461,6 +461,26 @@ async def toggle_notification(notif_id: int, dev: Developer = Depends(get_curren
     status_label = "active" if notif.is_active else "disabled"
     return {"success": True, "message": f"Notification marked as {status_label}", "is_active": notif.is_active}
 
+@router.put("/notifications/{notif_id}")
+async def update_notification(notif_id: int, data: UpdateNotificationRequest, dev: Developer = Depends(get_current_developer), db: Session = Depends(get_db)):
+    notif = db.query(AppNotification).join(Application).filter(AppNotification.id == notif_id, Application.developer_id == dev.id).first()
+    if not notif:
+        raise HTTPException(status_code=404, detail="Notification not found")
+    
+    if data.title is not None:
+        notif.title = data.title.strip()
+    if data.message is not None:
+        notif.message = data.message.strip()
+    if data.type is not None:
+        notif.type = data.type
+    if data.show_on_login is not None:
+        notif.show_on_login = data.show_on_login
+    if data.is_active is not None:
+        notif.is_active = data.is_active
+
+    db.commit()
+    return {"success": True, "message": "Broadcast notice updated successfully!"}
+
 @router.post("/apps/{app_id}/regenerate-secret")
 async def regenerate_app_secret(app_id: int, dev: Developer = Depends(get_current_developer), db: Session = Depends(get_db)):
     app = db.query(Application).filter(Application.id == app_id, Application.developer_id == dev.id).first()
