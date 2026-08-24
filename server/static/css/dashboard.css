@@ -1167,6 +1167,10 @@ code, pre, .mono {
     padding: 20px;
 }
 
+.modal-overlay.active {
+    display: flex !important;
+}
+
 .modal-box {
     background: linear-gradient(180deg, rgba(22, 6, 13, 0.96) 0%, rgba(10, 3, 7, 0.98) 100%);
     border: 1px solid rgba(255, 42, 95, 0.35);

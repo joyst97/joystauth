@@ -47,7 +47,9 @@ EMOJI = {
     "crown": "<a:86751whitedripheart:1320786130869817526>",
     "arrow": "<a:32877animatedarrowbluelite:1396718513787371530>",
     "wave": "<a:pikachu_wave:1320787117881823252>",
-    "giveaway": "<a:Giveaway86:1441323391209570446>"
+    "giveaway": "<a:Giveaway86:1441323391209570446>",
+    "audio": "<a:Playing_Audio:1534236884639944705>",
+    "question": "<a:question1:1534236585456046274>"
 }
 
 # Theme Palette (High-Contrast Cyberpunk Gradient Aesthetics)

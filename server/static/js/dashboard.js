@@ -1116,7 +1116,7 @@ async function batchDeleteSelected() {
 async function batchBanSelected() {
     const selected = getSelectedUserIds();
     if (selected.length === 0) return;
-    const reason =mpt(`Enter reason for banning ${selected.length} user(s):`, "Violation of terms");
+    const reason = prompt(`Enter reason for banning ${selected.length} user(s):`, "Violation of terms");
     if (reason === null) return;
 
     const res = await apiFetch("/api/v1/admin/users/bulk-ban", {
@@ -1255,7 +1255,7 @@ async function resetUserHwid(userId, username) {
 
 async function toggleUserBan(userId, username, isCurrentlyBanned) {
     if (!isCurrentlyBanned) {
-        const reason =mpt(`Enter reason for banning '${username}':`, "Violation of terms");
+        const reason = prompt(`Enter reason for banning '${username}':`, "Violation of terms");
         if (reason === null) return;
         const res = await apiFetch(`/api/v1/admin/users/${userId}/toggle-ban`, {
             method: "POST",
