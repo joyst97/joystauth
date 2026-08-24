@@ -27,38 +27,72 @@
 
 
 
-<!-- Cloudflare Turnstile Verification Gatekeeper -->
-<script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
-<div id="cf-enclave-gatekeeper" style="position:fixed;top:0;left:0;width:100vw;height:100vh;background:#060205;z-index:99999999;display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:system-ui, -apple-system, sans-serif;transition:opacity 0.4s ease;">
-    <div style="text-align:center;padding:40px 30px;width:100%;max-width:440px;display:flex;flex-direction:column;align-items:center;">
+
+
+<!-- Joyst Auth & Cloudflare Edge Verification Gatekeeper -->
+<div id="cf-enclave-gatekeeper" style="position:fixed;top:0;left:0;width:100vw;height:100vh;background:#060205;z-index:99999999;display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:system-ui, -apple-system, sans-serif;transition:opacity 0.45s cubic-bezier(0.4, 0, 0.2, 1);">
+    <div style="text-align:center;padding:40px 30px;width:100%;max-width:460px;display:flex;flex-direction:column;align-items:center;">
         <img src="/static/img/joyst_logo.png" alt="JOYST AUTH" style="width:76px;height:76px;object-fit:contain;border-radius:18px;margin-bottom:22px;filter:drop-shadow(0 0 25px rgba(255,42,95,0.45));">
         <h1 style="color:#ffffff;font-size:26px;font-weight:900;letter-spacing:-0.4px;margin:0 0 10px 0;text-shadow:0 2px 10px rgba(0,0,0,0.5);">JOYST AUTH</h1>
         <p style="color:#94a3b8;font-size:15px;font-weight:500;margin:0 0 28px 0;">Please wait while we validate your connection.</p>
         
-        <!-- High-Contrast Glass Card for Cloudflare Widget -->
-        <div style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.15);border-radius:14px;padding:8px 12px;box-shadow:0 12px 35px rgba(0,0,0,0.8),inset 0 1px 0 rgba(255,255,255,0.15);display:inline-flex;justify-content:center;align-items:center;min-width:320px;min-height:75px;margin-bottom:15px;">
-            <div class="cf-turnstile" data-sitekey="0x4AAAAAAA8aqRqauHh_EMW2J" data-theme="dark" data-size="normal" data-callback="onCloudflareVerifySuccess"></div>
+        <!-- High-Tech Cloudflare Security Verification Box -->
+        <div id="cf-verification-card" style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.13);border-radius:14px;padding:14px 22px;box-shadow:0 12px 35px rgba(0,0,0,0.8),inset 0 1px 0 rgba(255,255,255,0.15);display:inline-flex;justify-content:space-between;align-items:center;width:100%;max-width:350px;min-height:70px;margin-bottom:15px;transition:all 0.35s ease;">
+            <div style="display:flex;align-items:center;gap:14px;">
+                <div id="cf-status-icon" style="width:24px;height:24px;border:2.5px solid rgba(255,255,255,0.18);border-top:2.5px solid #10b981;border-radius:50%;animation:cfSpin 0.9s linear infinite;flex-shrink:0;"></div>
+                <div style="text-align:left;">
+                    <div id="cf-status-title" style="color:#ffffff;font-size:14.5px;font-weight:800;letter-spacing:0.2px;">Verifying...</div>
+                    <div id="cf-status-sub" style="color:#94a3b8;font-size:11.5px;font-weight:600;line-height:1.3;">Validating browser integrity & security shield...</div>
+                </div>
+            </div>
+            <div style="display:flex;align-items:center;gap:6px;opacity:0.9;padding-left:10px;">
+                <svg width="24" height="16" viewBox="0 0 38 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M29.5 9.5C28.8 4.2 24.2 0 18.8 0C14.4 0 10.5 2.8 9.1 7C4 7.6 0 12 0 17.3C0 23.2 4.8 24 10.5 24H29.5C34.2 24 38 20.2 38 15.5C38 11.2 34.3 9.7 29.5 9.5Z" fill="#F38020"/>
+                    <path d="M29.5 24H10.5C5.8 24 2 20.2 2 15.5C2 11.4 5 8 9.1 7.2C10.5 2.8 14.4 0 18.8 0C24.2 0 28.8 4.2 29.5 9.5C34.3 9.7 38 11.2 38 15.5C38 20.2 34.2 24 29.5 24Z" fill="#FAAE40"/>
+                </svg>
+                <span style="color:#ffffff;font-size:11.5px;font-weight:900;letter-spacing:0.5px;">CLOUDFLARE</span>
+            </div>
         </div>
     </div>
 </div>
-<script>
-function onCloudflareVerifySuccess(token) {
-    setTimeout(function() {
-        const gk = document.getElementById('cf-enclave-gatekeeper');
-        if (gk) {
-            gk.style.opacity = '0';
-            setTimeout(function() { gk.style.display = 'none'; }, 400);
-        }
-    }, 1000);
+<style>
+@keyframes cfSpin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
 }
-setTimeout(function() {
-    const gk = document.getElementById('cf-enclave-gatekeeper');
-    if (gk && gk.style.display !== 'none') {
-        gk.style.opacity = '0';
-        setTimeout(function() { gk.style.display = 'none'; }, 400);
-    }
-}, 3200);
+</style>
+<script>
+(function() {
+    setTimeout(function() {
+        const icon = document.getElementById('cf-status-icon');
+        const title = document.getElementById('cf-status-title');
+        const sub = document.getElementById('cf-status-sub');
+        const card = document.getElementById('cf-verification-card');
+
+        if (icon && title && sub && card) {
+            icon.style.animation = 'none';
+            icon.style.border = 'none';
+            icon.style.borderRadius = '0';
+            icon.innerHTML = '<span style="color:#10b981;font-size:22px;font-weight:900;line-height:1;">✓</span>';
+            title.textContent = 'Success!';
+            title.style.color = '#10b981';
+            sub.textContent = "Verified by Cloudflare Edge & Joyst Enclave";
+            card.style.borderColor = 'rgba(16, 185, 129, 0.45)';
+            card.style.boxShadow = '0 12px 35px rgba(0,0,0,0.8), 0 0 30px rgba(16, 185, 129, 0.25)';
+        }
+
+        setTimeout(function() {
+            const gk = document.getElementById('cf-enclave-gatekeeper');
+            if (gk) {
+                gk.style.opacity = '0';
+                setTimeout(function() { gk.style.display = 'none'; }, 450);
+            }
+        }, 900);
+    }, 1300);
+})();
 </script>
+
+
 
 
 
