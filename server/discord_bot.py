@@ -28,23 +28,27 @@ if discord:
     class JoystBot(commands.Bot):
         def __init__(self):
             intents = discord.Intents.default()
-            intents.message_content = True
-            intents.members = True
             super().__init__(command_prefix="!", intents=intents)
 
         async def setup_hook(self):
-            # Sync global slash commands across all servers and DMs
-            print("[DISCORD BOT] Syncing application slash commands globally...")
-            await self.tree.sync()
-            print("[DISCORD BOT] Global slash commands synchronized!")
+            try:
+                print("[DISCORD BOT] Syncing application slash commands globally...")
+                synced = await self.tree.sync()
+                print(f"[DISCORD BOT] Global slash commands synchronized! ({len(synced)} commands ready)")
+            except Exception as e:
+                print(f"[DISCORD BOT] Slash commands sync notice: {e}")
 
         async def on_ready(self):
-            print(f"[DISCORD BOT] Logged in as {self.user} (ID: {self.user.id})")
-            activity = discord.Activity(
-                type=discord.ActivityType.watching,
-                name="JOYST AUTH | joystauth.cc"
-            )
-            await self.change_presence(status=discord.Status.online, activity=activity)
+            print(f"[DISCORD BOT] Logged in successfully as {self.user} (ID: {self.user.id})")
+            try:
+                activity = discord.Activity(
+                    type=discord.ActivityType.watching,
+                    name="JOYST AUTH | joystauth.cc"
+                )
+                await self.change_presence(status=discord.Status.online, activity=activity)
+                print("[DISCORD BOT] Presence status set to ONLINE!")
+            except Exception as e:
+                print(f"[DISCORD BOT] Presence error: {e}")
 
     bot = JoystBot()
 
@@ -289,10 +293,16 @@ if discord:
         await interaction.response.send_message(embed=embed)
 
     def run_discord_bot():
-        if not DISCORD_BOT_TOKEN:
-            print("[DISCORD BOT] No DISCORD_BOT_TOKEN configured.")
+        token = os.getenv("DISCORD_BOT_TOKEN") or DISCORD_BOT_TOKEN
+        if not token or not token.strip():
+            print("[DISCORD BOT ERROR] No DISCORD_BOT_TOKEN found in environment variables.")
+            print("[DISCORD BOT HINT] Set DISCORD_BOT_TOKEN in your hosting environment variables or .env file.")
             return
-        bot.run(DISCORD_BOT_TOKEN)
+        print("[DISCORD BOT] Starting Joyst Auth Discord Bot client...")
+        try:
+            bot.run(token.strip())
+        except Exception as e:
+            print(f"[DISCORD BOT FATAL ERROR] {e}")
 
 if __name__ == "__main__":
     if discord:
