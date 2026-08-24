@@ -2026,3 +2026,151 @@ async def bot_broadcast_warning(data: BotWarningRequest, db: Session = Depends(g
         "type": notif.type,
         "notification_id": notif.id
     }
+
+
+# ==================== BOT DELETE & LIST ENDPOINTS ====================
+class BotDeleteUserRequest(BaseModel):
+    discord_id: str
+    discord_username: Optional[str] = ""
+    target_username: str
+
+@router.post("/bot/deluser")
+async def bot_delete_user(data: BotDeleteUserRequest, db: Session = Depends(get_db)):
+    d_id = str(data.discord_id).strip()
+    dev = db.query(Developer).filter(Developer.discord_id == d_id).first()
+    if not dev:
+        raise HTTPException(status_code=404, detail="No linked Developer account found.")
+
+    apps = db.query(Application).filter(Application.developer_id == dev.id).all()
+    app_ids = [a.id for a in apps]
+    if not app_ids:
+        raise HTTPException(status_code=404, detail="No applications found.")
+
+    u = db.query(User).filter(User.app_id.in_(app_ids), User.username.ilike(data.target_username.strip())).first()
+    if not u:
+        raise HTTPException(status_code=404, detail=f"User '{data.target_username}' not found.")
+
+    uname = u.username
+    app_id = u.app_id
+    db.delete(u)
+    db.commit()
+    log_audit(db, app_id, "USER_DELETED", details=f"Client user '{uname}' deleted via Discord by @{data.discord_username}", status="DANGER")
+
+    return {
+        "success": True,
+        "message": f"Client user '{uname}' permanently deleted.",
+        "username": uname
+    }
+
+class BotDeleteKeyRequest(BaseModel):
+    discord_id: str
+    discord_username: Optional[str] = ""
+    target_key: str
+
+@router.post("/bot/delkey")
+async def bot_delete_key(data: BotDeleteKeyRequest, db: Session = Depends(get_db)):
+    d_id = str(data.discord_id).strip()
+    dev = db.query(Developer).filter(Developer.discord_id == d_id).first()
+    if not dev:
+        raise HTTPException(status_code=404, detail="No linked Developer account found.")
+
+    apps = db.query(Application).filter(Application.developer_id == dev.id).all()
+    app_ids = [a.id for a in apps]
+    if not app_ids:
+        raise HTTPException(status_code=404, detail="No applications found.")
+
+    lic = db.query(License).filter(License.app_id.in_(app_ids), License.license_key == data.target_key.strip()).first()
+    if not lic:
+        raise HTTPException(status_code=404, detail=f"License key '{data.target_key}' not found.")
+
+    k = lic.license_key
+    app_id = lic.app_id
+    db.delete(lic)
+    db.commit()
+    log_audit(db, app_id, "KEY_DELETED", details=f"License key '{k}' deleted via Discord by @{data.discord_username}", status="DANGER")
+
+    return {
+        "success": True,
+        "message": f"License key '{k}' permanently deleted.",
+        "key": k
+    }
+
+class BotListUsersRequest(BaseModel):
+    discord_id: str
+    discord_username: Optional[str] = ""
+    app_name: Optional[str] = None
+    limit: Optional[int] = 15
+
+@router.post("/bot/listusers")
+async def bot_list_users(data: BotListUsersRequest, db: Session = Depends(get_db)):
+    d_id = str(data.discord_id).strip()
+    dev = db.query(Developer).filter(Developer.discord_id == d_id).first()
+    if not dev:
+        raise HTTPException(status_code=404, detail="No linked Developer account found.")
+
+    query = db.query(User).join(Application).filter(Application.developer_id == dev.id)
+    if data.app_name:
+        query = query.filter(Application.name.ilike(data.app_name.strip()))
+
+    total = query.count()
+    users = query.order_by(desc(User.id)).limit(min(max(1, data.limit or 15), 50)).all()
+
+    return {
+        "success": True,
+        "total": total,
+        "users": [
+            {
+                "id": u.id,
+                "username": u.username,
+                "subscription": u.subscription,
+                "expires_at": u.expires_at.strftime("%Y-%m-%d %H:%M") if u.expires_at else "Lifetime",
+                "is_banned": u.is_banned,
+                "last_login": u.last_login.strftime("%Y-%m-%d %H:%M") if u.last_login else "Never",
+                "hwid_locked": bool(u.hwid)
+            }
+            for u in users
+        ]
+    }
+
+class BotListKeysRequest(BaseModel):
+    discord_id: str
+    discord_username: Optional[str] = ""
+    app_name: Optional[str] = None
+    status_filter: Optional[str] = None # unused, used, all
+    limit: Optional[int] = 15
+
+@router.post("/bot/listkeys")
+async def bot_list_keys(data: BotListKeysRequest, db: Session = Depends(get_db)):
+    d_id = str(data.discord_id).strip()
+    dev = db.query(Developer).filter(Developer.discord_id == d_id).first()
+    if not dev:
+        raise HTTPException(status_code=404, detail="No linked Developer account found.")
+
+    query = db.query(License).join(Application).filter(Application.developer_id == dev.id)
+    if data.app_name:
+        query = query.filter(Application.name.ilike(data.app_name.strip()))
+    if data.status_filter and data.status_filter != "all":
+        query = query.filter(License.status == data.status_filter.lower())
+
+    total = query.count()
+    unused_count = db.query(License).join(Application).filter(Application.developer_id == dev.id, License.status == "unused").count()
+    used_count = db.query(License).join(Application).filter(Application.developer_id == dev.id, License.status == "used").count()
+
+    keys = query.order_by(desc(License.id)).limit(min(max(1, data.limit or 15), 50)).all()
+
+    return {
+        "success": True,
+        "total": total,
+        "unused_count": unused_count,
+        "used_count": used_count,
+        "keys": [
+            {
+                "key": k.license_key,
+                "duration_days": k.duration_days,
+                "level": k.level,
+                "status": k.status,
+                "used_by": k.used_by_username or "None"
+            }
+            for k in keys
+        ]
+    }

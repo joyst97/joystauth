@@ -28,12 +28,38 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Inbuilt Anti-Stale-Cache & Auto Discord Incident Telemetry Middleware
+BLOCKED_SCRAPER_KEYWORDS = [
+    "httrack", "wget", "sitesucker", "teleport", "webcopier",
+    "offline explorer", "webrip", "grabber", "extractor", "nikto",
+    "sqlmap", "dirbuster", "gobuster", "wprecon", "masscan", "zgrab"
+]
+
+# Anti-Scraper, Zero-Leak Enclave & Anti-Stale-Cache Middleware
 @app.middleware("http")
-async def incident_and_cache_middleware(request: Request, call_next):
+async def enclave_security_and_cache_middleware(request: Request, call_next):
+    user_agent = (request.headers.get("user-agent") or "").lower()
+    path = request.url.path
+
+    # 1. Anti-Ripper Tool Blocker (Block known automated downloaders from stealing HTML/Assets)
+    if any(k in user_agent for k in BLOCKED_SCRAPER_KEYWORDS):
+        return JSONResponse(
+            status_code=403,
+            content={
+                "success": False,
+                "detail": "🛡️ ACCESS DENIED: Automated Scraping / Extraction Tool Intercepted by Joyst Zero-Leak Enclave Shield."
+            }
+        )
+
     try:
         response = await call_next(request)
-        # Ensure browsers and proxies always fetch the freshest 0-second updated HTML/API
+
+        # 2. Hardened Security Headers
+        response.headers["X-Frame-Options"] = "SAMEORIGIN"
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["X-XSS-Protection"] = "1; mode=block"
+        response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+
+        # 3. Ensure browsers and proxies always fetch the freshest 0-second updated HTML/API
         if "text/html" in response.headers.get("content-type", "") or "application/json" in response.headers.get("content-type", ""):
             response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate, max-age=0"
             response.headers["Pragma"] = "no-cache"
