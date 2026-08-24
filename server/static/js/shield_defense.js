@@ -1,6 +1,6 @@
 /**
- * JOYST AUTH — Client-Side Zero-Leak Enclave Defense Shield
- * Universal Anti-Inspect, Anti-F12, Anti-DevTools Debugger Trap & Console Wiper
+ * JOYST AUTH — Hyper-Aggressive Client-Side Enclave Defense Shield
+ * Universal Anti-Inspect, Anti-F12, Anti-DevTools Debugger Lock, Console Wiper & DOM Blinder
  */
 (function () {
     "use strict";
@@ -8,6 +8,7 @@
     // 1. Disable Right Click Context Menu
     document.addEventListener("contextmenu", function (e) {
         e.preventDefault();
+        e.stopPropagation();
         return false;
     }, { capture: true });
 
@@ -63,43 +64,59 @@
         }
     }, { capture: true });
 
-    // 3. Anti-DevTools Debugger Trap (Freezes DevTools if forced open)
-    function launchDebuggerTrap() {
-        function checkTrap(count) {
-            (function () {
-                return false;
-            }
-            ["constructor"]("debugger")());
-            checkTrap(++count);
-        }
+    // 3. Ultra-Aggressive Debugger Freeze Loop (Freezes DevTools if forced open)
+    let isLocked = false;
+
+    function triggerLockout() {
+        if (isLocked) return;
+        isLocked = true;
         try {
-            checkTrap(0);
-        } catch (err) {}
+            document.body.innerHTML = `
+                <div style="position:fixed;top:0;left:0;width:100vw;height:100vh;background:#060205;color:#ff2a5f;display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:system-ui, -apple-system, sans-serif;z-index:99999999;text-align:center;padding:20px;">
+                    <div style="width:70px;height:70px;border-radius:50%;background:rgba(255,42,95,0.15);border:2px solid #ff2a5f;display:flex;align-items:center;justify-content:center;font-size:32px;margin-bottom:20px;box-shadow:0 0 30px rgba(255,42,95,0.5);">🛡️</div>
+                    <h1 style="font-size:26px;font-weight:900;letter-spacing:0.5px;color:#fff;margin-bottom:10px;text-shadow:0 0 20px rgba(255,42,95,0.8);">SECURITY SHIELD • DEVTOOLS DETECTED</h1>
+                    <p style="color:#94a3b8;font-size:15px;max-width:500px;line-height:1.6;margin-bottom:25px;">Inspection of Joyst Enclave DOM & source code is strictly prohibited. Please close Developer Tools and reload.</p>
+                    <button onclick="window.location.reload()" style="background:linear-gradient(135deg,#ff2a5f,#e11d48);color:#fff;border:none;padding:12px 28px;border-radius:12px;font-weight:800;cursor:pointer;font-size:14px;box-shadow:0 6px 20px rgba(255,42,95,0.5);">Reload Application</button>
+                </div>
+            `;
+        } catch (e) {}
+
+        // Infinite Debugger Hang Loop
+        setInterval(function () {
+            (function () { return false; }["constructor"]("debugger")());
+        }, 50);
     }
 
-    // 4. Detect Window Resize Anomaly (Docked DevTools Inspector)
+    // 4. DevTools Detection Mechanisms
     let threshold = 160;
+
+    // A. Dimension Delta Check
     setInterval(function () {
         let widthThreshold = window.outerWidth - window.innerWidth > threshold;
         let heightThreshold = window.outerHeight - window.innerHeight > threshold;
         if (widthThreshold || heightThreshold) {
-            launchDebuggerTrap();
+            triggerLockout();
+        }
+    }, 500);
+
+    // B. Console Performance Profiler Timing Check
+    setInterval(function () {
+        let startTime = performance.now();
+        console.log("");
+        console.clear();
+        let endTime = performance.now();
+        if (endTime - startTime > 100) {
+            triggerLockout();
         }
     }, 1000);
 
-    // 5. Periodic Console Sweeper & Tamper Alert
-    setInterval(function () {
-        try {
-            console.clear();
-            console.log(
-                "%c🛡️ JOYST AUTH ZERO-LEAK SECURITY ENCLAVE ACTIVE",
-                "color: #FF2A5F; font-size: 22px; font-weight: 900; text-shadow: 0 0 10px rgba(255,42,95,0.8);"
-            );
-            console.log(
-                "%c⚠️ UNAUTHORIZED INSPECTION OR SCRAPING IS STRICTLY PROHIBITED AND LOGGED.",
-                "color: #F59E0B; font-size: 13px; font-weight: bold;"
-            );
-        } catch (e) {}
-    }, 2000);
+    // C. ToString Trap
+    let element = new Image();
+    Object.defineProperty(element, "id", {
+        get: function () {
+            triggerLockout();
+        }
+    });
+    console.log("%c", element);
 
 })();
