@@ -3182,3 +3182,40 @@ const allGlobalFunctions = {
 Object.entries(allGlobalFunctions).forEach(([name, fn]) => {
     window[name] = fn;
 });
+
+
+// Delete Account Handler
+async function submitDeleteAccount() {
+    const confirmInput = document.getElementById("delete-account-confirm-input");
+    const confirmText = confirmInput ? confirmInput.value.trim() : "";
+    if (!confirmText) {
+        showToast("Please type DELETE to confirm.", "error");
+        return;
+    }
+
+    try {
+        const token = localStorage.getItem("auth_admin_token");
+        const res = await fetch("/api/v1/auth/delete-account", {
+            method: "DELETE",
+            headers: {
+                "Authorization": `Bearer ${token}`,
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({ confirm_text: confirmText })
+        });
+
+        const data = await res.json();
+        if (res.ok && data.success) {
+            showToast("Account deleted successfully. Goodbye!", "success");
+            localStorage.clear();
+            sessionStorage.clear();
+            setTimeout(() => {
+                window.location.replace("/login");
+            }, 1200);
+        } else {
+            showToast(data.detail || "Failed to delete account.", "error");
+        }
+    } catch (err) {
+        showToast("Error: " + err.message, "error");
+    }
+}

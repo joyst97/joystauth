@@ -675,3 +675,24 @@ async def client_gateway(req_data: EncryptedPayloadRequest, request: Request, db
         "data": encrypted_response,
         "signature": signature
     }
+
+
+@router.post("/telemetry/visit")
+async def record_website_visit(request: Request):
+    """Receives frontend visitor telemetry and triggers real-time Discord webhook alert."""
+    try:
+        data = await request.json()
+    except Exception:
+        data = {}
+
+    page = data.get("page") or "/"
+    referrer = data.get("referrer") or ""
+    screen = data.get("screen") or ""
+    
+    ip = request.headers.get("CF-Connecting-IP") or request.headers.get("X-Forwarded-For") or request.client.host
+    user_agent = request.headers.get("User-Agent") or ""
+    country = request.headers.get("CF-IPCountry") or ""
+
+    from server.config import notify_website_visitor
+    notify_website_visitor(page_name=page, ip=ip, user_agent=user_agent, referrer=referrer, country=country, screen=screen)
+    return {"status": "ok"}

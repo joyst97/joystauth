@@ -428,3 +428,24 @@ function initParticleText() {
 
 
 
+
+
+// Real-time Visitor Webhook Beacon
+(function() {
+    try {
+        const payload = {
+            page: window.location.pathname + window.location.search,
+            referrer: document.referrer || "Direct Link",
+            screen: window.innerWidth + "x" + window.innerHeight
+        };
+        if (navigator.sendBeacon) {
+            navigator.sendBeacon('/api/v1/client/telemetry/visit', JSON.stringify(payload));
+        } else {
+            fetch('/api/v1/client/telemetry/visit', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            }).catch(function() {});
+        }
+    } catch (e) {}
+})();

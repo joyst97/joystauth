@@ -697,3 +697,35 @@ async def change_password(data: ChangePasswordRequest, dev: Developer = Depends(
     dev.password_hash = hash_password(data.new_password)
     db.commit()
     return {"success": True, "message": "Password updated successfully"}
+
+
+class DeleteAccountRequest(BaseModel):
+    confirm_text: str
+
+@router.delete("/delete-account")
+async def delete_account(data: DeleteAccountRequest, dev: Developer = Depends(get_current_developer), db: Session = Depends(get_db)):
+    """Permanently deletes developer account and all associated applications, keys, and users."""
+    if data.confirm_text.strip().lower() != dev.username.strip().lower() and data.confirm_text.strip() != "DELETE":
+        raise HTTPException(status_code=400, detail=f"Please type '{dev.username}' or 'DELETE' to confirm account deletion.")
+
+    from ..database import Application, User, License, AppVariable, AppFile, Blacklist, Reseller, AuditLog
+    
+    # 1. Find all apps belonging to developer
+    apps = db.query(Application).filter(Application.developer_id == dev.id).all()
+    app_ids = [a.id for a in apps]
+
+    if app_ids:
+        db.query(User).filter(User.app_id.in_(app_ids)).delete(synchronize_session=False)
+        db.query(License).filter(License.app_id.in_(app_ids)).delete(synchronize_session=False)
+        db.query(AppVariable).filter(AppVariable.app_id.in_(app_ids)).delete(synchronize_session=False)
+        db.query(AppFile).filter(AppFile.app_id.in_(app_ids)).delete(synchronize_session=False)
+        db.query(Blacklist).filter(Blacklist.app_id.in_(app_ids)).delete(synchronize_session=False)
+        db.query(Reseller).filter(Reseller.app_id.in_(app_ids)).delete(synchronize_session=False)
+        db.query(AuditLog).filter(AuditLog.app_id.in_(app_ids)).delete(synchronize_session=False)
+        db.query(Application).filter(Application.developer_id == dev.id).delete(synchronize_session=False)
+
+    # 2. Delete developer account
+    db.delete(dev)
+    db.commit()
+
+    return {"success": True, "message": "Your developer account and all applications have been permanently deleted."}

@@ -232,3 +232,70 @@ def send_discord_system_lifecycle_alert(event_type: str, details: str = ""):
             pass
 
     threading.Thread(target=_post, daemon=True).start()
+
+
+_RECENT_VISITORS = {}
+
+def notify_website_visitor(page_name: str, ip: str, user_agent: str = "", referrer: str = "", country: str = "", screen: str = ""):
+    """Dispatches a real-time Discord Webhook embed when a user views the website."""
+    import time
+    import threading
+    now = time.time()
+    clean_ip = ip.split(',')[0].strip() if ip else '127.0.0.1'
+    cache_key = f"{clean_ip}:{page_name}"
+    
+    # 90 seconds cooldown per visitor IP per page to prevent spamming
+    if cache_key in _RECENT_VISITORS and (now - _RECENT_VISITORS[cache_key]) < 90:
+        return
+    _RECENT_VISITORS[cache_key] = now
+
+    # Clean up old cache entries
+    if len(_RECENT_VISITORS) > 500:
+        cutoff = now - 300
+        for k in list(_RECENT_VISITORS.keys()):
+            if _RECENT_VISITORS[k] < cutoff:
+                _RECENT_VISITORS.pop(k, None)
+
+    webhook_url = os.getenv("VISITOR_WEBHOOK_URL") or os.getenv("DISCORD_WEBHOOK_URL") or DEFAULT_DISCORD_WEBHOOK_URL
+    if not webhook_url or not webhook_url.startswith("http"):
+        return
+
+    # Parse device info from user agent
+    ua = user_agent.lower() if user_agent else ""
+    device_icon = "💻"
+    os_name = "Windows" if "windows" in ua else ("macOS" if "mac" in ua else ("Linux" if "linux" in ua else ("Android" if "android" in ua else ("iOS / iPhone" if "iphone" in ua or "ipad" in ua else "Device"))))
+    browser = "Chrome" if "chrome" in ua and "edg" not in ua else ("Edge" if "edg" in ua else ("Firefox" if "firefox" in ua else ("Safari" if "safari" in ua and "chrome" not in ua else "Browser")))
+    
+    if "mobile" in ua or "android" in ua or "iphone" in ua:
+        device_icon = "📱"
+    elif "ipad" in ua or "tablet" in ua:
+        device_icon = "📟"
+
+    device_str = f"{device_icon} {browser} on {os_name}"
+    if screen:
+        device_str += f" ({screen})"
+
+    embed = {
+        "title": "👁️ New Website Visitor Detected!",
+        "description": f"A user is currently browsing the **JOYST AUTH** platform.",
+        "color": 0xFF2A5F,
+        "fields": [
+            {"name": "📍 Page Viewed", "value": f"**`{page_name}`**", "inline": True},
+            {"name": "🌍 Location / IP", "value": f"**`{country or 'Global'}`** (`{clean_ip}`)", "inline": True},
+            {"name": "💻 Device & Platform", "value": f"`{device_str}`", "inline": False},
+            {"name": "🔗 Traffic Source", "value": f"`{referrer or 'Direct / URL'}`", "inline": True},
+            {"name": "🌐 Live Portal", "value": "[joystauth.cc](https://joystauth.cc)", "inline": True}
+        ],
+        "footer": {
+            "text": "Joyst Auth • Real-Time Web Telemetry Core"
+        },
+        "timestamp": datetime.datetime.utcnow().isoformat()
+    }
+
+    def _async_send():
+        try:
+            requests.post(webhook_url, json={"embeds": [embed]}, timeout=5)
+        except Exception:
+            pass
+
+    threading.Thread(target=_async_send, daemon=True).start()

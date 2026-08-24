@@ -116,6 +116,28 @@
             100% { opacity: 1; transform: translateY(0) scale(1); }
         }
     </style>
+
+    <script>
+        // 2-Hour KeyAuth-Style Auto-Login Session Check
+        (function() {
+            try {
+                const token = localStorage.getItem("auth_admin_token");
+                const loginTime = parseInt(localStorage.getItem("auth_login_time") || "0", 10);
+                const TWO_HOURS_MS = 2 * 60 * 60 * 1000;
+                const now = Date.now();
+
+                // If token exists and was logged in within 2 hours, auto-redirect directly to dashboard!
+                if (token && (now - loginTime) < TWO_HOURS_MS) {
+                    window.location.replace("/dashboard");
+                } else if (token && (now - loginTime) >= TWO_HOURS_MS) {
+                    // Session expired after 2 hours
+                    localStorage.removeItem("auth_admin_token");
+                    localStorage.removeItem("auth_login_time");
+                }
+            } catch (e) {}
+        })();
+    </script>
+
 </head>
 <body>
     <canvas id="bg-particles"></canvas>
@@ -197,47 +219,97 @@
             }, 3000);
         }
 
+        
+        function handleGoogleCredentialResponse(response) {
+            if (response && response.credential) {
+                try {
+                    const payload = JSON.parse(atob(response.credential.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
+                    fetch("/api/v1/auth/google", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ email: payload.email, name: payload.name, google_id: payload.sub })
+                    }).then(r => r.json()).then(data => {
+                        if (data.access_token) {
+                            localStorage.setItem("auth_admin_token", data.access_token);
+                    localStorage.setItem("auth_login_time", Date.now().toString());
+                            localStorage.setItem("dev_owner_id", data.owner_id);
+                            localStorage.setItem("dev_username", data.username);
+                            showToast("Login Successful! Welcome to Joyst Auth", "success");
+                            setTimeout(() => {
+                                window.location.href = data.redirect_url || "/dashboard";
+                            }, 400);
+                        } else {
+                            showToast(data.detail || "Google authentication failed", "error");
+                        }
+                    }).catch(err => {
+                        showToast("Connection failed: " + err.message, "error");
+                    });
+                } catch (e) {
+                    console.error("JWT Decode error:", e);
+                }
+            }
+        }
+
         let tokenClient;
 
         function initGoogleServices() {
-            if (window.google && window.google.accounts && window.google.accounts.oauth2) {
+            if (window.google && window.google.accounts) {
                 try {
-                    tokenClient = google.accounts.oauth2.initTokenClient({
-                        client_id: GOOGLE_CLIENT_ID,
-                        scope: "openid email profile",
-                        prompt: "select_account",
-                        callback: async (tokenResponse) => {
-                            if (tokenResponse && tokenResponse.access_token) {
-                                try {
-                                    const userInfoRes = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
-                                        headers: { Authorization: `Bearer ${tokenResponse.access_token}` }
-                                    });
-                                    const userInfo = await userInfoRes.json();
-                                    const res = await fetch("/api/v1/auth/google", {
-                                        method: "POST",
-                                        headers: { "Content-Type": "application/json" },
-                                        body: JSON.stringify({ email: userInfo.email, name: userInfo.name, google_id: userInfo.sub })
-                                    });
-                                    const data = await res.json();
-                                    if (res.ok && data.access_token) {
-                                        localStorage.setItem("auth_admin_token", data.access_token);
-                                        localStorage.setItem("dev_owner_id", data.owner_id);
-                                        localStorage.setItem("dev_username", data.username);
-                                        showToast("Login Successful! Welcome to Joyst Auth", "success");
-                                        setTimeout(() => {
-                                            window.location.href = data.redirect_url || "/dashboard";
-                                        }, 400);
-                                    } else {
-                                        showToast(data.detail || "Google authentication failed", "error");
+                    // 1. One-Tap Popup Initializer (Pops up automatically on top-right of page)
+                    if (window.google.accounts.id) {
+                        google.accounts.id.initialize({
+                            client_id: GOOGLE_CLIENT_ID,
+                            callback: handleGoogleCredentialResponse,
+                            auto_select: false,
+                            cancel_on_tap_outside: true
+                        });
+                        google.accounts.id.prompt((notification) => {
+                            if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
+                                console.log("Google One Tap status:", notification.getNotDisplayedReason());
+                            }
+                        });
+                    }
+
+                    // 2. Token Client for Button Click
+                    if (window.google.accounts.oauth2) {
+                        tokenClient = google.accounts.oauth2.initTokenClient({
+                            client_id: GOOGLE_CLIENT_ID,
+                            scope: "openid email profile",
+                            prompt: "select_account",
+                            callback: async (tokenResponse) => {
+                                if (tokenResponse && tokenResponse.access_token) {
+                                    try {
+                                        const userInfoRes = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
+                                            headers: { Authorization: `Bearer ${tokenResponse.access_token}` }
+                                        });
+                                        const userInfo = await userInfoRes.json();
+                                        const res = await fetch("/api/v1/auth/google", {
+                                            method: "POST",
+                                            headers: { "Content-Type": "application/json" },
+                                            body: JSON.stringify({ email: userInfo.email, name: userInfo.name, google_id: userInfo.sub })
+                                        });
+                                        const data = await res.json();
+                                        if (res.ok && data.access_token) {
+                                            localStorage.setItem("auth_admin_token", data.access_token);
+                    localStorage.setItem("auth_login_time", Date.now().toString());
+                                            localStorage.setItem("dev_owner_id", data.owner_id);
+                                            localStorage.setItem("dev_username", data.username);
+                                            showToast("Login Successful! Welcome to Joyst Auth", "success");
+                                            setTimeout(() => {
+                                                window.location.href = data.redirect_url || "/dashboard";
+                                            }, 400);
+                                        } else {
+                                            showToast(data.detail || "Google authentication failed", "error");
+                                        }
+                                    } catch (err) {
+                                        showToast("Connection failed: " + err.message, "error");
                                     }
-                                } catch (err) {
-                                    showToast("Connection failed: " + err.message, "error");
                                 }
                             }
-                        }
-                    });
+                        });
+                    }
                 } catch (e) {
-                    console.warn("Google OAuth2 Init:", e);
+                    console.warn("Google Services Init:", e);
                 }
             }
         }
@@ -299,6 +371,7 @@
                         }, 500);
                     } else {
                         localStorage.setItem("auth_admin_token", data.access_token);
+                    localStorage.setItem("auth_login_time", Date.now().toString());
                         localStorage.setItem("dev_owner_id", data.owner_id);
                         localStorage.setItem("dev_username", data.username);
                         showToast("Developer Workspace Authenticated! Opening Dashboard...", "success");

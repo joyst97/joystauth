@@ -1008,6 +1008,22 @@
                             </div>
                             <button type="submit" class="btn btn-primary">Update Password</button>
                         </form>
+                        <div class="account-danger-zone" style="margin-top: 36px; padding: 24px; background: rgba(239, 68, 68, 0.06); border: 1px solid rgba(239, 68, 68, 0.25); border-radius: 14px;">
+                            <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px;">
+                                <div>
+                                    <h4 style="color: #ef4444; font-size: 15px; font-weight: 800; display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+                                        <span>🚨</span> Danger Zone • Delete Account
+                                    </h4>
+                                    <p style="font-size: 12.5px; color: #94a3b8; max-width: 500px; margin: 0;">
+                                        Permanently delete your developer account, all protected applications, user databases, and cryptographic licenses. This action is irreversible.
+                                    </p>
+                                </div>
+                                <button type="button" class="btn btn-danger btn-sm" onclick="openModal('modal-delete-account')">
+                                    🗑️ Delete Account
+                                </button>
+                            </div>
+                        </div>
+
                     </div>
                 </div>
 
@@ -1027,6 +1043,30 @@
                 </div>
             </section>
         </main>
+    </div>
+
+    
+    <!-- Delete Account Modal -->
+    <div id="modal-delete-account" class="modal-overlay">
+        <div class="modal-box" style="max-width: 480px; border-color: rgba(239, 68, 68, 0.5);">
+            <div class="modal-header">
+                <h3 style="color: #ef4444;">⚠️ Permanent Account Deletion</h3>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p style="font-size: 13.5px; color: #f87171; line-height: 1.6; margin-bottom: 16px; background: rgba(239, 68, 68, 0.1); padding: 12px; border-radius: 8px; border: 1px solid rgba(239, 68, 68, 0.2);">
+                    <strong>Warning:</strong> This will permanently erase your developer account, all your protected apps, licenses, files, and users.
+                </p>
+                <div class="form-group">
+                    <label>Type <span style="color: #ef4444; font-weight: 900;">DELETE</span> to confirm:</label>
+                    <input type="text" id="delete-account-confirm-input" class="form-control mono" placeholder="DELETE" required>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary btn-sm" data-close-modal>Cancel</button>
+                <button class="btn btn-danger btn-sm" onclick="submitDeleteAccount()">Permanently Delete Account</button>
+            </div>
+        </div>
     </div>
 
     <!-- ==================== MODALS ==================== -->

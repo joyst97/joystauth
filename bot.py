@@ -9,7 +9,7 @@ CONFIG_PATH = os.path.join(os.path.dirname(__file__), "config.json")
 
 def load_config():
     cfg = {
-        "token": os.environ.get("DISCORD_BOT_TOKEN", ""),
+        "token": os.environ.get("DISCORD_BOT_TOKEN") or "",
         "api_url": os.environ.get("API_URL", "https://joystauth.cc"),
         "admin_token": "YOUR_JWT_ADMIN_TOKEN_HERE",
         "default_app_id": 1,
@@ -1009,10 +1009,7 @@ async def warning_cmd(interaction: discord.Interaction, title: str, message: str
 
 if __name__ == "__main__":
     token = os.environ.get("DISCORD_BOT_TOKEN") or config.get("token")
-    if token and token != "":
-        bot.run(token)
-    else:
-        print("[JOYST BOT] Please configure token via DISCORD_BOT_TOKEN environment variable or run_bot.bat")
+    bot.run("")
 
 def run_discord_bot():
     token = os.environ.get('DISCORD_BOT_TOKEN') or config.get('token')
