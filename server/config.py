@@ -18,6 +18,9 @@ DISCORD_BOT_TOKEN = os.getenv("DISCORD_BOT_TOKEN", "")
 DISCORD_GUILD_ID = os.getenv("DISCORD_GUILD_ID", "")
 DISCORD_REDIRECT_URI = os.getenv("DISCORD_REDIRECT_URI", "https://joystauth.cc/api/v1/auth/discord/callback")
 
+CLOUDFLARE_TURNSTILE_SITE_KEY = os.getenv("CLOUDFLARE_TURNSTILE_SITE_KEY", "0x4AAAAAAA8aqRqauHh_EMW2J")
+CLOUDFLARE_TURNSTILE_SECRET_KEY = os.getenv("CLOUDFLARE_TURNSTILE_SECRET_KEY", "0x4AAAAAAAsgRkOnx3XMTxSSFzRcRKQEddu")
+
 ACTION_TITLES = {
     "LOGIN_SUCCESS": "🟢 User Login Successful",
     "LOGIN_FAILED": "⚠️ Failed Login Attempt",

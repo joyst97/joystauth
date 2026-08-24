@@ -66,46 +66,38 @@
 </head>
 <body>
 
-<!-- Cloudflare Turnstile & Joyst Enclave Gatekeeper -->
+
+<!-- Cloudflare Turnstile Verification Gatekeeper -->
 <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
-<div id="cf-enclave-gatekeeper" style="position:fixed;top:0;left:0;width:100vw;height:100vh;background:#050104;z-index:99999999;display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:system-ui, -apple-system, sans-serif;transition:opacity 0.45s cubic-bezier(0.4, 0, 0.2, 1);backdrop-filter:blur(25px);">
-    <div style="text-align:center;padding:35px;max-width:460px;background:rgba(20,5,15,0.7);border:1px solid rgba(255,42,95,0.35);border-radius:24px;box-shadow:0 30px 90px rgba(0,0,0,0.9), 0 0 50px rgba(255,42,95,0.3);backdrop-filter:blur(30px);">
-        <div style="width:64px;height:64px;border-radius:50%;background:rgba(255,42,95,0.15);border:2px solid #ff2a5f;display:flex;align-items:center;justify-content:center;font-size:30px;margin:0 auto 18px;box-shadow:0 0 30px rgba(255,42,95,0.6);animation:cfGkPulse 2s infinite ease-in-out;">🛡️</div>
-        <h2 style="color:#ffffff;font-size:23px;font-weight:900;letter-spacing:0.5px;margin-bottom:8px;text-shadow:0 0 20px rgba(255,42,95,0.8);">JOYST AUTH</h2>
-        <p style="color:#94a3b8;font-size:14px;font-weight:600;margin-bottom:24px;">Please wait while we validate your connection.</p>
-        <div style="display:flex;justify-content:center;margin-bottom:22px;">
-            <div class="cf-turnstile" data-sitekey="1x00000000000000000000AA" data-theme="dark" data-callback="onCloudflareVerifySuccess"></div>
-        </div>
-        <div style="display:flex;align-items:center;justify-content:center;gap:6px;color:#64748b;font-size:12px;font-weight:700;">
-            <span>🛡️ Protected by</span>
-            <span style="color:#f59e0b;">Cloudflare</span>
-            <span>& Joyst Enclave</span>
+<div id="cf-enclave-gatekeeper" style="position:fixed;top:0;left:0;width:100vw;height:100vh;background:#060205;z-index:99999999;display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:system-ui, -apple-system, sans-serif;transition:opacity 0.4s ease;">
+    <div style="text-align:center;padding:40px 36px;width:100%;max-width:440px;display:flex;flex-direction:column;align-items:center;">
+        <img src="/static/img/joyst_logo.png" alt="JOYST AUTH" style="width:76px;height:76px;object-fit:contain;border-radius:18px;margin-bottom:22px;filter:drop-shadow(0 0 25px rgba(255,42,95,0.45));">
+        <h1 style="color:#ffffff;font-size:26px;font-weight:900;letter-spacing:-0.4px;margin:0 0 10px 0;text-shadow:0 2px 10px rgba(0,0,0,0.5);">JOYST AUTH</h1>
+        <p style="color:#94a3b8;font-size:15px;font-weight:500;margin:0 0 30px 0;">Please wait while we validate your connection.</p>
+        <div style="display:flex;justify-content:center;align-items:center;min-height:66px;width:100%;margin-bottom:15px;">
+            <div class="cf-turnstile" data-sitekey="0x4AAAAAAA8aqRqauHh_EMW2J" data-theme="dark" data-callback="onCloudflareVerifySuccess"></div>
         </div>
     </div>
 </div>
-<style>
-@keyframes cfGkPulse {
-    0%, 100% { transform: scale(1); box-shadow: 0 0 25px rgba(255,42,95,0.5); }
-    50% { transform: scale(1.08); box-shadow: 0 0 40px rgba(255,42,95,0.9), 0 0 10px #fff; }
-}
-</style>
 <script>
 function onCloudflareVerifySuccess(token) {
-    const gk = document.getElementById('cf-enclave-gatekeeper');
-    if (gk) {
-        gk.style.opacity = '0';
-        setTimeout(() => { gk.style.display = 'none'; }, 450);
-    }
+    setTimeout(function() {
+        const gk = document.getElementById('cf-enclave-gatekeeper');
+        if (gk) {
+            gk.style.opacity = '0';
+            setTimeout(function() { gk.style.display = 'none'; }, 400);
+        }
+    }, 1200);
 }
-// Session bypass cache or automatic smooth fallback after 3.5s
-setTimeout(() => {
+setTimeout(function() {
     const gk = document.getElementById('cf-enclave-gatekeeper');
     if (gk && gk.style.display !== 'none') {
         gk.style.opacity = '0';
-        setTimeout(() => { gk.style.display = 'none'; }, 450);
+        setTimeout(function() { gk.style.display = 'none'; }, 400);
     }
-}, 3500);
+}, 4500);
 </script>
+
 
 
     <!-- ReactBits Background Layers -->
