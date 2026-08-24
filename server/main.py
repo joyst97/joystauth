@@ -90,15 +90,25 @@ async def on_startup():
 
     # Auto-start Discord Bot in background if token is configured
     from .config import DISCORD_BOT_TOKEN
-    if DISCORD_BOT_TOKEN and DISCORD_BOT_TOKEN.strip():
+    token = (os.getenv("DISCORD_BOT_TOKEN") or DISCORD_BOT_TOKEN or "").strip()
+    if token:
         try:
             import asyncio
             from .discord_bot import bot
             if bot:
-                asyncio.create_task(bot.start(DISCORD_BOT_TOKEN.strip()))
+                async def launch_bot():
+                    try:
+                        print(f"[JOYST BOT] Connecting Discord Bot with token (Length: {len(token)})...")
+                        await bot.start(token)
+                    except Exception as b_err:
+                        print(f"[JOYST BOT ERROR] Bot run failed: {b_err}")
+
+                asyncio.create_task(launch_bot())
                 print("[JOYST BOT] Discord Bot background engine spawned successfully!")
         except Exception as err:
             print(f"[JOYST BOT] Discord Bot startup notice: {err}")
+    else:
+        print("[JOYST BOT] No DISCORD_BOT_TOKEN configured in environment variables.")
 
     send_discord_system_lifecycle_alert("STARTUP", "Joyst Auth Server v2.0.0 is online and healthy.")
     print("=======================================================")
@@ -216,3 +226,18 @@ async def health_check():
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("server.main:app", host="0.0.0.0", port=8000, reload=True)
+
+
+@app.get("/api/v1/client/bot-status")
+async def get_bot_status():
+    from .config import DISCORD_BOT_TOKEN
+    token = (os.getenv("DISCORD_BOT_TOKEN") or DISCORD_BOT_TOKEN or "").strip()
+    from .discord_bot import bot, discord
+    return {
+        "bot_installed": discord is not None,
+        "token_configured": bool(token),
+        "token_length": len(token) if token else 0,
+        "bot_is_ready": bool(bot.is_ready()) if (bot and discord) else False,
+        "bot_user": str(bot.user) if (bot and discord and bot.user) else None,
+        "latency_ms": round(bot.latency * 1000, 2) if (bot and discord and bot.latency and bot.latency > 0) else None
+    }
