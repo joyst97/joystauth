@@ -87,6 +87,19 @@ async def on_startup():
         init_db()
     except Exception as e:
         print(f"[JOYST] Database init notice: {e}")
+
+    # Auto-start Discord Bot in background if token is configured
+    from .config import DISCORD_BOT_TOKEN
+    if DISCORD_BOT_TOKEN and DISCORD_BOT_TOKEN.strip():
+        try:
+            import asyncio
+            from .discord_bot import bot
+            if bot:
+                asyncio.create_task(bot.start(DISCORD_BOT_TOKEN.strip()))
+                print("[JOYST BOT] Discord Bot background engine spawned successfully!")
+        except Exception as err:
+            print(f"[JOYST BOT] Discord Bot startup notice: {err}")
+
     send_discord_system_lifecycle_alert("STARTUP", "Joyst Auth Server v2.0.0 is online and healthy.")
     print("=======================================================")
     print("[JOYST CORPORATION] Production Platform is ONLINE [OK]")
