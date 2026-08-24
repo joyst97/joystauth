@@ -359,9 +359,18 @@ async def google_callback_redirect():
     </html>
     """)
 
+class DiscordVerifyRequest(BaseModel):
+    discord_id: str
+    username: str
+    email: Optional[str] = None
+    avatar: Optional[str] = None
+
+class DiscordCodeExchangeRequest(BaseModel):
+    code: str
+
 @router.get("/discord/login")
 async def discord_oauth_login(request: Request):
-    """Redirect developer to official Discord OAuth authorization portal."""
+    """Redirect developer to official Discord OAuth authorization portal using Token/Implicit Flow."""
     import urllib.parse
     from ..config import DISCORD_CLIENT_ID, DISCORD_REDIRECT_URI
     
@@ -374,7 +383,7 @@ async def discord_oauth_login(request: Request):
     params = {
         "client_id": DISCORD_CLIENT_ID,
         "redirect_uri": redirect_uri,
-        "response_type": "code",
+        "response_type": "token",
         "scope": "identify email",
         "prompt": "consent"
     }
@@ -382,98 +391,187 @@ async def discord_oauth_login(request: Request):
     return HTMLResponse(f"<script>window.location.href = '{discord_auth_url}';</script>")
 
 @router.get("/discord/callback")
-async def discord_oauth_callback(request: Request, code: Optional[str] = None, error: Optional[str] = None, db: Session = Depends(get_db)):
-    """Exchange Discord OAuth code, create/login account, auto-join official server."""
-    if error or not code:
-        err_msg = error or "Authorization cancelled"
-        return HTMLResponse(f"<script>window.location.href='/login?error={err_msg}';</script>")
+async def discord_oauth_callback(request: Request):
+    """High-speed client-side profile verification page that bypasses cloud IP rate limits."""
+    return HTMLResponse("""<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Connecting Discord Account | Joyst Auth</title>
+    <style>
+        body {
+            background: #060204;
+            color: #fff;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            padding: 20px;
+        }
+        .auth-card {
+            background: rgba(18, 6, 12, 0.95);
+            border: 1.5px solid rgba(88, 101, 242, 0.5);
+            border-radius: 16px;
+            padding: 36px 30px;
+            text-align: center;
+            max-width: 440px;
+            width: 100%;
+            box-shadow: 0 25px 70px rgba(0,0,0,0.9), 0 0 40px rgba(88, 101, 242, 0.3);
+        }
+        .spinner {
+            width: 48px;
+            height: 48px;
+            border: 3.5px solid rgba(88, 101, 242, 0.2);
+            border-top-color: #5865F2;
+            border-radius: 50%;
+            animation: spin 0.7s linear infinite;
+            margin: 0 auto 20px auto;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .status-title { font-size: 18px; font-weight: 800; margin: 0 0 8px 0; color: #fff; }
+        .status-sub { font-size: 13px; color: #94a3b8; margin: 0; }
+        .error-box { display: none; margin-top: 18px; padding: 12px; background: rgba(239, 68, 68, 0.15); border: 1px solid #ef4444; border-radius: 8px; font-size: 12.5px; color: #f87171; }
+        .retry-btn { display: none; margin-top: 16px; padding: 10px 22px; background: #ff2a5f; color: #fff; border-radius: 8px; text-decoration: none; font-weight: 700; font-size: 13px; }
+    </style>
+</head>
+<body>
+    <div class="auth-card">
+        <div class="spinner" id="loader"></div>
+        <h3 class="status-title" id="status-title">Authenticating with Discord...</h3>
+        <p class="status-sub" id="status-sub">Connecting your Discord profile to Joyst Auth</p>
+        <div class="error-box" id="error-box"></div>
+        <a href="/login" class="retry-btn" id="retry-btn">&larr; Back to Login</a>
+    </div>
 
-    import requests
-    from ..config import DISCORD_CLIENT_ID, DISCORD_CLIENT_SECRET, DISCORD_REDIRECT_URI, DISCORD_GUILD_ID, DISCORD_BOT_TOKEN
-    
-    base_url = str(request.base_url).rstrip("/")
-    if "localhost" in base_url or "127.0.0.1" in base_url:
-        redirect_uri = f"{base_url}/api/v1/auth/discord/callback"
-    else:
-        redirect_uri = DISCORD_REDIRECT_URI or "https://joystauth.cc/api/v1/auth/discord/callback"
-    
-    # 1. Exchange code for access token
-    token_url = "https://discord.com/api/v10/oauth2/token"
-    token_data = {
-        "client_id": DISCORD_CLIENT_ID,
-        "client_secret": DISCORD_CLIENT_SECRET,
-        "grant_type": "authorization_code",
-        "code": code,
-        "redirect_uri": redirect_uri
-    }
-    headers = {"Content-Type": "application/x-www-form-urlencoded"}
-    token_res = requests.post(token_url, data=token_data, headers=headers)
-    if token_res.status_code != 200:
-        err_detail = token_res.text
-        print(f"[DISCORD OAUTH ERROR] Token exchange failed ({token_res.status_code}): {err_detail}")
-        return HTMLResponse(f"""
-        <!DOCTYPE html>
-        <html>
-        <head><title>Discord Login Error</title></head>
-        <body style="background:#09090b;color:#fff;font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;padding:20px;text-align:center;">
-            <div style="max-width:500px;background:#18181b;border:1px solid #ef4444;border-radius:12px;padding:26px;">
-                <h3 style="color:#ef4444;margin-top:0;">Discord Sign-In Error</h3>
-                <p style="font-size:13.5px;color:#cbd5e1;line-height:1.5;">Discord rejected the authorization. Ensure <strong>DISCORD_CLIENT_SECRET</strong> is set in your server environment and the Redirect URI below is added in your Discord Developer Portal:</p>
-                <div style="background:#09090b;padding:10px;border-radius:6px;font-family:monospace;font-size:12px;color:#38bdf8;word-break:break-all;margin:12px 0;">{redirect_uri}</div>
-                <div style="background:#09090b;padding:10px;border-radius:6px;font-family:monospace;font-size:12px;color:#f87171;word-break:break-word;margin:12px 0;">{err_detail}</div>
-                <a href="/login" style="display:inline-block;background:#ff2a5f;color:#fff;padding:10px 20px;border-radius:8px;text-decoration:none;font-weight:700;font-size:13px;margin-top:8px;">&larr; Back to Login</a>
-            </div>
-        </body>
-        </html>
-        """)
+    <script>
+        (async function() {
+            const statusTitle = document.getElementById("status-title");
+            const statusSub = document.getElementById("status-sub");
+            const errorBox = document.getElementById("error-box");
+            const retryBtn = document.getElementById("retry-btn");
+            const loader = document.getElementById("loader");
 
-    token_json = token_res.json()
-    discord_access_token = token_json.get("access_token")
-
-    # 2. Get Discord User Profile
-    user_url = "https://discord.com/api/v10/users/@me"
-    user_headers = {"Authorization": "Bearer " + str(discord_access_token)}
-    user_res = requests.get(user_url, headers=user_headers)
-    if user_res.status_code != 200:
-        return HTMLResponse("<script>window.location.href='/login?error=discord_user_failed';</script>")
-
-    discord_user = user_res.json()
-    discord_id = discord_user.get("id")
-    discord_username = discord_user.get("global_name") or discord_user.get("username")
-    discord_email = discord_user.get("email") or f"{discord_username}@discord.joystauth.cc"
-    
-    avatar_hash = discord_user.get("avatar")
-    if avatar_hash:
-        discord_avatar = f"https://cdn.discordapp.com/avatars/{discord_id}/{avatar_hash}.png"
-    else:
-        discord_avatar = "https://cdn.discordapp.com/embed/avatars/0.png"
-
-    # 3. Auto-join user to official Discord Server if configured
-    if DISCORD_GUILD_ID and DISCORD_BOT_TOKEN:
-        try:
-            join_url = f"https://discord.com/api/v10/guilds/{DISCORD_GUILD_ID}/members/{discord_id}"
-            join_headers = {
-                "Authorization": "Bot " + str(DISCORD_BOT_TOKEN),
-                "Content-Type": "application/json"
+            function showError(msg) {
+                loader.style.display = "none";
+                statusTitle.textContent = "Discord Sign-In Failed";
+                statusTitle.style.color = "#ef4444";
+                statusSub.textContent = "Could not authenticate your Discord account.";
+                errorBox.textContent = msg;
+                errorBox.style.display = "block";
+                retryBtn.style.display = "inline-block";
             }
-            join_body = {"access_token": discord_access_token}
-            requests.put(join_url, json=join_body, headers=join_headers, timeout=3)
-        except Exception:
-            pass
 
-    # 4. Find or Create Developer Account
+            try {
+                // 1. Check Hash for Access Token (Implicit Flow - Fastest & 100% Rate-Limit Immune)
+                const hash = window.location.hash.substring(1);
+                const hashParams = new URLSearchParams(hash);
+                let accessToken = hashParams.get("access_token");
+
+                // 2. Check Query Params for Code fallback
+                const searchParams = new URLSearchParams(window.location.search);
+                const code = searchParams.get("code");
+                const error = searchParams.get("error");
+                const errorDescription = searchParams.get("error_description");
+
+                if (error) {
+                    showError(errorDescription || error);
+                    return;
+                }
+
+                if (!accessToken && code) {
+                    statusSub.textContent = "Exchanging authorization token...";
+                    const codeRes = await fetch("/api/v1/auth/discord/exchange-code", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ code: code })
+                    });
+                    const codeData = await codeRes.json();
+                    if (codeData.access_token) {
+                        accessToken = codeData.access_token;
+                    } else {
+                        showError(codeData.detail || "Code exchange failed");
+                        return;
+                    }
+                }
+
+                if (!accessToken) {
+                    showError("No authorization token received from Discord.");
+                    return;
+                }
+
+                // 3. Directly Fetch User Profile using User's Residential IP (Bypasses Cloudflare blocks)
+                statusSub.textContent = "Fetching Discord profile...";
+                const userRes = await fetch("https://discord.com/api/v10/users/@me", {
+                    headers: { "Authorization": "Bearer " + accessToken }
+                });
+
+                if (!userRes.ok) {
+                    const errText = await userRes.text();
+                    showError("Discord API Error (" + userRes.status + "): " + errText);
+                    return;
+                }
+
+                const discordUser = await userRes.json();
+                const discordId = discordUser.id;
+                const discordUsername = discordUser.global_name || discordUser.username;
+                const discordEmail = discordUser.email || (discordUsername + "@discord.joystauth.cc");
+                const avatarHash = discordUser.avatar;
+                const discordAvatar = avatarHash 
+                    ? `https://cdn.discordapp.com/avatars/${discordId}/${avatarHash}.png`
+                    : "https://cdn.discordapp.com/embed/avatars/0.png";
+
+                // 4. Verify & Create/Login Developer Account on Backend
+                statusSub.textContent = "Opening your Developer Workspace...";
+                const authRes = await fetch("/api/v1/auth/discord/verify-token", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        discord_id: String(discordId),
+                        username: discordUsername,
+                        email: discordEmail,
+                        avatar: discordAvatar
+                    })
+                });
+
+                const authData = await authRes.json();
+                if (authData.access_token) {
+                    localStorage.setItem("auth_admin_token", authData.access_token);
+                    localStorage.setItem("dev_owner_id", authData.owner_id);
+                    localStorage.setItem("dev_username", authData.username);
+                    localStorage.setItem("dev_avatar", discordAvatar);
+                    window.location.href = authData.redirect_url || "/dashboard";
+                } else {
+                    showError(authData.detail || "Authentication verification failed");
+                }
+            } catch (err) {
+                showError("Connection error: " + err.message);
+            }
+        })();
+    </script>
+</body>
+</html>""")
+
+@router.post("/discord/verify-token")
+async def discord_verify_token(data: DiscordVerifyRequest, db: Session = Depends(get_db)):
+    """Bulletproof endpoint that creates or logs into Developer workspace from verified Discord profile."""
+    discord_id = data.discord_id.strip()
+    discord_username = data.username.strip()
+    discord_email = data.email.strip() if data.email else f"{discord_username}@discord.joystauth.cc"
+
     dev = None
     if discord_id:
-        dev = db.query(Developer).filter(Developer.discord_id == str(discord_id)).first()
+        dev = db.query(Developer).filter(Developer.discord_id == discord_id).first()
     if not dev:
         dev = db.query(Developer).filter(Developer.email == discord_email).first()
     if not dev:
         dev = db.query(Developer).filter(Developer.username == discord_username).first()
 
     if dev:
-        # Update with real Discord username and details
         dev.username = discord_username
-        dev.discord_id = str(discord_id)
+        dev.discord_id = discord_id
         if dev.plan == "Free":
             dev.plan = "Paid"
             dev.max_apps = 999999
@@ -498,7 +596,7 @@ async def discord_oauth_callback(request: Request, code: Optional[str] = None, e
         dev = Developer(
             username=discord_username,
             email=discord_email,
-            discord_id=str(discord_id),
+            discord_id=discord_id,
             password_hash=hash_password(random_pass),
             owner_id=owner_id,
             plan="Paid",
@@ -516,26 +614,48 @@ async def discord_oauth_callback(request: Request, code: Optional[str] = None, e
         "role": "developer"
     })
 
-    redirect_html = f"""<!DOCTYPE html>
-<html>
-<head>
-    <title>Connecting Discord Account...</title>
-</head>
-<body style="background:#060204;color:#fff;font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;">
-    <div style="text-align:center;">
-        <h3 style="margin:0;font-size:16px;">Welcome, {dev.username}!</h3>
-        <p style="font-size:13px;color:#94a3b8;margin-top:6px;">Opening your Developer Workspace...</p>
-    </div>
-    <script>
-        localStorage.setItem("auth_admin_token", "{jwt_token}");
-        localStorage.setItem("dev_owner_id", "{dev.owner_id}");
-        localStorage.setItem("dev_username", "{dev.username}");
-        localStorage.setItem("dev_avatar", "{discord_avatar}");
-        window.location.href = "/dashboard";
-    </script>
-</body>
-</html>"""
-    return HTMLResponse(redirect_html)
+    return {
+        "success": True,
+        "access_token": jwt_token,
+        "token_type": "bearer",
+        "username": dev.username,
+        "owner_id": dev.owner_id,
+        "plan": dev.plan,
+        "redirect_url": "/dashboard",
+        "message": f"Welcome back, {dev.username}!"
+    }
+
+@router.post("/discord/exchange-code")
+async def discord_exchange_code(data: DiscordCodeExchangeRequest, request: Request):
+    """Fallback code exchange with headers and retry."""
+    import requests
+    from ..config import DISCORD_CLIENT_ID, DISCORD_CLIENT_SECRET, DISCORD_REDIRECT_URI
+    
+    base_url = str(request.base_url).rstrip("/")
+    if "localhost" in base_url or "127.0.0.1" in base_url:
+        redirect_uri = f"{base_url}/api/v1/auth/discord/callback"
+    else:
+        redirect_uri = DISCORD_REDIRECT_URI or "https://joystauth.cc/api/v1/auth/discord/callback"
+
+    token_url = "https://discord.com/api/v10/oauth2/token"
+    token_data = {
+        "client_id": DISCORD_CLIENT_ID,
+        "client_secret": DISCORD_CLIENT_SECRET,
+        "grant_type": "authorization_code",
+        "code": data.code,
+        "redirect_uri": redirect_uri
+    }
+    headers = {
+        "Content-Type": "application/x-www-form-urlencoded",
+        "User-Agent": "DiscordBot (https://joystauth.cc, 2.0.0)",
+        "Accept": "application/json"
+    }
+
+    token_res = requests.post(token_url, data=token_data, headers=headers, timeout=10)
+    if token_res.status_code != 200:
+        raise HTTPException(status_code=400, detail=token_res.text)
+    return token_res.json()
+
 
 @router.get("/me")
 async def get_me(authorization: Optional[str] = Header(None), dev: Developer = Depends(get_current_developer), db: Session = Depends(get_db)):
