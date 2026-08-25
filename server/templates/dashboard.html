@@ -503,12 +503,47 @@
 
         <!-- Main Content View -->
         <main class="main-content">
+            <!-- Global Top Progress / Loading Line Indicator -->
+            <div id="global-page-progress-bar" class="global-page-progress-bar"></div>
+
             <!-- Top Header Ribbon -->
             <header class="top-header">
-                <div class="header-left">
+                <div class="header-left" style="display: flex; align-items: center; gap: 14px;">
                     <button id="btn-mobile-menu" class="mobile-menu-btn" onclick="toggleMobileSidebar()" title="Toggle Navigation Menu">
                         <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
                     </button>
+
+                    <!-- Modern Cyberpunk Application Combobox Selector -->
+                    <div class="top-app-selector-container" id="top-app-selector-container">
+                        <div class="top-app-selector-btn" id="top-app-selector-btn" onclick="toggleTopAppDropdown()">
+                            <div class="top-app-icon">⚡</div>
+                            <div class="top-app-info">
+                                <span class="top-app-label">ACTIVE APPLICATION</span>
+                                <strong class="top-app-name" id="top-app-current-name">Loading...</strong>
+                            </div>
+                            <span class="top-app-badge" id="top-app-current-ver">v1.0</span>
+                            <svg class="top-app-arrow" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m6 9 6 6 6-6"/></svg>
+                        </div>
+
+                        <!-- Dropdown Menu -->
+                        <div class="top-app-dropdown-menu" id="top-app-dropdown-menu">
+                            <div class="top-app-dropdown-header">
+                                <span>SELECT APPLICATION</span>
+                                <span class="badge badge-sm badge-purple" id="top-app-count-badge">0 Apps</span>
+                            </div>
+                            <div class="top-app-dropdown-search">
+                                <input type="text" id="top-app-search-input" placeholder="Search application..." oninput="filterTopAppDropdown(this.value)" autocomplete="off">
+                            </div>
+                            <div class="top-app-dropdown-list" id="top-app-dropdown-list">
+                                <!-- Populated dynamically -->
+                            </div>
+                            <div class="top-app-dropdown-footer">
+                                <button class="btn btn-sm btn-secondary" style="width: 100%; justify-content: center; font-size: 12px; font-weight: 800;" onclick="openModal('modal-create-app'); toggleTopAppDropdown(false);">
+                                    <span>➕ Create New App</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
                 <div class="header-right" style="display: flex; align-items: center; gap: 14px;">
                     <div class="glowing-pill" style="font-size: 12px; padding: 6px 16px; background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.35); box-shadow: 0 0 20px rgba(16, 185, 129, 0.15);">

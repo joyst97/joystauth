@@ -4,6 +4,7 @@ from discord import app_commands
 import requests
 import json
 import os
+from typing import Optional, List, Dict, Any, Union
 
 CONFIG_PATH = os.path.join(os.path.dirname(__file__), "config.json")
 

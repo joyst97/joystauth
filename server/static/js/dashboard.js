@@ -626,9 +626,178 @@ function loadTabContent(tabId) {
     }
 }
 
+
+// ==================== GLOBAL PROGRESS BAR ====================
+function showGlobalProgress() {
+    let bar = document.getElementById("global-page-progress-bar");
+    if (!bar) {
+        bar = document.createElement("div");
+        bar.id = "global-page-progress-bar";
+        bar.className = "global-page-progress-bar";
+        document.body.appendChild(bar);
+    }
+    bar.style.transition = "width 0.25s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.2s ease";
+    bar.style.width = "0%";
+    bar.classList.add("active");
+    setTimeout(() => { bar.style.width = "75%"; }, 20);
+}
+
+function hideGlobalProgress() {
+    const bar = document.getElementById("global-page-progress-bar");
+    if (bar) {
+        bar.style.width = "100%";
+        setTimeout(() => {
+            bar.classList.remove("active");
+            setTimeout(() => { bar.style.width = "0%"; }, 250);
+        }, 200);
+    }
+}
+
+// ==================== TOP APPLICATION COMBOBOX ENGINE ====================
+function toggleTopAppDropdown(forceState) {
+    const menu = document.getElementById("top-app-dropdown-menu");
+    const btn = document.getElementById("top-app-selector-btn");
+    if (!menu || !btn) return;
+
+    const isActive = (typeof forceState === "boolean") ? forceState : !menu.classList.contains("active");
+    if (isActive) {
+        renderTopAppDropdownList();
+        menu.classList.add("active");
+        btn.classList.add("open");
+        const searchInput = document.getElementById("top-app-search-input");
+        if (searchInput) {
+            searchInput.value = "";
+            setTimeout(() => searchInput.focus(), 50);
+        }
+    } else {
+        menu.classList.remove("active");
+        btn.classList.remove("open");
+    }
+}
+
+function filterTopAppDropdown(query) {
+    renderTopAppDropdownList(query);
+}
+
+function renderTopAppDropdownList(query = "") {
+    const listEl = document.getElementById("top-app-dropdown-list");
+    const countBadge = document.getElementById("top-app-count-badge");
+    if (!listEl) return;
+
+    if (countBadge) countBadge.textContent = `${appsList.length} App${appsList.length === 1 ? '' : 's'}`;
+
+    if (appsList.length === 0) {
+        listEl.innerHTML = `<div style="text-align: center; color: var(--text-muted); padding: 18px 10px; font-size: 12.5px;">No applications created yet.</div>`;
+        return;
+    }
+
+    const q = query.toLowerCase().trim();
+    const filtered = appsList.filter(a => !q || a.name.toLowerCase().includes(q) || (a.version && a.version.toLowerCase().includes(q)));
+
+    if (filtered.length === 0) {
+        listEl.innerHTML = `<div style="text-align: center; color: var(--text-muted); padding: 18px 10px; font-size: 12.5px;">No matching apps found.</div>`;
+        return;
+    }
+
+    listEl.innerHTML = filtered.map(app => {
+        const isCurrent = (app.id === currentAppId);
+        return `
+            <div class="top-app-item ${isCurrent ? 'active' : ''}" onclick="switchGlobalApp(${app.id})">
+                <div class="top-app-item-main">
+                    <div class="top-app-item-icon">${isCurrent ? '⚡' : '📱'}</div>
+                    <div class="top-app-item-title">${escapeHtml(app.name)}</div>
+                </div>
+                <span class="top-app-item-ver">v${escapeHtml(app.version || '1.0')}</span>
+            </div>
+        `;
+    }).join("");
+}
+
+function renderTopAppDropdown() {
+    const nameEl = document.getElementById("top-app-current-name");
+    const verEl = document.getElementById("top-app-current-ver");
+
+    if (appsList.length === 0) {
+        if (nameEl) nameEl.textContent = "No Apps Created";
+        if (verEl) verEl.textContent = "v1.0";
+        return;
+    }
+
+    const currentApp = appsList.find(a => a.id === currentAppId) || appsList[0];
+    if (nameEl) nameEl.textContent = currentApp.name;
+    if (verEl) verEl.textContent = `v${currentApp.version || '1.0'}`;
+}
+
+// Global click-outside listener to close top app dropdown
+document.addEventListener("click", (e) => {
+    const container = document.getElementById("top-app-selector-container");
+    if (container && !container.contains(e.target)) {
+        toggleTopAppDropdown(false);
+    }
+});
+
+// ==================== INSTANT GLOBAL APPLICATION SWITCHER ====================
+async function switchGlobalApp(appId, forceReload = true) {
+    if (!appId) return;
+    currentAppId = parseInt(appId);
+    localStorage.setItem("selected_app_id", currentAppId);
+
+    // Invalidate tab caches for fresh reload
+    if (window.tabDataCache) {
+        delete window.tabDataCache.users[currentAppId];
+        delete window.tabDataCache.licenses[currentAppId];
+    }
+
+    showGlobalProgress();
+
+    // 1. Update Top Combobox
+    renderTopAppDropdown();
+    toggleTopAppDropdown(false);
+
+    // 2. Sync all traditional select elements
+    const selects = [
+        document.getElementById("overview-app-select"),
+        document.getElementById("header-app-select"),
+        document.getElementById("settings-app-select")
+    ].filter(Boolean);
+    selects.forEach(s => { s.value = currentAppId; });
+
+    // 3. Update Overview Banner
+    updateBannerCredentials();
+
+    // 4. Reload the current active tab with fresh data
+    const activeNav = document.querySelector(".nav-item.active");
+    const currentTab = activeNav ? activeNav.getAttribute("data-tab") : "overview";
+
+    try {
+        if (currentTab === "users") {
+            const tbody = document.getElementById("users-table-body");
+            if (tbody) tbody.innerHTML = getTableSkeletonHtml(7, "Loading User & HWID Records...");
+            await loadUsers();
+        } else if (currentTab === "licenses") {
+            const tbody = document.getElementById("licenses-table-body");
+            if (tbody) tbody.innerHTML = getTableSkeletonHtml(6, "Loading License Keys...");
+            await loadLicenses();
+        } else if (currentTab === "overview") {
+            await loadGlobalStats();
+        } else {
+            loadTabContent(currentTab);
+        }
+    } catch (err) {
+        console.error("Tab reload error:", err);
+    } finally {
+        hideGlobalProgress();
+    }
+
+    const appObj = appsList.find(a => a.id === currentAppId);
+    if (appObj) {
+        showToast(`Switched active application to ${appObj.name}`, "info");
+    }
+}
+
+
 function renderAppsDropdowns() {
     const selects = [document.getElementById("overview-app-select"), document.getElementById("header-app-select")].filter(Boolean);
-    if (selects.length === 0) return;
 
     selects.forEach(select => {
         select.innerHTML = "";
@@ -646,6 +815,7 @@ function renderAppsDropdowns() {
 
     if (appsList.length === 0) {
         currentAppId = null;
+        renderTopAppDropdown();
         updateBannerCredentials();
         return;
     }
@@ -658,19 +828,15 @@ function renderAppsDropdowns() {
         localStorage.setItem("selected_app_id", currentAppId);
     }
 
+    renderTopAppDropdown();
+
     selects.forEach(select => {
         select.value = currentAppId;
         select.onchange = (e) => {
-            currentAppId = e.target.value ? parseInt(e.target.value) : null;
-            if (currentAppId) {
-                localStorage.setItem("selected_app_id", currentAppId);
-            } else {
-                localStorage.removeItem("selected_app_id");
+            const selectedVal = e.target.value ? parseInt(e.target.value) : null;
+            if (selectedVal) {
+                switchGlobalApp(selectedVal);
             }
-            selects.forEach(s => { s.value = currentAppId; });
-            updateBannerCredentials();
-            loadGlobalStats();
-            loadActiveTab();
         };
     });
 
