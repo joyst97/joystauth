@@ -657,6 +657,20 @@ async def client_gateway(req_data: EncryptedPayloadRequest, request: Request, db
                 "file_size": file_obj.file_size
             }
 
+    # ---------------- CLOUD VARIABLE / SECRET FETCH ----------------
+    elif action == "var" or action == "variable":
+        var_name = (data.get("varid") or data.get("var_name") or data.get("name", "")).strip()
+        var_obj = db.query(AppVariable).filter(AppVariable.app_id == app.id, AppVariable.name == var_name).first()
+        if not var_obj:
+            response_data = {"success": False, "message": f"Variable '{var_name}' not found."}
+        else:
+            response_data = {
+                "success": True,
+                "message": "Variable retrieved successfully.",
+                "name": var_obj.name,
+                "value": var_obj.value
+            }
+
     # ---------------- LOG TO DASHBOARD ----------------
     elif action == "log":
         msg = data.get("message", "")
