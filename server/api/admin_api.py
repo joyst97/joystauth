@@ -737,21 +737,56 @@ async def create_user_manual(data: CreateUserManualRequest, dev: Developer = Dep
     if data.duration_days != -1 and data.duration_days < 90000:
         expires_at = datetime.datetime.utcnow() + datetime.timedelta(days=data.duration_days)
 
+    uname = data.username.strip()
+    pwd = data.password.strip()
+    is_same_key = (uname == pwd)
+
     new_user = User(
         app_id=data.app_id,
-        username=data.username.strip(),
-        password_hash=hash_password(data.password),
+        username=uname,
+        password_hash=hash_password(pwd),
         subscription_tier=data.subscription_tier or "default",
         level=data.level or 1,
         expires_at=expires_at,
         hwid=data.hwid.strip() if data.hwid else None,
         registered_ip="Manual Entry",
-        key_used="Manual by Developer"
+        key_used=uname if is_same_key else "Manual by Developer"
     )
     db.add(new_user)
+
+    if is_same_key:
+        lic_existing = db.query(License).filter(License.app_id == data.app_id, License.license_key == uname).first()
+        if not lic_existing:
+            new_lic = License(
+                app_id=data.app_id,
+                license_key=uname,
+                duration_days=data.duration_days if data.duration_days > 0 else 99999,
+                level=data.subscription_tier or "default",
+                status="used",
+                used_by_username=uname,
+                used_at=datetime.datetime.utcnow(),
+                notes=f"Universal Key Account (User=Pass) created by {dev.username}"
+            )
+            db.add(new_lic)
+        else:
+            lic_existing.status = "used"
+            lic_existing.used_by_username = uname
+
     db.commit()
-    log_audit(db, app.id, "MANUAL_USER_CREATE", username=new_user.username, details="Created manually by developer", status="SUCCESS")
-    return {"success": True, "message": f"User '{new_user.username}' created successfully"}
+    log_audit(db, app.id, "MANUAL_USER_CREATE", username=new_user.username, details="Created universal key/account" if is_same_key else "Created manually by developer", status="SUCCESS")
+    
+    return {
+        "success": True,
+        "message": f"Universal Key '{uname}' created successfully" if is_same_key else f"User '{new_user.username}' created successfully",
+        "is_same_key": is_same_key,
+        "key": uname,
+        "username": uname,
+        "password": pwd,
+        "app_name": app.name,
+        "subscription": new_user.subscription_tier,
+        "duration_days": data.duration_days,
+        "expires_at": new_user.expires_at.isoformat() if new_user.expires_at else "Lifetime"
+    }
 
 @router.post("/users/{user_id}/reset-hwid")
 async def reset_user_hwid(user_id: int, dev: Developer = Depends(get_current_developer), db: Session = Depends(get_db)):
@@ -1364,6 +1399,51 @@ async def get_developer_stats(dev: Developer = Depends(get_current_developer), d
         ]
     }
 
+
+# ==================== UNIVERSAL DISCORD BOT DEVELOPER & STAFF RESOLVER ====================
+def resolve_bot_developer(
+    db: Session,
+    discord_id: Optional[str] = None,
+    discord_username: Optional[str] = None,
+    guild_id: Optional[str] = None,
+    guild_owner_id: Optional[str] = None,
+    is_staff: Optional[bool] = False
+) -> Optional[Developer]:
+    """Resolves developer workspace by direct link, staff role inheritance, guild owner, or master admin."""
+    d_id = str(discord_id).strip() if discord_id else ""
+    d_user = str(discord_username).strip() if discord_username else ""
+    g_owner = str(guild_owner_id).strip() if guild_owner_id else ""
+
+    dev = None
+    # 1. Direct personal Discord ID link
+    if d_id:
+        dev = db.query(Developer).filter(Developer.discord_id == d_id).first()
+
+    # 2. Direct username / email match
+    if not dev and d_user:
+        dev = db.query(Developer).filter(Developer.username.ilike(d_user)).first()
+    if not dev and d_user:
+        dev = db.query(Developer).filter(Developer.email.ilike(f"{d_user}%")).first()
+
+    # 3. Staff Role Inheritance: Resolve Guild Owner's developer account
+    if not dev and is_staff and g_owner:
+        dev = db.query(Developer).filter(Developer.discord_id == g_owner).first()
+
+    # 4. Staff Role Fallback: Resolve Master Admin / Server Workspace
+    if not dev and is_staff:
+        from ..config import MASTER_ADMIN_IDS
+        dev = db.query(Developer).filter(Developer.discord_id.in_(MASTER_ADMIN_IDS)).first()
+        if not dev:
+            dev = db.query(Developer).filter(Developer.plan.in_(["Paid", "Developer", "Enterprise"])).first()
+
+    # 5. Master Admin Direct Fallback
+    if not dev and d_id:
+        from ..config import MASTER_ADMIN_IDS
+        if d_id in MASTER_ADMIN_IDS:
+            dev = db.query(Developer).order_by(Developer.id.asc()).first()
+
+    return dev
+
 # ==================== DISCORD BOT AUTO-FETCH API ====================
 class BotGenKeyRequest(BaseModel):
     discord_id: str
@@ -1373,20 +1453,14 @@ class BotGenKeyRequest(BaseModel):
     duration_days: int = 30
     level: str = "default"
     mask: str = "JOYST-XXXX-XXXX-XXXX"
+    guild_id: Optional[str] = None
+    guild_owner_id: Optional[str] = None
+    is_staff: Optional[bool] = False
 
 @router.post("/bot/genkey")
 async def bot_auto_genkey(data: BotGenKeyRequest, db: Session = Depends(get_db)):
     """Auto-detects developer by Discord ID and generates licenses instantly."""
-    d_id = str(data.discord_id).strip()
-    d_user = (data.discord_username or "").strip()
-
-    dev = None
-    if d_id:
-        dev = db.query(Developer).filter(Developer.discord_id == d_id).first()
-    if not dev and d_user:
-        dev = db.query(Developer).filter(Developer.username == d_user).first()
-    if not dev and d_user:
-        dev = db.query(Developer).filter(Developer.email.like(f"{d_user}%")).first()
+    dev = resolve_bot_developer(db, data.discord_id, data.discord_username, getattr(data, "guild_id", None), getattr(data, "guild_owner_id", None), getattr(data, "is_staff", False))
 
     if not dev:
         raise HTTPException(status_code=404, detail="No linked Developer account found. Please run `/link [email_or_username]` first.")
@@ -1486,12 +1560,14 @@ class BotCreateUserRequest(BaseModel):
     duration_days: int = 30
     subscription_tier: Optional[str] = "default"
     level: Optional[int] = 1
+    guild_id: Optional[str] = None
+    guild_owner_id: Optional[str] = None
+    is_staff: Optional[bool] = False
 
 @router.post("/bot/adduser")
 async def bot_add_user(data: BotCreateUserRequest, db: Session = Depends(get_db)):
     """Create user and password directly via Discord Bot."""
-    d_id = str(data.discord_id).strip()
-    dev = db.query(Developer).filter(Developer.discord_id == d_id).first()
+    dev = resolve_bot_developer(db, data.discord_id, data.discord_username, getattr(data, "guild_id", None), getattr(data, "guild_owner_id", None), getattr(data, "is_staff", False))
     if not dev:
         raise HTTPException(status_code=404, detail="No linked Developer account found. Run `/link [email_or_username]` first.")
 
@@ -1515,26 +1591,52 @@ async def bot_add_user(data: BotCreateUserRequest, db: Session = Depends(get_db)
     if data.duration_days > 0:
         expires_at = datetime.datetime.utcnow() + datetime.timedelta(days=data.duration_days)
 
+    uname = data.username.strip()
+    pwd = data.password.strip()
+    is_same_key = (uname == pwd)
+
     new_user = User(
         app_id=app.id,
-        username=data.username.strip(),
-        password_hash=hash_password(data.password),
+        username=uname,
+        password_hash=hash_password(pwd),
         subscription_tier=data.subscription_tier or "default",
         level=data.level or 1,
         expires_at=expires_at,
         registered_ip="Discord Bot",
-        key_used="Manual by Discord Bot"
+        key_used=uname if is_same_key else "Manual by Discord Bot"
     )
     db.add(new_user)
+
+    if is_same_key:
+        lic_existing = db.query(License).filter(License.app_id == app.id, License.license_key == uname).first()
+        if not lic_existing:
+            new_lic = License(
+                app_id=app.id,
+                license_key=uname,
+                duration_days=data.duration_days if data.duration_days > 0 else 99999,
+                level=data.subscription_tier or "default",
+                status="used",
+                used_by_username=uname,
+                used_at=datetime.datetime.utcnow(),
+                notes=f"Universal Key (User=Pass) created via Bot by @{data.discord_username or dev.username}"
+            )
+            db.add(new_lic)
+        else:
+            lic_existing.status = "used"
+            lic_existing.used_by_username = uname
+
     db.commit()
     db.refresh(new_user)
 
-    log_audit(db, app.id, "MANUAL_USER_CREATE", username=new_user.username, details=f"Created via Discord Bot by @{data.discord_username or dev.username}", status="SUCCESS")
+    log_audit(db, app.id, "MANUAL_USER_CREATE", username=new_user.username, details=f"Created universal key/user via Discord Bot by @{data.discord_username or dev.username}" if is_same_key else f"Created via Discord Bot by @{data.discord_username or dev.username}", status="SUCCESS")
 
     return {
         "success": True,
-        "message": f"Client user '{new_user.username}' created successfully.",
-        "username": new_user.username,
+        "message": f"Universal key '{uname}' provisioned." if is_same_key else f"Client user '{new_user.username}' created successfully.",
+        "is_same_key": is_same_key,
+        "key": uname,
+        "username": uname,
+        "password": pwd,
         "app_name": app.name,
         "duration_days": data.duration_days,
         "subscription": new_user.subscription_tier,
@@ -1547,11 +1649,13 @@ class BotUserActionRequest(BaseModel):
     app_name: Optional[str] = None
     target_username: str
     reason: Optional[str] = "Admin action via Discord Bot"
+    guild_id: Optional[str] = None
+    guild_owner_id: Optional[str] = None
+    is_staff: Optional[bool] = False
 
 @router.post("/bot/resethwid")
 async def bot_reset_hwid(data: BotUserActionRequest, db: Session = Depends(get_db)):
-    d_id = str(data.discord_id).strip()
-    dev = db.query(Developer).filter(Developer.discord_id == d_id).first()
+    dev = resolve_bot_developer(db, data.discord_id, data.discord_username, getattr(data, "guild_id", None), getattr(data, "guild_owner_id", None), getattr(data, "is_staff", False))
     if not dev:
         raise HTTPException(status_code=404, detail="No linked Developer account found. Run `/link [email_or_username]` first.")
 
@@ -1575,8 +1679,7 @@ async def bot_reset_hwid(data: BotUserActionRequest, db: Session = Depends(get_d
 
 @router.post("/bot/ban")
 async def bot_ban_user(data: BotUserActionRequest, db: Session = Depends(get_db)):
-    d_id = str(data.discord_id).strip()
-    dev = db.query(Developer).filter(Developer.discord_id == d_id).first()
+    dev = resolve_bot_developer(db, data.discord_id, data.discord_username, getattr(data, "guild_id", None), getattr(data, "guild_owner_id", None), getattr(data, "is_staff", False))
     if not dev:
         raise HTTPException(status_code=404, detail="No linked Developer account found. Run `/link [email_or_username]` first.")
 
@@ -1601,8 +1704,7 @@ async def bot_ban_user(data: BotUserActionRequest, db: Session = Depends(get_db)
 
 @router.post("/bot/unban")
 async def bot_unban_user(data: BotUserActionRequest, db: Session = Depends(get_db)):
-    d_id = str(data.discord_id).strip()
-    dev = db.query(Developer).filter(Developer.discord_id == d_id).first()
+    dev = resolve_bot_developer(db, data.discord_id, data.discord_username, getattr(data, "guild_id", None), getattr(data, "guild_owner_id", None), getattr(data, "is_staff", False))
     if not dev:
         raise HTTPException(status_code=404, detail="No linked Developer account found. Run `/link [email_or_username]` first.")
 
@@ -1627,8 +1729,7 @@ async def bot_unban_user(data: BotUserActionRequest, db: Session = Depends(get_d
 
 @router.post("/bot/userinfo")
 async def bot_user_info(data: BotUserActionRequest, db: Session = Depends(get_db)):
-    d_id = str(data.discord_id).strip()
-    dev = db.query(Developer).filter(Developer.discord_id == d_id).first()
+    dev = resolve_bot_developer(db, data.discord_id, data.discord_username, getattr(data, "guild_id", None), getattr(data, "guild_owner_id", None), getattr(data, "is_staff", False))
     if not dev:
         raise HTTPException(status_code=404, detail="No linked Developer account found. Run `/link [email_or_username]` first.")
 
@@ -1664,11 +1765,13 @@ async def bot_user_info(data: BotUserActionRequest, db: Session = Depends(get_db
 class BotStatsRequest(BaseModel):
     discord_id: str
     discord_username: Optional[str] = ""
+    guild_id: Optional[str] = None
+    guild_owner_id: Optional[str] = None
+    is_staff: Optional[bool] = False
 
 @router.post("/bot/stats")
 async def bot_get_stats(data: BotStatsRequest, db: Session = Depends(get_db)):
-    d_id = str(data.discord_id).strip()
-    dev = db.query(Developer).filter(Developer.discord_id == d_id).first()
+    dev = resolve_bot_developer(db, data.discord_id, data.discord_username, getattr(data, "guild_id", None), getattr(data, "guild_owner_id", None), getattr(data, "is_staff", False))
     if not dev:
         raise HTTPException(status_code=404, detail="No linked Developer account found. Run `/link [email_or_username]` first.")
 
@@ -1698,8 +1801,7 @@ async def bot_get_stats(data: BotStatsRequest, db: Session = Depends(get_db)):
 @router.post("/bot/apps")
 async def bot_get_developer_apps(data: BotStatsRequest, db: Session = Depends(get_db)):
     """Returns all applications owned by developer for Discord Dropdown Menus."""
-    d_id = str(data.discord_id).strip()
-    dev = db.query(Developer).filter(Developer.discord_id == d_id).first()
+    dev = resolve_bot_developer(db, data.discord_id, data.discord_username, getattr(data, "guild_id", None), getattr(data, "guild_owner_id", None), getattr(data, "is_staff", False))
     if not dev:
         raise HTTPException(status_code=404, detail="No linked Developer account found. Run `/link [email_or_username]` first.")
 
@@ -1719,11 +1821,13 @@ class BotAddResellerRequest(BaseModel):
     reseller_username: str
     reseller_password: str
     balance: int = 50
+    guild_id: Optional[str] = None
+    guild_owner_id: Optional[str] = None
+    is_staff: Optional[bool] = False
 
 @router.post("/bot/addreseller")
 async def bot_create_reseller(data: BotAddResellerRequest, db: Session = Depends(get_db)):
-    d_id = str(data.discord_id).strip()
-    dev = db.query(Developer).filter(Developer.discord_id == d_id).first()
+    dev = resolve_bot_developer(db, data.discord_id, data.discord_username, getattr(data, "guild_id", None), getattr(data, "guild_owner_id", None), getattr(data, "is_staff", False))
     if not dev:
         raise HTTPException(status_code=404, detail="No linked Developer account found. Run `/link [email_or_username]` first.")
 
@@ -1761,11 +1865,13 @@ class BotAddBalanceRequest(BaseModel):
     discord_username: Optional[str] = ""
     reseller_username: str
     amount: int = 20
+    guild_id: Optional[str] = None
+    guild_owner_id: Optional[str] = None
+    is_staff: Optional[bool] = False
 
 @router.post("/bot/addbalance")
 async def bot_add_reseller_balance(data: BotAddBalanceRequest, db: Session = Depends(get_db)):
-    d_id = str(data.discord_id).strip()
-    dev = db.query(Developer).filter(Developer.discord_id == d_id).first()
+    dev = resolve_bot_developer(db, data.discord_id, data.discord_username, getattr(data, "guild_id", None), getattr(data, "guild_owner_id", None), getattr(data, "is_staff", False))
     if not dev:
         raise HTTPException(status_code=404, detail="No linked Developer account found. Run `/link [email_or_username]` first.")
 
@@ -1791,11 +1897,13 @@ class BotResellerInfoRequest(BaseModel):
     discord_id: str
     discord_username: Optional[str] = ""
     reseller_username: str
+    guild_id: Optional[str] = None
+    guild_owner_id: Optional[str] = None
+    is_staff: Optional[bool] = False
 
 @router.post("/bot/resellerinfo")
 async def bot_get_reseller_info(data: BotResellerInfoRequest, db: Session = Depends(get_db)):
-    d_id = str(data.discord_id).strip()
-    dev = db.query(Developer).filter(Developer.discord_id == d_id).first()
+    dev = resolve_bot_developer(db, data.discord_id, data.discord_username, getattr(data, "guild_id", None), getattr(data, "guild_owner_id", None), getattr(data, "is_staff", False))
     if not dev:
         raise HTTPException(status_code=404, detail="No linked Developer account found. Run `/link [email_or_username]` first.")
 
@@ -1970,8 +2078,7 @@ async def bot_upgrade_developer_plan(data: BotUpgradePlanRequest, db: Session = 
     if not p_key and not is_valid_master:
         raise HTTPException(status_code=400, detail="Invalid or already used Plan Upgrade Key.")
 
-    d_id = str(data.discord_id).strip()
-    dev = db.query(Developer).filter(Developer.discord_id == d_id).first()
+    dev = resolve_bot_developer(db, data.discord_id, data.discord_username, getattr(data, "guild_id", None), getattr(data, "guild_owner_id", None), getattr(data, "is_staff", False))
     if not dev:
         raise HTTPException(status_code=404, detail="No linked Developer account found. Run `/link [email_or_username]` first.")
 
@@ -2001,12 +2108,14 @@ class BotMaintenanceRequest(BaseModel):
     app_name: Optional[str] = None
     state: Optional[str] = "toggle" # "enable", "disable", "toggle"
     message: Optional[str] = None
+    guild_id: Optional[str] = None
+    guild_owner_id: Optional[str] = None
+    is_staff: Optional[bool] = False
 
 @router.post("/bot/maintenance")
 async def bot_toggle_maintenance(data: BotMaintenanceRequest, db: Session = Depends(get_db)):
     """Toggle Maintenance Mode for an application directly via Discord Bot."""
-    d_id = str(data.discord_id).strip()
-    dev = db.query(Developer).filter(Developer.discord_id == d_id).first()
+    dev = resolve_bot_developer(db, data.discord_id, data.discord_username, getattr(data, "guild_id", None), getattr(data, "guild_owner_id", None), getattr(data, "is_staff", False))
     if not dev:
         raise HTTPException(status_code=404, detail="No linked Developer account found. Run `/link [email_or_username]` first.")
 
@@ -2051,12 +2160,14 @@ class BotWarningRequest(BaseModel):
     title: str
     message: str
     type: Optional[str] = "danger" # danger, warning, info, success
+    guild_id: Optional[str] = None
+    guild_owner_id: Optional[str] = None
+    is_staff: Optional[bool] = False
 
 @router.post("/bot/warning")
 async def bot_broadcast_warning(data: BotWarningRequest, db: Session = Depends(get_db)):
     """Broadcast an Emergency Warning / Notice to all client .exe software from Discord."""
-    d_id = str(data.discord_id).strip()
-    dev = db.query(Developer).filter(Developer.discord_id == d_id).first()
+    dev = resolve_bot_developer(db, data.discord_id, data.discord_username, getattr(data, "guild_id", None), getattr(data, "guild_owner_id", None), getattr(data, "is_staff", False))
     if not dev:
         raise HTTPException(status_code=404, detail="No linked Developer account found. Run `/link [email_or_username]` first.")
 
@@ -2097,11 +2208,13 @@ class BotDeleteUserRequest(BaseModel):
     discord_id: str
     discord_username: Optional[str] = ""
     target_username: str
+    guild_id: Optional[str] = None
+    guild_owner_id: Optional[str] = None
+    is_staff: Optional[bool] = False
 
 @router.post("/bot/deluser")
 async def bot_delete_user(data: BotDeleteUserRequest, db: Session = Depends(get_db)):
-    d_id = str(data.discord_id).strip()
-    dev = db.query(Developer).filter(Developer.discord_id == d_id).first()
+    dev = resolve_bot_developer(db, data.discord_id, data.discord_username, getattr(data, "guild_id", None), getattr(data, "guild_owner_id", None), getattr(data, "is_staff", False))
     if not dev:
         raise HTTPException(status_code=404, detail="No linked Developer account found.")
 
@@ -2130,11 +2243,13 @@ class BotDeleteKeyRequest(BaseModel):
     discord_id: str
     discord_username: Optional[str] = ""
     target_key: str
+    guild_id: Optional[str] = None
+    guild_owner_id: Optional[str] = None
+    is_staff: Optional[bool] = False
 
 @router.post("/bot/delkey")
 async def bot_delete_key(data: BotDeleteKeyRequest, db: Session = Depends(get_db)):
-    d_id = str(data.discord_id).strip()
-    dev = db.query(Developer).filter(Developer.discord_id == d_id).first()
+    dev = resolve_bot_developer(db, data.discord_id, data.discord_username, getattr(data, "guild_id", None), getattr(data, "guild_owner_id", None), getattr(data, "is_staff", False))
     if not dev:
         raise HTTPException(status_code=404, detail="No linked Developer account found.")
 
@@ -2164,11 +2279,13 @@ class BotListUsersRequest(BaseModel):
     discord_username: Optional[str] = ""
     app_name: Optional[str] = None
     limit: Optional[int] = 15
+    guild_id: Optional[str] = None
+    guild_owner_id: Optional[str] = None
+    is_staff: Optional[bool] = False
 
 @router.post("/bot/listusers")
 async def bot_list_users(data: BotListUsersRequest, db: Session = Depends(get_db)):
-    d_id = str(data.discord_id).strip()
-    dev = db.query(Developer).filter(Developer.discord_id == d_id).first()
+    dev = resolve_bot_developer(db, data.discord_id, data.discord_username, getattr(data, "guild_id", None), getattr(data, "guild_owner_id", None), getattr(data, "is_staff", False))
     if not dev:
         raise HTTPException(status_code=404, detail="No linked Developer account found.")
 
@@ -2202,11 +2319,13 @@ class BotListKeysRequest(BaseModel):
     app_name: Optional[str] = None
     status_filter: Optional[str] = None # unused, used, all
     limit: Optional[int] = 15
+    guild_id: Optional[str] = None
+    guild_owner_id: Optional[str] = None
+    is_staff: Optional[bool] = False
 
 @router.post("/bot/listkeys")
 async def bot_list_keys(data: BotListKeysRequest, db: Session = Depends(get_db)):
-    d_id = str(data.discord_id).strip()
-    dev = db.query(Developer).filter(Developer.discord_id == d_id).first()
+    dev = resolve_bot_developer(db, data.discord_id, data.discord_username, getattr(data, "guild_id", None), getattr(data, "guild_owner_id", None), getattr(data, "is_staff", False))
     if not dev:
         raise HTTPException(status_code=404, detail="No linked Developer account found.")
 

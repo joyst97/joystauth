@@ -7,7 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/static/css/dashboard.css?v=3.0.0">
+    <link rel="stylesheet" href="/static/css/dashboard.css?v=3.1.0">
     <style>
 /* ==================== CRITICAL INLINE DASHBOARD SIDEBAR STYLES ==================== */
 
@@ -2075,58 +2075,55 @@
     </div>
     <!-- CENTER SCREEN CREDENTIALS & DISCORD OUTPUT MODAL -->
     <div id="modal-discord-output" class="modal-overlay" style="z-index: 999999;">
-        <div class="modal-box spotlight-card" style="max-width: 520px; width: 100%; border: 1.5px solid rgba(56, 189, 248, 0.5); padding: 0; overflow: hidden; background: #12070e; border-radius: 16px; box-shadow: 0 25px 70px rgba(0,0,0,0.95), 0 0 40px rgba(225, 29, 72, 0.25);">
-            <!-- Top Header Bar -->
-            <div style="background: rgba(22, 6, 12, 0.95); padding: 16px 22px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.08);">
-                <div style="display: flex; align-items: center; gap: 10px;">
-                    <span style="font-size: 20px;">🛡️</span>
+        <div class="modal-box spotlight-card" style="max-width: 390px; width: 92%; border: 1px solid rgba(255, 42, 95, 0.4); padding: 0; overflow: hidden; background: linear-gradient(145deg, rgba(26, 7, 18, 0.96) 0%, rgba(10, 3, 8, 0.98) 100%); border-radius: 18px; box-shadow: 0 25px 70px rgba(0,0,0,0.95), 0 0 35px rgba(255, 42, 95, 0.25);">
+            <!-- Compact Header Bar -->
+            <div style="background: rgba(255, 255, 255, 0.04); padding: 12px 18px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.08);">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <span style="font-size: 16px;">🛡️</span>
                     <div>
-                        <strong style="color: #fff; font-size: 15px; letter-spacing: 0.5px;" id="discord-output-modal-header">JOYST CORPORATION</strong>
-                        <span style="display: block; font-size: 11.5px; color: var(--text-muted);" id="discord-card-title">CREDENTIALS OUTPUT</span>
+                        <strong style="color: #fff; font-size: 13px; letter-spacing: 0.3px;" id="discord-output-modal-header">JOYST CORPORATION</strong>
+                        <span style="display: block; font-size: 10px; color: var(--text-muted); font-weight: 700; text-transform: uppercase;" id="discord-card-title">Credentials Output</span>
                     </div>
                 </div>
-                <button class="modal-close" onclick="closeModal('modal-discord-output')" style="color: #949ba4; font-size: 22px; background: none; border: none; cursor: pointer;">&times;</button>
+                <button class="modal-close" onclick="closeModal('modal-discord-output')" style="color: #94a3b8; font-size: 18px; width: 26px; height: 26px; border-radius: 50%; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); display: flex; align-items: center; justify-content: center; cursor: pointer;">&times;</button>
             </div>
 
-            <div style="padding: 22px 24px;">
-                <!-- Black Terminal / Console Output Box -->
-                <div style="background: #09090b; border: 1px solid rgba(255,255,255,0.12); border-radius: 10px; overflow: hidden; margin-bottom: 14px; box-shadow: inset 0 2px 10px rgba(0,0,0,0.8);">
-                    <!-- Terminal Top Bar -->
-                    <div style="background: #18181b; padding: 7px 12px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.06);">
-                        <div style="display: flex; gap: 6px;">
-                            <span style="width: 10px; height: 10px; border-radius: 50%; background: #ef4444; display: inline-block;"></span>
-                            <span style="width: 10px; height: 10px; border-radius: 50%; background: #f59e0b; display: inline-block;"></span>
-                            <span style="width: 10px; height: 10px; border-radius: 50%; background: #10b981; display: inline-block;"></span>
+            <div style="padding: 14px 16px;">
+                <!-- Compact Terminal Box -->
+                <div style="background: #060205; border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; overflow: hidden; margin-bottom: 10px; box-shadow: inset 0 2px 8px rgba(0,0,0,0.8);">
+                    <div style="background: #12060d; padding: 5px 10px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.06);">
+                        <div style="display: flex; gap: 5px;">
+                            <span style="width: 7px; height: 7px; border-radius: 50%; background: #ef4444; display: inline-block;"></span>
+                            <span style="width: 7px; height: 7px; border-radius: 50%; background: #f59e0b; display: inline-block;"></span>
+                            <span style="width: 7px; height: 7px; border-radius: 50%; background: #10b981; display: inline-block;"></span>
                         </div>
-                        <span style="font-size: 10.5px; color: var(--text-muted); font-family: monospace;">output.md</span>
+                        <span style="font-size: 9.5px; color: var(--text-muted); font-family: monospace;">output.md</span>
                     </div>
-                    <!-- Terminal Text Content -->
-                    <pre id="discord-card-body" class="mono" style="margin: 0; padding: 14px 16px; font-size: 12.5px; color: #38bdf8; line-height: 1.7; white-space: pre-wrap; word-break: break-word; font-family: 'JetBrains Mono', Consolas, monospace; max-height: 240px; overflow-y: auto;"></pre>
+                    <pre id="discord-card-body" class="mono" style="margin: 0; padding: 10px 12px; font-size: 11.5px; color: #38bdf8; line-height: 1.6; white-space: pre-wrap; word-break: break-word; font-family: 'JetBrains Mono', Consolas, monospace; max-height: 140px; overflow-y: auto;"></pre>
                 </div>
 
-                <!-- Auto Copied Notice Banner -->
-                <div style="background: rgba(16, 185, 129, 0.12); border: 1px solid rgba(16, 185, 129, 0.4); border-radius: 8px; padding: 10px 14px; margin-bottom: 18px; display: flex; align-items: center; gap: 10px;">
-                    <span style="font-size: 18px; color: #10b981;">✅</span>
-                    <span style="font-size: 12.5px; color: #10b981; font-weight: 700;">Credentials automatically copied to clipboard! (Ctrl + V to paste)</span>
+                <!-- Compact Copied Pill -->
+                <div style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.35); border-radius: 8px; padding: 6px 10px; margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
+                    <span style="font-size: 14px; color: #10b981;">✅</span>
+                    <span style="font-size: 11px; color: #10b981; font-weight: 700;">Copied to clipboard! (Ctrl + V to paste)</span>
                 </div>
 
-                <div style="display: flex; gap: 10px;">
-                    <button class="btn btn-primary" id="btn-copy-discord-output" style="flex: 1; padding: 11px 0; font-size: 13.5px; font-weight: 800; box-shadow: 0 0 20px rgba(225, 29, 72, 0.4);">
-                        📋 Copy Details Again
+                <div style="display: flex; gap: 8px;">
+                    <button class="btn btn-primary" id="btn-copy-discord-output" style="flex: 1; padding: 8px 0; font-size: 12px; font-weight: 800; border-radius: 10px;">
+                        📋 Copy Again
                     </button>
-                    <button class="btn btn-secondary" onclick="closeModal('modal-discord-output')" style="padding: 11px 22px; font-size: 13.5px; font-weight: 700;">
+                    <button class="btn btn-secondary" onclick="closeModal('modal-discord-output')" style="padding: 8px 16px; font-size: 12px; font-weight: 700; border-radius: 10px;">
                         Close
                     </button>
                 </div>
             </div>
         </div>
     </div>
-
     <div id="toast-container"></div>
 
     <script src="/static/js/particles.js?v=3.0.0"></script>
     <script src="/static/js/reactbits.js?v=3.0.0"></script>
-    <script src="/static/js/dashboard.js?v=3.0.0"></script>
+    <script src="/static/js/dashboard.js?v=3.1.0"></script>
     <script src="/static/js/shield_defense.js?v=3.0.0"></script>
     <script>
         if (typeof initDashboard === "function") {

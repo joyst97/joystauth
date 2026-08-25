@@ -112,13 +112,13 @@ function showConfirmDialog(optsOrTitle, messageArg, confirmBtnTextArg = "Confirm
         message = optsOrTitle.message || optsOrTitle.msg || optsOrTitle.text || "";
         confirmBtnText = optsOrTitle.okText || optsOrTitle.confirmBtnText || optsOrTitle.confirmText || "Confirm";
         isDanger = optsOrTitle.isDanger !== undefined ? !!optsOrTitle.isDanger : (optsOrTitle.danger !== undefined ? !!optsOrTitle.danger : false);
-        icon = optsOrTitle.icon || (isDanger ? "⚠️" : "❓");
+        icon = optsOrTitle.icon || (isDanger ? "🗑️" : "⚡");
     } else {
         title = String(optsOrTitle || "Confirm Action");
         message = String(messageArg || "");
         confirmBtnText = String(confirmBtnTextArg || "Confirm");
         isDanger = !!isDangerArg;
-        icon = isDanger ? "⚠️" : "❓";
+        icon = isDanger ? "🗑️" : "⚡";
     }
 
     return new Promise((resolve) => {
@@ -130,17 +130,21 @@ function showConfirmDialog(optsOrTitle, messageArg, confirmBtnTextArg = "Confirm
             document.body.appendChild(overlay);
         }
         overlay.innerHTML = `
-            <div class="modal" style="max-width: 460px; border: 1px solid ${isDanger ? 'rgba(239, 68, 68, 0.45)' : 'rgba(255, 42, 95, 0.45)'}; box-shadow: 0 20px 60px rgba(0,0,0,0.8), 0 0 30px ${isDanger ? 'rgba(239, 68, 68, 0.2)' : 'rgba(255, 42, 95, 0.2)'};">
-                <div class="modal-header" style="display: flex; align-items: center; gap: 8px; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 12px;">
-                    <span style="font-size: 18px;">${icon}</span>
-                    <h3 style="color: ${isDanger ? '#ef4444' : '#ff4d79'}; font-size: 16px; font-weight: 700; margin: 0;">${escapeHtml(title)}</h3>
+            <div class="confirm-modal-box ${isDanger ? 'danger' : ''}">
+                <div class="confirm-modal-top-bar"></div>
+                <div class="confirm-modal-header">
+                    <div class="confirm-icon-pill">${icon}</div>
+                    <div class="confirm-header-text">
+                        <h3>${escapeHtml(title)}</h3>
+                        <p>${isDanger ? 'Irreversible Security Action' : 'Action Confirmation'}</p>
+                    </div>
                 </div>
-                <div class="modal-body" style="padding: 18px 0; color: #e2e8f0; font-size: 14px; line-height: 1.6;">
+                <div class="confirm-modal-body">
                     ${escapeHtml(message)}
                 </div>
-                <div class="modal-footer" style="display: flex; justify-content: flex-end; gap: 10px; border-top: 1px solid rgba(255,255,255,0.08); padding-top: 14px;">
-                    <button id="confirm-btn-cancel" class="btn btn-secondary btn-sm">Cancel</button>
-                    <button id="confirm-btn-ok" class="btn ${isDanger ? 'btn-danger' : 'btn-primary'} btn-sm">${escapeHtml(confirmBtnText)}</button>
+                <div class="confirm-modal-footer">
+                    <button id="confirm-btn-cancel" class="btn-confirm-cancel">Cancel</button>
+                    <button id="confirm-btn-ok" class="btn-confirm-action ${isDanger ? 'danger' : ''}">${escapeHtml(confirmBtnText)}</button>
                 </div>
             </div>
         `;
@@ -225,22 +229,41 @@ function showDiscordOutputModal(optionsOrTitle, jsonPayload) {
     }
 
     overlay.innerHTML = `
-        <div class="modal" style="max-width: 600px; border: 1px solid rgba(255, 42, 95, 0.35); box-shadow: 0 20px 60px rgba(0,0,0,0.8), 0 0 30px rgba(255, 42, 95, 0.2);">
-            <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 12px;">
-                <h3 style="color: #ff2a5f; display: flex; align-items: center; gap: 8px; font-size: 16px; font-weight: 700; margin: 0;">
-                    <span style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: #ff2a5f; box-shadow: 0 0 10px #ff2a5f;"></span>
-                    ${escapeHtml(title)}
-                </h3>
-                <button class="modal-close" style="background: transparent; border: none; color: #94a3b8; font-size: 20px; cursor: pointer;" onclick="document.getElementById('discord-output-modal').classList.remove('active')">&times;</button>
+        <div class="modal-box spotlight-card" style="max-width: 390px; width: 92%; border: 1px solid rgba(255, 42, 95, 0.4); padding: 0; overflow: hidden; background: linear-gradient(145deg, rgba(26, 7, 18, 0.96) 0%, rgba(10, 3, 8, 0.98) 100%); border-radius: 18px; box-shadow: 0 25px 70px rgba(0,0,0,0.95), 0 0 35px rgba(255, 42, 95, 0.25);">
+            <div style="background: rgba(255, 255, 255, 0.04); padding: 12px 18px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.08);">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <span style="font-size: 16px;">🛡️</span>
+                    <div>
+                        <strong style="color: #fff; font-size: 13px; letter-spacing: 0.3px;">${escapeHtml(header)}</strong>
+                        <span style="display: block; font-size: 10px; color: var(--text-muted); font-weight: 700; text-transform: uppercase;">${escapeHtml(title)}</span>
+                    </div>
+                </div>
+                <button class="modal-close" onclick="document.getElementById('discord-output-modal').classList.remove('active')" style="color: #94a3b8; font-size: 18px; width: 26px; height: 26px; border-radius: 50%; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); display: flex; align-items: center; justify-content: center; cursor: pointer;">&times;</button>
             </div>
-            <div class="modal-body" style="padding: 16px 0; color: #e2e8f0; font-size: 13px; max-height: 400px; overflow-y: auto;">
-                <pre style="background: #09090b; padding: 14px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.08); color: #38bdf8; font-family: monospace; font-size: 12px; overflow-x: auto;">${escapeHtml(rawText)}</pre>
-            </div>
-            <div class="modal-footer" style="display: flex; justify-content: flex-end; gap: 10px; border-top: 1px solid rgba(255,255,255,0.08); padding-top: 14px;">
-                <button id="discord-modal-copy-btn" class="btn btn-secondary btn-sm" style="display: inline-flex; align-items: center; gap: 6px;">
-                    📋 Copy Text
-                </button>
-                <button class="btn btn-primary btn-sm" onclick="document.getElementById('discord-output-modal').classList.remove('active')">Close</button>
+            <div style="padding: 14px 16px;">
+                <div style="background: #060205; border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; overflow: hidden; margin-bottom: 10px; box-shadow: inset 0 2px 8px rgba(0,0,0,0.8);">
+                    <div style="background: #12060d; padding: 5px 10px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.06);">
+                        <div style="display: flex; gap: 5px;">
+                            <span style="width: 7px; height: 7px; border-radius: 50%; background: #ef4444; display: inline-block;"></span>
+                            <span style="width: 7px; height: 7px; border-radius: 50%; background: #f59e0b; display: inline-block;"></span>
+                            <span style="width: 7px; height: 7px; border-radius: 50%; background: #10b981; display: inline-block;"></span>
+                        </div>
+                        <span style="font-size: 9.5px; color: var(--text-muted); font-family: monospace;">output.md</span>
+                    </div>
+                    <pre class="mono" style="margin: 0; padding: 10px 12px; font-size: 11.5px; color: #38bdf8; line-height: 1.6; white-space: pre-wrap; word-break: break-word; font-family: 'JetBrains Mono', Consolas, monospace; max-height: 140px; overflow-y: auto;">${escapeHtml(rawText)}</pre>
+                </div>
+                <div style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.35); border-radius: 8px; padding: 6px 10px; margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
+                    <span style="font-size: 14px; color: #10b981;">✅</span>
+                    <span style="font-size: 11px; color: #10b981; font-weight: 700;">Copied to clipboard! (Ctrl + V to paste)</span>
+                </div>
+                <div style="display: flex; gap: 8px;">
+                    <button class="btn btn-primary" id="discord-modal-copy-btn" style="flex: 1; padding: 8px 0; font-size: 12px; font-weight: 800; border-radius: 10px;">
+                        📋 Copy Again
+                    </button>
+                    <button class="btn btn-secondary" onclick="document.getElementById('discord-output-modal').classList.remove('active')" style="padding: 8px 16px; font-size: 12px; font-weight: 700; border-radius: 10px;">
+                        Close
+                    </button>
+                </div>
             </div>
         </div>
     `;
@@ -947,19 +970,46 @@ async function generateKeysSubmit() {
                 const durStr = duration > 90000 ? "Lifetime" : `${duration} Days`;
                 const keysRaw = res.keys.join("\n");
 
-                const rawDiscordText = `**JOYST CORPORATION**\n` +
-                    `**${appName.toUpperCase()} LICENSE KEY INFO**\n\n` +
-                    `• **License Key(s) (${res.keys.length}):**\n\`\`\`\n${keysRaw}\n\`\`\`\n` +
-                    `• **Duration:** \`${durStr}\`\n` +
-                    `• **Created At:** \`${nowStr}\`\n\n` +
-                    `*Thank you for choosing JOYST CORPORATION!*`;
+                const isSameKey = (username === password) || (res && res.is_same_key);
 
-                const formattedHtml = `• <strong>Generated License Keys (${res.keys.length}):</strong><br>` +
-                    `<div style="background:#1e1f22; padding:10px 14px; border-radius:6px; margin:8px 0; color:#38bdf8; font-family:monospace; max-height:130px; overflow-y:auto;">${res.keys.map(k => escapeHtml(k)).join("<br>")}</div>` +
-                    `• <strong>Duration:</strong> <code style="background:#1e1f22; padding:2px 6px; border-radius:4px; color:#10b981;">${durStr}</code><br>` +
-                    `• <strong>Created At:</strong> <code style="background:#1e1f22; padding:2px 6px; border-radius:4px;">${nowStr}</code>`;
+            if (isSameKey) {
+                const rawDiscordText = `**JOYST CORPORATION**\n` +
+                    `**${appName.toUpperCase()} LICENSE KEY**\n\n` +
+                    `• **Key:** \`${username}\`\n` +
+                    `• **Duration:** \`${days > 90000 ? 'Lifetime' : days + ' Days'}\`\n` +
+                    `• **Expiry Date:** \`${expStr}\`\n` +
+                    `• **Rank Tier:** \`${tier}\`\n\n` +
+                    `*💡 Note: You can sign in using this Key directly or using it as Username/Password!*`;
+
+                const formattedHtml = `• <strong>Key:</strong> <code style="background:#1e1f22; padding:2px 6px; border-radius:4px; color:#ff4d79; font-weight:800;">${escapeHtml(username)}</code><br>` +
+                    `• <strong>Duration:</strong> <code style="background:#1e1f22; padding:2px 6px; border-radius:4px; color:#10b981;">${days > 90000 ? 'Lifetime' : days + ' Days'}</code><br>` +
+                    `• <strong>Expiry Date:</strong> <code style="background:#1e1f22; padding:2px 6px; border-radius:4px;">${expStr}</code><br>` +
+                    `• <strong>Rank Tier:</strong> <code style="background:#1e1f22; padding:2px 6px; border-radius:4px; color:#38bdf8;">${escapeHtml(tier)}</code>`;
 
                 showDiscordOutputModal({
+                    header: `JOYST CORPORATION`,
+                    title: `${appName.toUpperCase()} LICENSE KEY`,
+                    rawText: rawDiscordText,
+                    formattedHtml: formattedHtml
+                });
+                return;
+            }
+
+            const rawDiscordText = `**JOYST CORPORATION**\n` +
+                `**${appName.toUpperCase()} REGISTRATION INFO**\n\n` +
+                `• **Username:** \`${username}\`\n` +
+                `• **Password:** \`${password}\`\n` +
+                `• **Duration:** \`${days} Days\`\n` +
+                `• **Expiry Date:** \`${expStr}\`\n` +
+                `• **Created At:** \`${nowStr}\`\n\n` +
+                `*Thank you for choosing JOYST CORPORATION!*`;
+
+            const formattedHtml = `• <strong>Username:</strong> <code style="background:#1e1f22; padding:2px 6px; border-radius:4px; color:#fff;">${escapeHtml(username)}</code><br>` +
+                `• <strong>Password:</strong> <code style="background:#1e1f22; padding:2px 6px; border-radius:4px; color:#38bdf8;">${escapeHtml(password)}</code><br>` +
+                `• <strong>Duration:</strong> <code style="background:#1e1f22; padding:2px 6px; border-radius:4px; color:#10b981;">${days} Days</code><br>` +
+                `• <strong>Expiry Date:</strong> <code style="background:#1e1f22; padding:2px 6px; border-radius:4px;">${expStr}</code><br>` +
+                `• <strong>Created At:</strong> <code style="background:#1e1f22; padding:2px 6px; border-radius:4px;">${nowStr}</code>`;
+showDiscordOutputModal({
                     header: `JOYST CORPORATION`,
                     title: `${appName.toUpperCase()} LICENSE KEYS`,
                     rawText: rawDiscordText,

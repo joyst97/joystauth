@@ -125,18 +125,90 @@ def parse_api_response(res):
     except Exception:
         return {"success": False, "detail": res.text.strip() or f"HTTP Error {res.status_code}"}
 
-def fetch_developer_apps(discord_id: str, discord_username: str):
+
+STAFF_ROLES_PATH = os.path.join(os.path.dirname(__file__), "staff_roles.json")
+
+def load_staff_roles() -> dict:
+    if os.path.exists(STAFF_ROLES_PATH):
+        try:
+            with open(STAFF_ROLES_PATH, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception:
+            pass
+    return {}
+
+def save_staff_roles(roles_dict: dict):
     try:
-        res = requests.post(f"{config['api_url']}/api/v1/admin/bot/apps", json={
-            "discord_id": str(discord_id),
-            "discord_username": str(discord_username)
-        }, timeout=15)
+        with open(STAFF_ROLES_PATH, "w", encoding="utf-8") as f:
+            json.dump(roles_dict, f, indent=2)
+    except Exception:
+        pass
+
+def get_custom_staff_role_id(guild_id: int) -> int:
+    roles_dict = load_staff_roles()
+    return roles_dict.get(str(guild_id))
+
+def set_custom_staff_role_id(guild_id: int, role_id: int):
+    roles_dict = load_staff_roles()
+    roles_dict[str(guild_id)] = role_id
+    save_staff_roles(roles_dict)
+
+def is_user_staff(interaction: discord.Interaction) -> bool:
+    """Verifies if the user is a server owner, administrator, or has a staff role."""
+    # 1. Master Admins
+    if str(interaction.user.id) in ["956388318961086465", "1307214230134591559"]:
+        return True
+
+    # 2. Guild Owner
+    if interaction.guild and interaction.user.id == interaction.guild.owner_id:
+        return True
+
+    # 3. Direct Guild Permissions & Roles
+    if interaction.guild and isinstance(interaction.user, discord.Member):
+        if interaction.user.guild_permissions.administrator or interaction.user.guild_permissions.manage_guild or interaction.user.guild_permissions.manage_roles:
+            return True
+
+        # Check configured custom staff role ID
+        custom_role_id = get_custom_staff_role_id(interaction.guild.id)
+        if custom_role_id and any(r.id == custom_role_id for r in interaction.user.roles):
+            return True
+
+        # Check role names
+        staff_keywords = ["staff", "admin", "administrator", "mod", "moderator", "manager", "support", "owner", "co-owner", "founder", "developer", "dev", "operator", "seller", "reseller", "joyst staff", "joyst admin"]
+        for role in interaction.user.roles:
+            r_name = role.name.lower()
+            if any(k in r_name for k in staff_keywords):
+                return True
+
+    return False
+
+def get_bot_payload(interaction: discord.Interaction, **extra) -> dict:
+    """Constructs universal bot request payload with Staff Role and Guild context."""
+    is_staff = is_user_staff(interaction)
+    guild_id = str(interaction.guild.id) if interaction.guild else None
+    guild_owner_id = str(interaction.guild.owner_id) if interaction.guild else None
+
+    payload = {
+        "discord_id": str(interaction.user.id),
+        "discord_username": str(interaction.user.name),
+        "guild_id": guild_id,
+        "guild_owner_id": guild_owner_id,
+        "is_staff": is_staff,
+        **extra
+    }
+    return payload
+
+def fetch_developer_apps(interaction: discord.Interaction):
+    try:
+        payload = get_bot_payload(interaction)
+        res = requests.post(f"{config['api_url']}/api/v1/admin/bot/apps", json=payload, timeout=15)
         data = parse_api_response(res)
         if res.status_code == 200:
             return data.get("apps", [])
     except Exception:
         pass
     return []
+
 
 # ==================== INTERACTIVE SELECT VIEW ====================
 class AppSelectView(discord.ui.View):
@@ -206,19 +278,40 @@ class AppSelectView(discord.ui.View):
             res = requests.post(f"{config['api_url']}/api/v1/admin/bot/adduser", json=self.action_data, timeout=15)
             data = parse_api_response(res)
             if res.status_code == 200 and data.get("success"):
-                embed = discord.Embed(
-                    title=f"{EMOJI['bot']}  CLIENT ACCOUNT CREATED",
-                    description=(
-                        f"### {EMOJI['tick']} User `{data['username']}` is Now Active!\n"
-                        f"{EMOJI['arrow']} **Username:** `{data['username']}`\n"
-                        f"{EMOJI['arrow']} **Password:** `{self.action_data['password']}`\n"
-                        f"{EMOJI['arrow']} **Application:** `{selected_app}`\n"
-                        f"{EMOJI['arrow']} **Subscription:** `{data['subscription']}`\n"
-                        f"{EMOJI['arrow']} **Expiry Date:** `{data['expires_at']}`\n"
-                        f"{EMOJI['arrow']} **HWID Binding:** `Ready on 1st Login` {EMOJI['shield']}"
-                    ),
-                    color=COLOR_SUCCESS
-                )
+                is_same = data.get("is_same_key") or (self.action_data.get('username', '').strip() == self.action_data.get('password', '').strip())
+                if is_same:
+                    dur_val = self.action_data.get('duration_days', 30)
+                    dur_text = f"**{dur_val} Days**" if dur_val > 0 and dur_val < 90000 else f"**Lifetime** {EMOJI['crown']}"
+                    embed = discord.Embed(
+                        title=f"{EMOJI['bolt']}  UNIVERSAL LICENSE KEY CREATED",
+                        description=(
+                            f"### {EMOJI['tick']} Key `{data['username']}` is Ready for `{selected_app}`!\n\n"
+                            f"{EMOJI['arrow']} **Key:** `{data['username']}`\n"
+                            f"{EMOJI['arrow']} **Application:** `{selected_app}`\n"
+                            f"{EMOJI['arrow']} **Duration:** {dur_text}\n"
+                            f"{EMOJI['arrow']} **Rank Tier:** `{data.get('subscription', 'default')}`\n"
+                            f"{EMOJI['arrow']} **Expiry Date:** `{data.get('expires_at', 'Lifetime')}`\n"
+                            f"{EMOJI['arrow']} **Dual Auth:** `Works with Key Login & User/Pass Login` {EMOJI['shield']}\n\n"
+                            f"**━━━━━━━━━ KEY VAULT ━━━━━━━━━**\n"
+                            f"{EMOJI['dot']} **`{data['username']}`**\n"
+                            f"**━━━━━━━━━━━━━━━━━━━━━━━━━━━━━**"
+                        ),
+                        color=COLOR_BRAND
+                    )
+                else:
+                    embed = discord.Embed(
+                        title=f"{EMOJI['bot']}  CLIENT ACCOUNT CREATED",
+                        description=(
+                            f"### {EMOJI['tick']} User `{data['username']}` is Now Active!\n"
+                            f"{EMOJI['arrow']} **Username:** `{data['username']}`\n"
+                            f"{EMOJI['arrow']} **Password:** `{self.action_data['password']}`\n"
+                            f"{EMOJI['arrow']} **Application:** `{selected_app}`\n"
+                            f"{EMOJI['arrow']} **Subscription:** `{data['subscription']}`\n"
+                            f"{EMOJI['arrow']} **Expiry Date:** `{data['expires_at']}`\n"
+                            f"{EMOJI['arrow']} **HWID Binding:** `Ready on 1st Login` {EMOJI['shield']}"
+                        ),
+                        color=COLOR_SUCCESS
+                    )
                 embed.set_footer(text="Joyst Auth • Zero-Leak Security", icon_url=interaction.user.display_avatar.url)
                 await interaction.edit_original_response(content=None, embed=embed, view=None)
             else:
@@ -419,18 +512,17 @@ async def link_cmd(interaction: discord.Interaction, email_or_username: str):
 )
 async def genkey(interaction: discord.Interaction, days: int = 30, count: int = 1, level: str = "default", app: str = None):
     await interaction.response.defer(ephemeral=False)
-    payload = {
-        "discord_id": str(interaction.user.id),
-        "discord_username": str(interaction.user.name),
-        "app_name": app,
-        "count": min(max(1, count), 50),
-        "duration_days": days,
-        "level": level,
-        "mask": "JOYST-XXXX-XXXX-XXXX"
-    }
+    payload = get_bot_payload(
+        interaction,
+        app_name=app,
+        count=min(max(1, count), 50),
+        duration_days=days,
+        level=level,
+        mask="JOYST-XXXX-XXXX-XXXX"
+    )
 
     if not app:
-        apps = fetch_developer_apps(str(interaction.user.id), str(interaction.user.name))
+        apps = fetch_developer_apps(interaction)
         if len(apps) > 1:
             view = AppSelectView("genkey", payload, apps)
             await interaction.followup.send(f"{EMOJI['bolt']} **Select target Application from dropdown below:**", view=view)
@@ -489,18 +581,17 @@ async def genkey(interaction: discord.Interaction, days: int = 30, count: int = 
 )
 async def adduser(interaction: discord.Interaction, username: str, password: str, days: int = 30, rank: str = "default", app: str = None):
     await interaction.response.defer(ephemeral=False)
-    payload = {
-        "discord_id": str(interaction.user.id),
-        "discord_username": str(interaction.user.name),
-        "app_name": app,
-        "username": username.strip(),
-        "password": password.strip(),
-        "duration_days": days,
-        "subscription_tier": rank
-    }
+    payload = get_bot_payload(
+        interaction,
+        app_name=app,
+        username=username.strip(),
+        password=password.strip(),
+        duration_days=days,
+        subscription_tier=rank
+    )
 
     if not app:
-        apps = fetch_developer_apps(str(interaction.user.id), str(interaction.user.name))
+        apps = fetch_developer_apps(interaction)
         if len(apps) > 1:
             view = AppSelectView("adduser", payload, apps)
             await interaction.followup.send(f"{EMOJI['bot']} **Select target Application from dropdown below:**", view=view)
@@ -817,10 +908,7 @@ async def unban(interaction: discord.Interaction, username: str):
 @app_commands.allowed_installs(guilds=True, users=True)
 async def stats(interaction: discord.Interaction):
     await interaction.response.defer(ephemeral=False)
-    payload = {
-        "discord_id": str(interaction.user.id),
-        "discord_username": str(interaction.user.name)
-    }
+    payload = get_bot_payload(interaction)
     try:
         res = requests.post(f"{config['api_url']}/api/v1/admin/bot/stats", json=payload, timeout=15)
         data = parse_api_response(res)
@@ -955,7 +1043,7 @@ async def addbalance(interaction: discord.Interaction, username: str, credits: i
     app_commands.Choice(name="🔄 Toggle State", value="toggle")
 ])
 async def maintenance_cmd(interaction: discord.Interaction, state: str = "toggle", message: str = ""):
-    apps = fetch_developer_apps(interaction.user.id)
+    apps = fetch_developer_apps(interaction)
     if not apps:
         embed = discord.Embed(
             title=f"{EMOJI['cross']}  NO LINKED ACCOUNT FOUND",
@@ -965,12 +1053,7 @@ async def maintenance_cmd(interaction: discord.Interaction, state: str = "toggle
         await interaction.response.send_message(embed=embed, ephemeral=True)
         return
 
-    action_data = {
-        "discord_id": str(interaction.user.id),
-        "discord_username": str(interaction.user.name),
-        "state": state,
-        "message": message.strip() if message else None
-    }
+    action_data = get_bot_payload(interaction, state=state, message=message.strip() if message else None)
 
     view = AppSelectView(apps, "maintenance", action_data)
     await interaction.response.send_message("⚙️ **Select which Application to toggle Maintenance Mode:**", view=view, ephemeral=False)
@@ -986,7 +1069,7 @@ async def maintenance_cmd(interaction: discord.Interaction, state: str = "toggle
     app_commands.Choice(name="🟢 Status Update (Green)", value="success")
 ])
 async def warning_cmd(interaction: discord.Interaction, title: str, message: str, severity: str = "danger"):
-    apps = fetch_developer_apps(interaction.user.id)
+    apps = fetch_developer_apps(interaction)
     if not apps:
         embed = discord.Embed(
             title=f"{EMOJI['cross']}  NO LINKED ACCOUNT FOUND",
@@ -996,16 +1079,55 @@ async def warning_cmd(interaction: discord.Interaction, title: str, message: str
         await interaction.response.send_message(embed=embed, ephemeral=True)
         return
 
-    action_data = {
-        "discord_id": str(interaction.user.id),
-        "discord_username": str(interaction.user.name),
-        "title": title.strip(),
-        "message": message.strip(),
-        "type": severity
-    }
+    action_data = get_bot_payload(interaction, title=title.strip(), message=message.strip(), type=severity)
 
     view = AppSelectView(apps, "warning", action_data)
     await interaction.response.send_message("📢 **Select which Application to Broadcast this Warning to:**", view=view, ephemeral=False)
+
+
+# ==================== STAFF ROLE CONFIGURATION COMMAND ====================
+@bot.tree.command(name="setstaffrole", description="👑 Set or view the authorized Staff Role for Bot Commands in this server")
+@app_commands.allowed_contexts(guilds=True, dms=False, private_channels=False)
+@app_commands.describe(role="Select the Staff Role to grant bot management access to")
+async def set_staff_role_cmd(interaction: discord.Interaction, role: discord.Role = None):
+    # Only Guild Owner or Administrator can change this
+    if not (interaction.user.id == interaction.guild.owner_id or interaction.user.guild_permissions.administrator):
+        embed = discord.Embed(
+            title=f"{EMOJI['cross']}  ACCESS DENIED",
+            description=f"> {EMOJI['alert']} Only the **Server Owner** or **Administrators** can configure the Staff Role.",
+            color=COLOR_DANGER
+        )
+        await interaction.response.send_message(embed=embed, ephemeral=True)
+        return
+
+    if role:
+        set_custom_staff_role_id(interaction.guild.id, role.id)
+        embed = discord.Embed(
+            title=f"{EMOJI['tick']}  STAFF ROLE CONFIGURED",
+            description=(
+                f"### {EMOJI['shield']} Staff Access Granted to `{role.name}`!\n\n"
+                f"{EMOJI['arrow']} **Configured Role:** {role.mention} (`ID: {role.id}`)\n"
+                f"{EMOJI['arrow']} **Privileges:** `Can run /genkey, /adduser, /ban, /unban, /resethwid, /stats without linking`\n"
+                f"{EMOJI['arrow']} **Workspace:** `{interaction.guild.name}` (Linked to Server Developer)\n\n"
+                f"**━━━━━━━━━━━━━━━━━━━━━━━━━━━━━**\n"
+                f"{EMOJI['dot']} *Any member with {role.mention} can now immediately manage keys and users!*"
+            ),
+            color=COLOR_SUCCESS
+        )
+        await interaction.response.send_message(embed=embed, ephemeral=False)
+    else:
+        current_id = get_custom_staff_role_id(interaction.guild.id)
+        role_text = f"<@&{current_id}>" if current_id else "*(Default: Any role containing 'Staff', 'Admin', 'Mod')*"
+        embed = discord.Embed(
+            title=f"{EMOJI['gear']}  CURRENT STAFF ROLE STATUS",
+            description=(
+                f"{EMOJI['arrow']} **Active Staff Role:** {role_text}\n"
+                f"{EMOJI['arrow']} **Usage:** `/setstaffrole [role]` to assign a specific Discord role.\n\n"
+                f"**Note:** Server Administrators and Server Owner always have staff privileges."
+            ),
+            color=COLOR_INFO
+        )
+        await interaction.response.send_message(embed=embed, ephemeral=True)
 
 if __name__ == "__main__":
     token = os.environ.get("DISCORD_BOT_TOKEN") or config.get("token")

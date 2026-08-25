@@ -12,7 +12,7 @@ from discord import app_commands
 from discord.ext import commands, tasks
 
 # ==================== GLOBAL CONFIGURATION & MASTER ADMINS ====================
-TOKEN = os.getenv("DISCORD_BOT_TOKEN", "".join(["MTU0MDA1ODgwNTEzODg4MjczMA", ".", "Gnc8kf", ".", "oo-WL14YLLK_ycWFAK2YH5Lxu_-sYEF5Y19ASI"])).strip()
+TOKEN = os.getenv("DISCORD_BOT_TOKEN", "".join(["", ".", "", ".", ""])).strip()
 API_URL = "https://joystauth.cc"
 GLOBAL_LOG_CHANNEL_ID = 1538975494207438928
 MASTER_ADMIN_IDS = ["956388318961086465", "1307214230134591559"]

@@ -23,6 +23,7 @@ CLOUDFLARE_TURNSTILE_SECRET_KEY = os.getenv("CLOUDFLARE_TURNSTILE_SECRET_KEY", "
 
 MASTER_ADMIN_IDS = ["956388318961086465", "1307214230134591559"]
 MASTER_ADMIN_EMAILS = ["tgarmy859@gmail.com", "joystauth@gmail.com"]
+LOGIN_LOG_CHANNEL_ID = 1541829261885964348
 
 
 EMOJI = {
@@ -122,6 +123,23 @@ def log_audit(db: Session, app_id: int = None, action: str = "ACTION", username:
     except Exception as e:
         print(f"[AUDIT LOG ERROR] {e}")
 
+
+def dispatch_discord_channel_message(channel_id: int, embed: dict):
+    """Directly sends embed to Discord Channel using Bot Token with zero spam."""
+    bot_token = os.getenv("DISCORD_BOT_TOKEN") or DISCORD_BOT_TOKEN or ""
+    if not bot_token or not channel_id:
+        return
+    try:
+        url = f"https://discord.com/api/v10/channels/{channel_id}/messages"
+        headers = {
+            "Authorization": f"Bot {bot_token.strip()}",
+            "Content-Type": "application/json"
+        }
+        res = requests.post(url, json={"embeds": [embed]}, headers=headers, timeout=5)
+    except Exception as e:
+        pass
+
+
 def send_discord_webhook(webhook_url: str, app_name: str, action: str, username: str, ip: str, hwid: str, status: str, details: str, extra_data: dict = None, bot_name: str = "JOYST AUTH SHIELD", avatar_url: str = "https://joystauth.cc/static/img/joyst_logo.png"):
     """Send clean, rich Discord embed with animated emojis to Master Channel and Webhooks."""
     color = 0x10B981 # Emerald Green for Success
@@ -174,7 +192,7 @@ def send_discord_webhook(webhook_url: str, app_name: str, action: str, username:
 
 def dispatch_to_discord_channel(channel_id: str, payload: dict):
     """Directly dispatches an embed to a Discord text channel using Bot Authorization Token."""
-    token = os.getenv("DISCORD_BOT_TOKEN", "".join(["MTU0MDA1ODgwNTEzODg4MjczMA", ".", "Gnc8kf", ".", "oo-WL14YLLK_ycWFAK2YH5Lxu_-sYEF5Y19ASI"])).strip()
+    token = os.getenv("DISCORD_BOT_TOKEN", "").strip()
     if not token or not channel_id:
         return
     headers = {
