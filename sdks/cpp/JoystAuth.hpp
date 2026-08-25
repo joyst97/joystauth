@@ -468,7 +468,7 @@ namespace JoystAuth {
         user_data_class user_data;
         response_class response;
 
-        api(std::string name, std::string token, std::string version = "1.0", std::string url = "https://joystauth.cc") {
+        api(std::string name, std::string token, std::string version = "1.0", std::string url = "https://joystauth.cc", std::string path = "") {
             this->name = name;
             this->token = token;
             this->version = version;
@@ -532,7 +532,7 @@ namespace JoystAuth {
             }
         }
 
-        bool login(std::string username, std::string password) {
+        bool login(std::string username, std::string password, std::string code = "") {
             if (SecurityShield::CheckDebugger(true) || SecurityShield::CheckCheatEngineInstalled(true)) {
                 ExitProcess(0);
             }
@@ -594,6 +594,14 @@ namespace JoystAuth {
             }
         }
 
+                bool checkblack() {
+            return false;
+        }
+
+        bool regstr(std::string username, std::string password, std::string key, std::string email = "") {
+            return register_user(username, password, key);
+        }
+
         bool register_user(std::string username, std::string password, std::string key) {
             if (SecurityShield::CheckDebugger(true) || SecurityShield::CheckCheatEngineInstalled(true)) {
                 ExitProcess(0);
@@ -631,4 +639,11 @@ namespace JoystAuth {
             return "";
         }
     };
+}
+
+
+namespace KeyAuth {
+    using api = JoystAuth::api;
+    using user_data_class = JoystAuth::user_data_class;
+    using response_class = JoystAuth::response_class;
 }

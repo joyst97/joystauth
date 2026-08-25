@@ -7,7 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/static/css/dashboard.css?v=3.1.0">
+    <link rel="stylesheet" href="/static/css/dashboard.css?v=4.0.0">
     <style>
 /* ==================== CRITICAL INLINE DASHBOARD SIDEBAR STYLES ==================== */
 
@@ -1246,16 +1246,51 @@
                 <div class="page-header">
                     <div class="page-title">
                         <h2>Applications Directory</h2>
-                        <p>Manage, switch, and create protected software applications and security tokens.</p>
+                        <p>Manage, search, and inspect credentials for all your protected applications in a clean compact view.</p>
                     </div>
-                    <div style="display: flex; gap: 8px;">
+                    <div style="display: flex; gap: 8px; align-items: center;">
                         <button class="btn btn-primary btn-sm" onclick="openModal('modal-create-app')">
                             <span>➕ Create Application</span>
                         </button>
                     </div>
                 </div>
 
-                <div class="stats-grid" id="apps-grid-container"></div>
+                <div class="table-card spotlight-card">
+                    <div class="table-toolbar" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+                        <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+                            <div class="search-input-wrap" style="width: 320px;">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                                <input type="text" id="apps-search-input" class="search-input" placeholder="Search applications by name, status..." oninput="filterAppsDirectory()">
+                            </div>
+                            <span class="badge badge-cyan" id="apps-total-count-badge" style="font-weight: 800;">0 Applications</span>
+                        </div>
+                        <div style="display: flex; gap: 8px; align-items: center;">
+                            <div style="display: flex; background: rgba(0,0,0,0.5); border: 1px solid var(--border-glass); border-radius: 8px; padding: 3px;">
+                                <button id="btn-apps-view-table" class="btn btn-primary btn-sm" style="padding: 4px 10px; font-size: 12px; border-radius: 6px;" onclick="setAppsViewMode('table')">📋 Compact List</button>
+                                <button id="btn-apps-view-cards" class="btn btn-secondary btn-sm" style="padding: 4px 10px; font-size: 12px; border-radius: 6px;" onclick="setAppsViewMode('cards')">🗂️ Grid Cards</button>
+                            </div>
+                            <button class="btn btn-secondary btn-sm" onclick="copyAllAppsTokens()">📋 Copy All Tokens</button>
+                            <button class="btn btn-secondary btn-sm" onclick="loadApps()">🔄 Refresh</button>
+                        </div>
+                    </div>
+
+                    <div id="apps-table-view-container">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Application Name</th>
+                                    <th>Secret Token (Credential)</th>
+                                    <th>Security & Status</th>
+                                    <th>Stats</th>
+                                    <th style="text-align: right;">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="apps-table-body"></tbody>
+                        </table>
+                    </div>
+
+                    <div id="apps-grid-container" style="display: none; padding: 20px; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 16px;"></div>
+                </div>
             </section>
 
             <!-- 11. TAB: AUDIT LOGS -->
@@ -2158,7 +2193,7 @@
 
     <script src="/static/js/particles.js?v=3.0.0"></script>
     <script src="/static/js/reactbits.js?v=3.0.0"></script>
-    <script src="/static/js/dashboard.js?v=3.1.0"></script>
+    <script src="/static/js/dashboard.js?v=4.0.0"></script>
     <script src="/static/js/shield_defense.js?v=3.0.0"></script>
     <script>
         if (typeof initDashboard === "function") {

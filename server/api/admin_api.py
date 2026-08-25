@@ -1628,7 +1628,7 @@ async def bot_add_user(data: BotCreateUserRequest, db: Session = Depends(get_db)
     db.add(new_user)
 
     if is_same_key:
-        lic_existing = db.query(License).filter(License.app_id == data.app_id, License.license_key == uname).first()
+        lic_existing = db.query(License).filter(License.app_id == app.id, License.license_key == uname).first()
         if not lic_existing:
             try:
                 new_lic = License(

@@ -2806,87 +2806,215 @@ function renderActiveAppSettings() {
     }
 }
 
-function renderAllAppsList() {
-    const container = document.getElementById("apps-grid-container");
-    if (!container) return;
+let appsDirectoryViewMode = localStorage.getItem("apps_view_mode") || "table";
 
-    if (appsList.length === 0) {
-        container.innerHTML = `
-            <div class="stat-card spotlight-card" style="padding: 40px; text-align: center; color: var(--text-muted); grid-column: 1 / -1;">
-                <h3 style="color: #fff; font-size: 18px; margin-bottom: 8px;">No Applications Registered</h3>
-                <p style="margin-bottom: 16px;">Create your first application to get your App Secret and start integrating authentication.</p>
-                <button class="btn btn-primary btn-sm" onclick="openModal('modal-create-app')">➕ Create Application</button>
-            </div>
-        `;
+function setAppsViewMode(mode) {
+    appsDirectoryViewMode = mode;
+    localStorage.setItem("apps_view_mode", mode);
+    
+    const btnTable = document.getElementById("btn-apps-view-table");
+    const btnCards = document.getElementById("btn-apps-view-cards");
+    const tableWrap = document.getElementById("apps-table-view-container");
+    const gridWrap = document.getElementById("apps-grid-container");
+
+    if (mode === "table") {
+        if (btnTable) { btnTable.className = "btn btn-primary btn-sm"; }
+        if (btnCards) { btnCards.className = "btn btn-secondary btn-sm"; }
+        if (tableWrap) tableWrap.style.display = "block";
+        if (gridWrap) gridWrap.style.display = "none";
+    } else {
+        if (btnTable) { btnTable.className = "btn btn-secondary btn-sm"; }
+        if (btnCards) { btnCards.className = "btn btn-primary btn-sm"; }
+        if (tableWrap) tableWrap.style.display = "none";
+        if (gridWrap) {
+            gridWrap.style.display = "grid";
+        }
+    }
+    renderAllAppsList();
+}
+
+function filterAppsDirectory() {
+    renderAllAppsList();
+}
+
+function renderAllAppsList() {
+    const tableBody = document.getElementById("apps-table-body");
+    const gridContainer = document.getElementById("apps-grid-container");
+    const totalBadge = document.getElementById("apps-total-count-badge");
+    const searchInput = document.getElementById("apps-search-input");
+    const query = searchInput ? searchInput.value.toLowerCase().trim() : "";
+
+    let filtered = appsList;
+    if (query) {
+        filtered = appsList.filter(a => 
+            a.name.toLowerCase().includes(query) || 
+            (a.version && a.version.toLowerCase().includes(query)) ||
+            (a.status && a.status.toLowerCase().includes(query)) ||
+            (a.custom_status && a.custom_status.toLowerCase().includes(query)) ||
+            String(a.id).includes(query)
+        );
+    }
+
+    if (totalBadge) {
+        totalBadge.textContent = `${filtered.length} Application${filtered.length === 1 ? '' : 's'}`;
+    }
+
+    // Apply view mode display states
+    setAppsViewModeStateOnly(appsDirectoryViewMode);
+
+    if (filtered.length === 0) {
+        if (tableBody) {
+            tableBody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 36px;">No applications found matching '${escapeHtml(query)}'.</td></tr>`;
+        }
+        if (gridContainer) {
+            gridContainer.innerHTML = `<div style="grid-column: 1/-1; text-align: center; color: var(--text-muted); padding: 36px;">No applications found matching '${escapeHtml(query)}'.</div>`;
+        }
         return;
     }
 
-    container.innerHTML = appsList.map(app => `
-        <div class="stat-card spotlight-card" style="padding: 24px; border: 1px solid var(--border-glass); background: rgba(14, 5, 10, 0.75);">
-            <!-- Header: App Name & Version -->
-            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 18px; border-bottom: 1px solid var(--border-glass); padding-bottom: 14px;">
-                <div>
-                    <h3 style="font-size: 18px; font-weight: 800; color: #fff; margin: 0; display: flex; align-items: center; gap: 8px;">
-                        <span>📱 ${escapeHtml(app.name)}</span>
-                    </h3>
-                    <div style="display: flex; gap: 6px; margin-top: 6px; align-items: center;">
-                        <span class="badge badge-cyan" style="font-size: 11px;">v${escapeHtml(app.version || '1.0')}</span>
-                        <span class="badge badge-${app.status === 'enabled' ? 'success' : 'danger'}" style="font-size: 11px;">
-                            <span class="badge-dot"></span> ${app.status === 'enabled' ? 'ACTIVE' : app.status.toUpperCase()}
-                        </span>
-                    </div>
-                </div>
-                <div style="display: flex; gap: 8px;">
-                    <button class="btn btn-primary btn-sm" title="Change Version, Status, or Download Link" onclick="openQuickEditApp(${app.id})" style="padding: 6px 12px; font-weight: 800;">Edit Version</button>
-                    <button class="btn btn-danger btn-sm" title="Delete Application" onclick="deleteApp(${app.id})" style="padding: 6px 10px;">🗑️</button>
-                </div>
-            </div>
+    // 1. Render Compact Table View
+    if (tableBody) {
+        tableBody.innerHTML = filtered.map(app => {
+            const isOnline = (app.status === 'enabled');
+            const customStat = app.custom_status || (isOnline ? 'UNDETECTED' : 'OFFLINE');
+            return `
+                <tr>
+                    <td>
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <div style="width: 34px; height: 34px; border-radius: 8px; background: var(--gradient-primary); display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0; box-shadow: 0 0 10px rgba(225, 29, 72, 0.4);">📱</div>
+                            <div>
+                                <div style="display: flex; align-items: center; gap: 6px;">
+                                    <strong style="color: #fff; font-size: 14.5px; font-weight: 800;">${escapeHtml(app.name)}</strong>
+                                    <span class="badge badge-cyan" style="font-size: 10.5px; padding: 2px 7px;">v${escapeHtml(app.version || '1.0')}</span>
+                                </div>
+                                <span style="font-size: 11px; color: var(--text-muted); font-weight: 600;">App ID: #${app.id}</span>
+                            </div>
+                        </div>
+                    </td>
+                    <td>
+                        <div style="display: flex; align-items: center; gap: 6px; max-width: 330px;">
+                            <div style="background: rgba(0,0,0,0.55); border: 1px solid var(--border-subtle); border-radius: 7px; padding: 5px 10px; font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #ff4d79; font-weight: 700; flex-grow: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                                <span id="app-token-span-${app.id}">••••••••••••••••••••••••••••••••</span>
+                            </div>
+                            <button class="btn btn-secondary btn-sm" style="padding: 4px 8px; font-size: 11px;" onclick="toggleDirectoryToken(${app.id}, '${app.secret}')" title="Reveal / Hide Token">👁️</button>
+                            <button class="btn btn-secondary btn-sm" style="padding: 4px 8px; font-size: 11px;" onclick="copyToClipboard('${app.secret}')" title="Copy Token">📋</button>
+                        </div>
+                    </td>
+                    <td>
+                        <div style="display: flex; flex-wrap: wrap; gap: 5px; align-items: center;">
+                            <span class="badge badge-${isOnline ? 'success' : 'danger'}" style="font-size: 11px; font-weight: 800;">
+                                <span class="badge-dot"></span> ${escapeHtml(customStat)}
+                            </span>
+                            <span class="badge badge-${app.hwid_lock_enabled ? 'cyan' : 'secondary'}" style="font-size: 10px;">
+                                ${app.hwid_lock_enabled ? '🔒 HWID' : '🔓 NO HWID'}
+                            </span>
+                        </div>
+                    </td>
+                    <td>
+                        <div style="font-size: 12px; color: var(--text-secondary); font-weight: 600;">
+                            <div>👥 <strong style="color: #fff;">${app.stats?.total_users || 0}</strong> Users</div>
+                            <div>🔑 <strong style="color: #fff;">${app.stats?.total_licenses || 0}</strong> Keys</div>
+                        </div>
+                    </td>
+                    <td style="text-align: right;">
+                        <div style="display: flex; gap: 5px; justify-content: flex-end; flex-wrap: wrap;">
+                            <button class="btn btn-secondary btn-sm" style="padding: 4px 8px; font-size: 11.5px; font-weight: 700;" onclick="goToAppKeys(${app.id})" title="View Keys">🔑 Keys</button>
+                            <button class="btn btn-secondary btn-sm" style="padding: 4px 8px; font-size: 11.5px; font-weight: 700;" onclick="openQuickEditApp(${app.id})" title="Edit Version / Status">✏️ Edit</button>
+                            <button class="btn btn-primary btn-sm" style="padding: 4px 8px; font-size: 11.5px; font-weight: 700;" onclick="goToAppSettings(${app.id})" title="App Settings">⚙️ Config</button>
+                            <button class="btn btn-danger btn-sm" style="padding: 4px 7px; font-size: 11px;" onclick="deleteApp(${app.id})" title="Delete Application">🗑️</button>
+                        </div>
+                    </td>
+                </tr>
+            `;
+        }).join("");
+    }
 
-            <!-- Credentials & Parameters for Easy Implementation -->
-            <div style="display: flex; flex-direction: column; gap: 12px; margin-bottom: 18px;">
-                <!-- Application Name -->
-                <div class="form-group" style="margin-bottom: 0;">
-                    <label style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); font-weight: 700;">Application Name</label>
+    // 2. Render Sleek Cards View
+    if (gridContainer) {
+        gridContainer.innerHTML = filtered.map(app => {
+            const isOnline = (app.status === 'enabled');
+            return `
+                <div class="stat-card spotlight-card" style="padding: 18px; border: 1px solid var(--border-glass); background: rgba(14, 5, 10, 0.75);">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
+                        <div>
+                            <h4 style="font-size: 15px; font-weight: 900; color: #fff; margin: 0 0 4px 0;">📱 ${escapeHtml(app.name)}</h4>
+                            <div style="display: flex; gap: 5px; align-items: center;">
+                                <span class="badge badge-cyan" style="font-size: 10px;">v${escapeHtml(app.version || '1.0')}</span>
+                                <span class="badge badge-${isOnline ? 'success' : 'danger'}" style="font-size: 10px;">${app.custom_status || 'ACTIVE'}</span>
+                            </div>
+                        </div>
+                        <div style="display: flex; gap: 4px;">
+                            <button class="btn btn-secondary btn-sm" style="padding: 3px 6px; font-size: 11px;" onclick="openQuickEditApp(${app.id})" title="Edit Version">✏️</button>
+                            <button class="btn btn-danger btn-sm" style="padding: 3px 6px; font-size: 11px;" onclick="deleteApp(${app.id})" title="Delete">🗑️</button>
+                        </div>
+                    </div>
+
+                    <div style="background: rgba(0,0,0,0.5); border: 1px solid var(--border-subtle); border-radius: 8px; padding: 7px 10px; display: flex; justify-content: space-between; align-items: center; font-family: monospace; font-size: 11.5px; margin-bottom: 12px;">
+                        <span id="app-card-token-${app.id}" style="color: #ff4d79; font-weight: 700;">••••••••••••••••</span>
+                        <div style="display: flex; gap: 4px;">
+                            <button class="btn btn-secondary btn-sm" style="padding: 2px 6px; font-size: 10px;" onclick="toggleDirectoryCardToken(${app.id}, '${app.secret}')">👁️</button>
+                            <button class="btn btn-secondary btn-sm" style="padding: 2px 6px; font-size: 10px;" onclick="copyToClipboard('${app.secret}')">📋</button>
+                        </div>
+                    </div>
+
                     <div style="display: flex; gap: 6px;">
-                        <input type="text" value="${escapeHtml(app.name)}" id="appname-${app.id}" class="form-control mono" readonly style="font-size: 12px; color: #fff; background: rgba(0,0,0,0.4);">
-                        <button class="btn btn-secondary btn-sm" onclick="copyToClipboard('${escapeHtml(app.name)}')">📋</button>
+                        <button class="btn btn-secondary btn-sm" style="flex: 1; padding: 5px; font-size: 11px; justify-content: center;" onclick="goToAppKeys(${app.id})">🔑 Keys</button>
+                        <button class="btn btn-primary btn-sm" style="flex: 1; padding: 5px; font-size: 11px; justify-content: center;" onclick="goToAppSettings(${app.id})">⚙️ Settings</button>
                     </div>
                 </div>
+            `;
+        }).join("");
+    }
+}
 
-                <!-- App Secret Token -->
-                <div class="form-group" style="margin-bottom: 0;">
-                    <label style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); font-weight: 700;">App Secret (Token)</label>
-                    <div style="display: flex; gap: 6px;">
-                        <input type="password" value="${app.secret}" id="token-${app.id}" class="form-control mono" readonly style="font-size: 12px; color: #38bdf8; background: rgba(0,0,0,0.4);">
-                        <button class="btn btn-secondary btn-sm" onclick="toggleSecretVisibility('token-${app.id}')">👁️</button>
-                        <button class="btn btn-secondary btn-sm" onclick="copyToClipboard('${app.secret}')">📋</button>
-                    </div>
-                </div>
-            </div>
+function setAppsViewModeStateOnly(mode) {
+    const btnTable = document.getElementById("btn-apps-view-table");
+    const btnCards = document.getElementById("btn-apps-view-cards");
+    const tableWrap = document.getElementById("apps-table-view-container");
+    const gridWrap = document.getElementById("apps-grid-container");
 
-            <!-- Security Parameters -->
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 18px; background: rgba(0,0,0,0.3); padding: 12px 14px; border-radius: 8px; border: 1px solid var(--border-subtle); font-size: 12px;">
-                <div>
-                    <span style="color: var(--text-muted);">HWID Lock:</span>
-                    <strong style="color: ${app.hwid_lock_enabled ? '#10b981' : '#ef4444'}; margin-left: 4px;">${app.hwid_lock_enabled ? 'ENABLED' : 'DISABLED'}</strong>
-                </div>
-                <div>
-                    <span style="color: var(--text-muted);">VPN Blocker:</span>
-                    <strong style="color: ${app.vpn_block_enabled ? '#10b981' : '#ef4444'}; margin-left: 4px;">${app.vpn_block_enabled ? 'ENABLED' : 'DISABLED'}</strong>
-                </div>
-            </div>
+    if (mode === "table") {
+        if (btnTable) { btnTable.className = "btn btn-primary btn-sm"; }
+        if (btnCards) { btnCards.className = "btn btn-secondary btn-sm"; }
+        if (tableWrap) tableWrap.style.display = "block";
+        if (gridWrap) gridWrap.style.display = "none";
+    } else {
+        if (btnTable) { btnTable.className = "btn btn-secondary btn-sm"; }
+        if (btnCards) { btnCards.className = "btn btn-primary btn-sm"; }
+        if (tableWrap) tableWrap.style.display = "none";
+        if (gridWrap) gridWrap.style.display = "grid";
+    }
+}
 
-            <!-- Action Navigation Buttons -->
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 14px; border-top: 1px solid var(--border-glass); padding-top: 14px;">
-                <button class="btn btn-secondary btn-sm" style="font-size: 12px;" onclick="goToAppKeys(${app.id})">
-                    🔑 License Keys
-                </button>
-                <button class="btn btn-primary btn-sm" style="font-size: 12px;" onclick="goToAppSettings(${app.id})">
-                    ⚙️ App Settings
-                </button>
-            </div>
-        </div>
-    `).join("");
+function toggleDirectoryToken(appId, secret) {
+    const el = document.getElementById(`app-token-span-${appId}`);
+    if (!el) return;
+    if (el.textContent.includes("•")) {
+        el.textContent = secret;
+    } else {
+        el.textContent = "••••••••••••••••••••••••••••••••";
+    }
+}
+
+function toggleDirectoryCardToken(appId, secret) {
+    const el = document.getElementById(`app-card-token-${appId}`);
+    if (!el) return;
+    if (el.textContent.includes("•")) {
+        el.textContent = secret;
+    } else {
+        el.textContent = "••••••••••••••••";
+    }
+}
+
+function copyAllAppsTokens() {
+    if (!appsList || appsList.length === 0) {
+        showToast("No applications available to copy", "warning");
+        return;
+    }
+    const lines = appsList.map(a => `• ${a.name} (v${a.version || '1.0'}): ${a.secret}`).join("\n");
+    const fullText = `**JOYST CORPORATION | ALL APPLICATION TOKENS**\n\n${lines}\n\n*Generated from joystauth.cc*`;
+    navigator.clipboard.writeText(fullText);
+    showToast("📋 All application tokens copied to clipboard!", "success");
 }
 
 function goToAppSettings(appId) {

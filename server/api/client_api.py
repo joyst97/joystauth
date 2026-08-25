@@ -979,6 +979,8 @@ async def client_direct_license(data: ClientLicenseRequest, request: Request, db
         user = db.query(User).filter(User.app_id == app.id, User.username == license_obj.used_by_username).first()
         if not user:
             user = db.query(User).filter(User.app_id == app.id, User.key_used == license_key).first()
+        if not user:
+            user = db.query(User).filter(User.app_id == app.id, User.username == license_key).first()
 
         if not user:
             return {"success": False, "message": "License was used but user profile is missing."}

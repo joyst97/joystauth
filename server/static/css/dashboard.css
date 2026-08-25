@@ -3167,8 +3167,8 @@ select:focus {
     display: flex;
     flex-direction: column;
     text-align: left;
-    min-width: 120px;
-    max-width: 200px;
+    min-width: 140px;
+    max-width: 360px;
 }
 
 .top-app-label {
@@ -3218,12 +3218,14 @@ select:focus {
     position: absolute;
     top: calc(100% + 8px);
     left: 0;
-    width: 310px;
+    min-width: 440px;
+    width: max-content;
+    max-width: 560px;
     background: linear-gradient(145deg, rgba(16, 4, 10, 0.99) 0%, rgba(8, 2, 5, 1) 100%);
-    border: 1px solid rgba(255, 42, 95, 0.45);
+    border: 1.5px solid rgba(255, 42, 95, 0.5);
     border-radius: 18px;
-    box-shadow: 0 25px 70px rgba(0, 0, 0, 0.98), 0 0 35px rgba(255, 42, 95, 0.3);
-    padding: 12px;
+    box-shadow: 0 25px 70px rgba(0, 0, 0, 0.98), 0 0 40px rgba(255, 42, 95, 0.35);
+    padding: 14px;
     z-index: 10060;
     display: none;
     backdrop-filter: blur(35px);
@@ -3276,13 +3278,13 @@ select:focus {
 }
 
 .top-app-dropdown-list {
-    max-height: 240px;
+    max-height: 380px;
     overflow-y: auto;
     display: flex;
     flex-direction: column;
-    gap: 4px;
-    margin: 4px 0;
-    padding-right: 2px;
+    gap: 5px;
+    margin: 6px 0;
+    padding-right: 4px;
 }
 
 .top-app-dropdown-list::-webkit-scrollbar {
