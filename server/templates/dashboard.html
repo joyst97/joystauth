@@ -238,22 +238,24 @@
             <!-- Top Header Ribbon -->
             <header class="top-header">
                 <div class="header-left">
-                    <div style="display: flex; align-items: center; gap: 12px;">
+                    <div style="display: flex; align-items: center; gap: 14px;">
                         <button id="btn-mobile-menu" class="mobile-menu-btn" onclick="toggleMobileSidebar()" title="Toggle Navigation Menu">
                             <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
                         </button>
-                        <span style="font-size: 14px; font-weight: 800; color: #fff; letter-spacing: 0.5px;">JOYST CONSOLE</span>
+                        <h2 id="header-active-page-title" style="font-size: 19px; font-weight: 900; color: #ffffff; margin: 0; letter-spacing: -0.3px;">Dashboard Overview</h2>
                     </div>
                 </div>
                 <div class="header-right" style="display: flex; align-items: center; gap: 12px;">
-                    <div class="glowing-pill" style="font-size: 11.5px; padding: 4px 14px;">
-                        <span class="badge-dot" style="background: #10b981;"></span>
-                        <span id="header-plan-badge">Free Plan</span>
+                    <a href="/" class="btn btn-secondary btn-sm" style="font-weight: 700; text-decoration: none;">
+                        <span>🏠 Home</span>
+                    </a>
+                    <div class="glowing-pill" style="font-size: 11.5px; padding: 5px 14px;">
+                        <span id="header-plan-badge" style="color: #34d399; font-weight: 800;">Paid Plan</span>
                     </div>
-                    <button class="btn btn-secondary btn-sm" onclick="openModal('modal-create-app')">
+                    <button class="btn btn-secondary btn-sm" onclick="openModal('modal-create-app')" style="font-weight: 700;">
                         <span>➕ New App</span>
                     </button>
-                    <button class="btn btn-primary btn-sm" onclick="openModal('modal-generate-keys')">
+                    <button class="btn btn-primary btn-sm" onclick="openModal('modal-generate-keys')" style="font-weight: 800; box-shadow: 0 0 20px rgba(255, 42, 95, 0.4);">
                         <span>⚡ Generate Key</span>
                     </button>
                 </div>
@@ -1146,7 +1148,60 @@
         </div>
     </div>
 
-    <!-- ==================== MODALS ==================== -->
+    
+    <!-- Quick Edit Application & Version Modal -->
+    <div id="modal-edit-app-quick" class="modal-overlay">
+        <div class="modal-box" style="max-width: 500px;">
+            <div class="modal-header">
+                <h3>✏️ Edit App & Version Control</h3>
+                <button class="modal-close" data-close-modal>&times;</button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="quick-edit-app-id">
+                
+                <div class="form-group">
+                    <label>Application Name</label>
+                    <input type="text" id="quick-edit-app-name" class="form-control" placeholder="Application Name">
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
+                    <div class="form-group">
+                        <label>Application Version</label>
+                        <input type="text" id="quick-edit-app-version" class="form-control mono" placeholder="e.g. 1.1">
+                        <span style="font-size: 11px; color: #94a3b8; margin-top: 4px; display: block;">Changing this force-blocks older EXEs</span>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Operating Status</label>
+                        <select id="quick-edit-app-status" class="form-control" style="font-weight: 700;">
+                            <option value="enabled">🟢 Online / Active</option>
+                            <option value="paused">⏸️ Maintenance Mode</option>
+                            <option value="disabled">🚫 Emergency Lock</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Auto-Update Direct Download Link</label>
+                    <input type="url" id="quick-edit-app-download" class="form-control mono" placeholder="https://mysite.com/update_v1.1.exe">
+                    <span style="font-size: 11px; color: #94a3b8; margin-top: 4px; display: block;">Old clients will be sent this link when blocked</span>
+                </div>
+
+                <div class="form-group" style="margin-bottom: 8px;">
+                    <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; color: #fff;">
+                        <input type="checkbox" id="quick-edit-app-hwid" style="width: 18px; height: 18px; accent-color: #ff2a5f;">
+                        <span>Enable Strict Motherboard HWID Locking</span>
+                    </label>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary btn-sm" data-close-modal>Cancel</button>
+                <button class="btn btn-primary btn-sm" onclick="submitQuickEditApp()">💾 Save Version & Changes</button>
+            </div>
+        </div>
+    </div>
+
+<!-- ==================== MODALS ==================== -->
 
     <!-- Purchase Plan Modal -->
     <div id="modal-purchase-plan" class="modal-overlay">

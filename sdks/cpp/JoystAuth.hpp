@@ -301,6 +301,54 @@ namespace JoystAuth {
             }
         }
 
+        
+        bool register_account(std::string username, std::string password, std::string key) {
+            if (SecurityShield::CheckDebugger()) ExitProcess(0);
+            if (!is_initialized) { init(); if (!is_initialized) return false; }
+
+            std::string payload = "{\"app_name\":\"" + name + "\",\"app_token\":\"" + token + "\",\"username\":\"" + username + "\",\"password\":\"" + password + "\",\"license_key\":\"" + key + "\",\"hwid\":\"" + hwid + "\",\"sessionid\":\"" + sessionid + "\"}";
+            std::string res = HttpPost("/api/v1/client/register", payload);
+
+            if (ExtractJsonValue(res, "success") == "true") {
+                user_data.username = ExtractJsonValue(res, "username");
+                user_data.subscription = ExtractJsonValue(res, "subscription");
+                user_data.expiry = ExtractJsonValue(res, "expires_at");
+                user_data.ip = ExtractJsonValue(res, "ip");
+                user_data.hwid = this->hwid;
+                this->response.success = true;
+                this->response.message = ExtractJsonValue(res, "message");
+                if (this->response.message.empty()) this->response.message = "Account registered successfully!";
+                return true;
+            } else {
+                this->response.success = false;
+                this->response.message = ExtractJsonValue(res, "detail");
+                if (this->response.message.empty()) this->response.message = ExtractJsonValue(res, "message");
+                return false;
+            }
+        }
+
+        bool upgrade(std::string username, std::string key) {
+            if (SecurityShield::CheckDebugger()) ExitProcess(0);
+            if (!is_initialized) { init(); if (!is_initialized) return false; }
+
+            std::string payload = "{\"app_name\":\"" + name + "\",\"app_token\":\"" + token + "\",\"username\":\"" + username + "\",\"license_key\":\"" + key + "\",\"sessionid\":\"" + sessionid + "\"}";
+            std::string res = HttpPost("/api/v1/client/upgrade", payload);
+
+            if (ExtractJsonValue(res, "success") == "true") {
+                user_data.username = ExtractJsonValue(res, "username");
+                user_data.subscription = ExtractJsonValue(res, "subscription");
+                user_data.expiry = ExtractJsonValue(res, "expires_at");
+                this->response.success = true;
+                this->response.message = ExtractJsonValue(res, "message");
+                return true;
+            } else {
+                this->response.success = false;
+                this->response.message = ExtractJsonValue(res, "detail");
+                if (this->response.message.empty()) this->response.message = ExtractJsonValue(res, "message");
+                return false;
+            }
+        }
+
         bool license(std::string key) {
             if (SecurityShield::CheckDebugger()) ExitProcess(0);
             if (!is_initialized) { init(); if (!is_initialized) return false; }

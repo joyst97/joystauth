@@ -677,6 +677,336 @@ async def client_gateway(req_data: EncryptedPayloadRequest, request: Request, db
     }
 
 
+
+# ================= 3. DIRECT ENDPOINTS FOR SDK CLIENTS =================
+class ClientLoginRequest(BaseModel):
+    app_name: Optional[str] = ""
+    app_token: Optional[str] = ""
+    username: str
+    password: str
+    hwid: Optional[str] = ""
+    sessionid: Optional[str] = ""
+
+class ClientRegisterRequest(BaseModel):
+    app_name: Optional[str] = ""
+    app_token: Optional[str] = ""
+    username: str
+    password: str
+    license_key: Optional[str] = ""
+    key: Optional[str] = ""
+    hwid: Optional[str] = ""
+    sessionid: Optional[str] = ""
+
+class ClientLicenseRequest(BaseModel):
+    app_name: Optional[str] = ""
+    app_token: Optional[str] = ""
+    license_key: Optional[str] = ""
+    key: Optional[str] = ""
+    hwid: Optional[str] = ""
+    sessionid: Optional[str] = ""
+
+class ClientUpgradeRequest(BaseModel):
+    app_name: Optional[str] = ""
+    app_token: Optional[str] = ""
+    username: str
+    license_key: Optional[str] = ""
+    key: Optional[str] = ""
+    sessionid: Optional[str] = ""
+
+class ClientVarRequest(BaseModel):
+    app_name: Optional[str] = ""
+    app_token: Optional[str] = ""
+    var_name: Optional[str] = ""
+    varid: Optional[str] = ""
+    sessionid: Optional[str] = ""
+
+def resolve_app_for_client(db: Session, app_name: str, app_token: str):
+    app = None
+    if app_token:
+        app = db.query(Application).filter(Application.secret == app_token.strip()).first()
+    if not app and app_name:
+        if app_token:
+            app = db.query(Application).filter(Application.name == app_name.strip(), Application.secret == app_token.strip()).first()
+        else:
+            app = db.query(Application).filter(Application.name == app_name.strip()).first()
+    return app
+
+@router.post("/login")
+async def client_direct_login(data: ClientLoginRequest, request: Request, db: Session = Depends(get_db)):
+    ip = get_client_ip(request)
+    hwid = normalize_hwid(data.hwid)
+    app = resolve_app_for_client(db, data.app_name, data.app_token)
+    if not app:
+        return {"success": False, "message": "Application not found or invalid app token."}
+
+    username = data.username.strip()
+    password = data.password
+
+    user = db.query(User).filter(User.app_id == app.id, User.username == username).first()
+    if not user:
+        is_banned = check_and_record_failure(db, app.id, app.name, ip, hwid, username, "User not found")
+        if is_banned:
+            return {"success": False, "message": getattr(app, "brute_force_ban_message", "") or "Too many failed attempts! Blacklisted."}
+        log_audit(db, app.id, "LOGIN_FAILED", username=username, ip_address=ip, hwid=hwid, details="Username not found", status="WARNING")
+        return {"success": False, "message": getattr(app, "user_not_found_message", "") or "Username does not exist."}
+
+    if user.is_banned:
+        log_audit(db, app.id, "LOGIN_BLOCKED", username=username, ip_address=ip, hwid=hwid, details=f"Banned: {user.ban_reason}", status="DANGER")
+        return {"success": False, "message": f"{getattr(app, 'banned_user_message', '') or 'Account is banned!'} Reason: {user.ban_reason or 'None'}"}
+
+    if not verify_password(password, user.password_hash or ""):
+        is_banned = check_and_record_failure(db, app.id, app.name, ip, hwid, username, "Incorrect password")
+        if is_banned:
+            return {"success": False, "message": getattr(app, "brute_force_ban_message", "") or "Too many failed attempts! Blacklisted."}
+        log_audit(db, app.id, "LOGIN_FAILED", username=username, ip_address=ip, hwid=hwid, details="Incorrect password", status="WARNING")
+        return {"success": False, "message": getattr(app, "login_failed_message", "") or "Invalid username or password."}
+
+    if user.expires_at and datetime.datetime.utcnow() > user.expires_at:
+        log_audit(db, app.id, "LOGIN_EXPIRED", username=username, ip_address=ip, hwid=hwid, details="Subscription expired", status="WARNING")
+        return {"success": False, "message": getattr(app, "expired_sub_message", "") or "Your subscription has expired! Please renew."}
+
+    is_hwid_locked = app.hwid_lock_enabled if user.hwid_lock_override is None else user.hwid_lock_override
+    if not user.hwid and hwid:
+        user.hwid = hwid
+        db.commit()
+
+    if is_hwid_locked and user.hwid and hwid and user.hwid != hwid:
+        log_audit(db, app.id, "HWID_MISMATCH", username=username, ip_address=ip, hwid=hwid, details="Hardware ID mismatch", status="DANGER")
+        return {"success": False, "message": getattr(app, "hwid_mismatch_message", "") or "HWID Mismatch! Your account is locked to another computer."}
+
+    user.last_login = datetime.datetime.utcnow()
+    user.last_ip = ip
+    db.commit()
+
+    key = f"{app.id}_{hwid}" if hwid else f"{app.id}_{ip}"
+    failed_attempts_tracker.pop(key, None)
+
+    log_audit(db, app.id, "LOGIN_SUCCESS", username=username, ip_address=ip, hwid=hwid, details="User successfully authenticated", status="SUCCESS")
+    return {
+        "success": True,
+        "message": getattr(app, "login_success_message", "") or "Logged in successfully!",
+        "username": user.username,
+        "subscription": user.subscription_tier or "default",
+        "expires_at": user.expires_at.isoformat() if user.expires_at else "Lifetime",
+        "ip": ip,
+        "hwid": user.hwid or ""
+    }
+
+@router.post("/register")
+async def client_direct_register(data: ClientRegisterRequest, request: Request, db: Session = Depends(get_db)):
+    ip = get_client_ip(request)
+    hwid = normalize_hwid(data.hwid)
+    app = resolve_app_for_client(db, data.app_name, data.app_token)
+    if not app:
+        return {"success": False, "message": "Application not found or invalid app token."}
+
+    username = data.username.strip()
+    password = data.password
+    license_key = (data.license_key or data.key or "").strip()
+
+    if not username or not password or not license_key:
+        return {"success": False, "message": "Username, password, and license key are all required."}
+
+    existing_user = db.query(User).filter(User.app_id == app.id, User.username == username).first()
+    if existing_user:
+        return {"success": False, "message": "Username is already registered."}
+
+    license_obj = db.query(License).filter(License.app_id == app.id, License.license_key == license_key).first()
+    if not license_obj:
+        log_audit(db, app.id, "REGISTER_FAIL", username=username, ip_address=ip, hwid=hwid, details=f"Invalid key: {license_key}", status="WARNING")
+        return {"success": False, "message": getattr(app, "invalid_license_message", "") or "Invalid license key."}
+
+    if license_obj.status != "unused":
+        log_audit(db, app.id, "REGISTER_FAIL", username=username, ip_address=ip, hwid=hwid, details=f"License already {license_obj.status}", status="WARNING")
+        return {"success": False, "message": getattr(app, "used_license_message", "") or f"This license key is already {license_obj.status}."}
+
+    expires_at = None
+    if license_obj.duration_days > 0 and license_obj.duration_days < 90000:
+        expires_at = datetime.datetime.utcnow() + datetime.timedelta(days=license_obj.duration_days)
+
+    new_user = User(
+        app_id=app.id,
+        username=username,
+        password_hash=hash_password(password),
+        hwid=hwid,
+        last_ip=ip,
+        registered_ip=ip,
+        subscription_tier=license_obj.level,
+        expires_at=expires_at,
+        key_used=license_key,
+        created_at=datetime.datetime.utcnow(),
+        last_login=datetime.datetime.utcnow()
+    )
+    db.add(new_user)
+
+    license_obj.status = "used"
+    license_obj.used_by_username = username
+    license_obj.used_at = datetime.datetime.utcnow()
+    db.commit()
+
+    key = f"{app.id}_{hwid}" if hwid else f"{app.id}_{ip}"
+    failed_attempts_tracker.pop(key, None)
+
+    log_audit(db, app.id, "REGISTER_SUCCESS", username=username, ip_address=ip, hwid=hwid, details=f"Registered account with key {license_key}", status="SUCCESS")
+    return {
+        "success": True,
+        "message": getattr(app, "register_success_message", "") or "Account created successfully! You are now logged in.",
+        "username": new_user.username,
+        "subscription": new_user.subscription_tier or "default",
+        "expires_at": new_user.expires_at.isoformat() if new_user.expires_at else "Lifetime",
+        "ip": ip,
+        "hwid": new_user.hwid or ""
+    }
+
+@router.post("/license")
+async def client_direct_license(data: ClientLicenseRequest, request: Request, db: Session = Depends(get_db)):
+    ip = get_client_ip(request)
+    hwid = normalize_hwid(data.hwid)
+    app = resolve_app_for_client(db, data.app_name, data.app_token)
+    if not app:
+        return {"success": False, "message": "Application not found or invalid app token."}
+
+    license_key = (data.license_key or data.key or "").strip()
+    if not license_key:
+        return {"success": False, "message": "License key is required."}
+
+    license_obj = db.query(License).filter(License.app_id == app.id, License.license_key == license_key).first()
+    if not license_obj:
+        log_audit(db, app.id, "LICENSE_FAIL", ip_address=ip, hwid=hwid, details=f"Invalid key {license_key}", status="WARNING")
+        return {"success": False, "message": getattr(app, "invalid_license_message", "") or "Invalid license key."}
+
+    if license_obj.status == "paused":
+        return {"success": False, "message": getattr(app, "paused_license_message", "") or "This license key is paused by administrator."}
+
+    if license_obj.status == "revoked":
+        return {"success": False, "message": getattr(app, "revoked_license_message", "") or "This license key has been revoked."}
+
+    if license_obj.status == "used":
+        user = db.query(User).filter(User.app_id == app.id, User.username == license_obj.used_by_username).first()
+        if not user:
+            user = db.query(User).filter(User.app_id == app.id, User.key_used == license_key).first()
+
+        if not user:
+            return {"success": False, "message": "License was used but user profile is missing."}
+        if user.is_banned:
+            return {"success": False, "message": f"{getattr(app, 'banned_user_message', '') or 'Account is banned!'} Reason: {user.ban_reason or 'None'}"}
+        if user.expires_at and datetime.datetime.utcnow() > user.expires_at:
+            return {"success": False, "message": getattr(app, "expired_sub_message", "") or "Your subscription has expired! Please renew."}
+
+        is_hwid_locked = app.hwid_lock_enabled if user.hwid_lock_override is None else user.hwid_lock_override
+        if not user.hwid and hwid:
+            user.hwid = hwid
+            db.commit()
+
+        if is_hwid_locked and user.hwid and hwid and user.hwid != hwid:
+            log_audit(db, app.id, "HWID_MISMATCH", username=user.username, ip_address=ip, hwid=hwid, details="License HWID mismatch", status="DANGER")
+            return {"success": False, "message": getattr(app, "hwid_mismatch_message", "") or "HWID Mismatch! This key is bound to another PC."}
+
+        user.last_login = datetime.datetime.utcnow()
+        user.last_ip = ip
+        db.commit()
+
+        log_audit(db, app.id, "LOGIN_SUCCESS", username=user.username, ip_address=ip, hwid=hwid, details="Logged in via key", status="SUCCESS")
+        return {
+            "success": True,
+            "message": getattr(app, "license_login_success_message", "") or "License authenticated successfully!",
+            "username": user.username,
+            "subscription": user.subscription_tier or "default",
+            "expires_at": user.expires_at.isoformat() if user.expires_at else "Lifetime",
+            "ip": ip,
+            "hwid": user.hwid or ""
+        }
+
+    elif license_obj.status == "unused":
+        username = f"user_{generate_random_token(8)}"
+        expires_at = None
+        if license_obj.duration_days > 0 and license_obj.duration_days < 90000:
+            expires_at = datetime.datetime.utcnow() + datetime.timedelta(days=license_obj.duration_days)
+
+        new_user = User(
+            app_id=app.id,
+            username=username,
+            password_hash=None,
+            hwid=hwid,
+            last_ip=ip,
+            registered_ip=ip,
+            subscription_tier=license_obj.level,
+            expires_at=expires_at,
+            key_used=license_key,
+            created_at=datetime.datetime.utcnow(),
+            last_login=datetime.datetime.utcnow()
+        )
+        db.add(new_user)
+        license_obj.status = "used"
+        license_obj.used_by_username = username
+        license_obj.used_at = datetime.datetime.utcnow()
+        db.commit()
+
+        log_audit(db, app.id, "KEY_ACTIVATED", username=username, ip_address=ip, hwid=hwid, details="Key activated and locked to HWID", status="SUCCESS")
+        return {
+            "success": True,
+            "message": "License activated successfully!",
+            "username": username,
+            "subscription": new_user.subscription_tier or "default",
+            "expires_at": new_user.expires_at.isoformat() if new_user.expires_at else "Lifetime",
+            "ip": ip,
+            "hwid": new_user.hwid or ""
+        }
+
+@router.post("/upgrade")
+async def client_direct_upgrade(data: ClientUpgradeRequest, request: Request, db: Session = Depends(get_db)):
+    ip = get_client_ip(request)
+    app = resolve_app_for_client(db, data.app_name, data.app_token)
+    if not app:
+        return {"success": False, "message": "Application not found or invalid app token."}
+
+    username = data.username.strip()
+    license_key = (data.license_key or data.key or "").strip()
+
+    user = db.query(User).filter(User.app_id == app.id, User.username == username).first()
+    if not user:
+        return {"success": False, "message": "User does not exist."}
+
+    license_obj = db.query(License).filter(License.app_id == app.id, License.license_key == license_key).first()
+    if not license_obj or license_obj.status != "unused":
+        return {"success": False, "message": "Invalid or already used license key."}
+
+    # Extend expiration
+    if license_obj.duration_days > 0:
+        base_time = user.expires_at if (user.expires_at and user.expires_at > datetime.datetime.utcnow()) else datetime.datetime.utcnow()
+        user.expires_at = base_time + datetime.timedelta(days=license_obj.duration_days)
+    else:
+        user.expires_at = None # Lifetime
+
+    user.subscription_tier = license_obj.level
+    license_obj.status = "used"
+    license_obj.used_by_username = username
+    license_obj.used_at = datetime.datetime.utcnow()
+    db.commit()
+
+    log_audit(db, app.id, "USER_UPGRADE", username=username, ip_address=ip, details=f"Upgraded with key {license_key}", status="SUCCESS")
+    return {
+        "success": True,
+        "message": f"Successfully extended subscription by {license_obj.duration_days} days!",
+        "username": user.username,
+        "subscription": user.subscription_tier,
+        "expires_at": user.expires_at.isoformat() if user.expires_at else "Lifetime"
+    }
+
+@router.post("/var")
+async def client_direct_var(data: ClientVarRequest, request: Request, db: Session = Depends(get_db)):
+    app = resolve_app_for_client(db, data.app_name, data.app_token)
+    if not app:
+        return {"success": False, "message": "Application not found."}
+
+    var_name = (data.var_name or data.varid or "").strip()
+    var_obj = db.query(AppVariable).filter(AppVariable.app_id == app.id, AppVariable.name == var_name).first()
+    if not var_obj:
+        return {"success": False, "message": f"Variable '{var_name}' not found."}
+
+    return {"success": True, "value": var_obj.value}
+
+
 @router.post("/telemetry/visit")
 async def record_website_visit(request: Request):
     """Receives frontend visitor telemetry and triggers real-time Discord webhook alert."""

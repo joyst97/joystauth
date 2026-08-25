@@ -159,6 +159,22 @@ async def developer_register(data: DeveloperRegisterRequest, db: Session = Depen
     db.commit()
     db.refresh(new_dev)
 
+    try:
+        from ..config import send_platform_master_alert
+        send_platform_master_alert(
+            title="✨ NEW DEVELOPER REGISTERED",
+            description=f"A new developer account was just created on **joystauth.cc**!",
+            fields=[
+                {"name": "👤 Username", "value": f"**@{new_dev.username}**", "inline": True},
+                {"name": "📧 Email", "value": f"`{new_dev.email or 'None'}`", "inline": True},
+                {"name": "💎 Plan Tier", "value": f"`{new_dev.plan}`", "inline": True},
+                {"name": "🆔 Owner ID", "value": f"`{new_dev.owner_id}`", "inline": False}
+            ],
+            color=0x10B981
+        )
+    except Exception:
+        pass
+    
     token = create_access_token({"sub": new_dev.username, "id": new_dev.id, "owner_id": new_dev.owner_id})
     return {
         "success": True,

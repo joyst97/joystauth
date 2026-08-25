@@ -352,6 +352,26 @@ function switchTab(tabId) {
     if (activeNav) activeNav.classList.add("active");
     if (activePage) activePage.classList.add("active");
 
+    
+    const titleMap = {
+        overview: "Dashboard Overview",
+        apps: "Applications Directory",
+        licenses: "License Keys Vault",
+        users: "Users & HWID Management",
+        tiers: "Subscription Tiers & Ranks",
+        blacklists: "Blacklists & Security Blocks",
+        resellers: "Reseller Sub-Accounts",
+        webhooks: "Discord Bot & Event Logs",
+        notifications: "Client In-App Notices",
+        logs: "Real-Time Activity Stream",
+        sdk: "SDK Studio & Integration",
+        settings: "Settings & Application Hub"
+    };
+    const pageTitleEl = document.getElementById("header-active-page-title");
+    if (pageTitleEl && titleMap[tabId]) {
+        pageTitleEl.textContent = titleMap[tabId];
+    }
+
     loadTabContent(tabId);
 }
 
@@ -2417,7 +2437,10 @@ function renderAllAppsList() {
                         </span>
                     </div>
                 </div>
-                <button class="btn btn-danger btn-sm" title="Delete Application" onclick="deleteApp(${app.id})" style="padding: 6px 10px;">🗑️</button>
+                <div style="display: flex; gap: 8px;">
+                    <button class="btn btn-primary btn-sm" title="Change Version, Status, or Download Link" onclick="openQuickEditApp(${app.id})" style="padding: 6px 12px; font-weight: 800;">Edit Version</button>
+                    <button class="btn btn-danger btn-sm" title="Delete Application" onclick="deleteApp(${app.id})" style="padding: 6px 10px;">🗑️</button>
+                </div>
             </div>
 
             <!-- Credentials & Parameters for Easy Implementation -->
@@ -2704,7 +2727,7 @@ function updateSdkSnippets() {
 from joystauth import JoystAuth
 
 # 1. Initialize with App Name and Master App Token
-app = JoystAuth("${appName}", "${appToken}")
+app = JoystAuth("${appName}", "${appToken}", version="${version}")
 
 # 2. Authenticate (Choose ONE method):
 # --- Method A: Login with Username & Password ---
@@ -2736,7 +2759,7 @@ class Program
     static async Task Main(string[] args)
     {
         // 1. Initialize Joyst Auth (App Name + Master App Token)
-        var auth = new api("${appName}", "${appToken}");
+        var auth = new api("${appName}", "${appToken}", "${version}");
         await auth.init();
 
         // 2. Authenticate (Choose ONE method):
@@ -2772,7 +2795,7 @@ class Program
 
 int main() {
     // 1. Initialize Header-Only SDK (App Name + Master App Token)
-    JoystAuth::api auth("${appName}", "${appToken}");
+    JoystAuth::api auth("${appName}", "${appToken}", "${version}");
 
     if (!auth.init()) {
         std::cout << "Init failed: " << auth.response.message << "\\n";
@@ -3217,5 +3240,59 @@ async function submitDeleteAccount() {
         }
     } catch (err) {
         showToast("Error: " + err.message, "error");
+    }
+}
+
+
+function openQuickEditApp(appId) {
+    const app = appsList.find(a => a.id === appId);
+    if (!app) return;
+
+    document.getElementById("quick-edit-app-id").value = app.id;
+    document.getElementById("quick-edit-app-name").value = app.name || "";
+    document.getElementById("quick-edit-app-version").value = app.version || "1.0";
+    document.getElementById("quick-edit-app-status").value = app.status || "enabled";
+    document.getElementById("quick-edit-app-download").value = app.download_link || "";
+    document.getElementById("quick-edit-app-hwid").checked = !!app.hwid_lock_enabled;
+
+    openModal("modal-edit-app-quick");
+}
+
+async function submitQuickEditApp() {
+    const appId = parseInt(document.getElementById("quick-edit-app-id").value);
+    if (!appId) return;
+
+    const name = document.getElementById("quick-edit-app-name").value.trim();
+    const version = document.getElementById("quick-edit-app-version").value.trim() || "1.0";
+    const status = document.getElementById("quick-edit-app-status").value;
+    const download = document.getElementById("quick-edit-app-download").value.trim();
+    const hwid = document.getElementById("quick-edit-app-hwid").checked;
+
+    if (!name) {
+        showToast("Application name cannot be empty", "warning");
+        return;
+    }
+
+    showToast("Saving application updates...", "info");
+
+    const res = await apiFetch(`/api/v1/admin/apps/${appId}`, {
+        method: "PUT",
+        body: JSON.stringify({
+            name: name,
+            version: version,
+            status: status,
+            download_link: download,
+            hwid_lock_enabled: hwid
+        })
+    });
+
+    if (res && res.success) {
+        showToast(`App '${name}' updated to v${version} successfully!`, "success");
+        closeModal("modal-edit-app-quick");
+        await loadApps();
+        updateBannerCredentials();
+        renderAllAppsList();
+    } else {
+        showToast(res?.detail || "Failed to update application", "error");
     }
 }

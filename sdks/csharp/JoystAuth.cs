@@ -276,6 +276,100 @@ namespace JoystAuth
 
         public bool login(string username, string password) => LoginAsync(username, password).GetAwaiter().GetResult();
 
+        
+        public async Task<bool> RegisterAsync(string username, string password, string key)
+        {
+            if (SecurityShield.CheckDebugger()) Environment.Exit(0);
+            if (!is_initialized) { await InitAsync(); if (!is_initialized) return false; }
+
+            var payload = new
+            {
+                app_name = name,
+                app_token = token,
+                username = username,
+                password = password,
+                license_key = key,
+                hwid = hwid,
+                sessionid = sessionid
+            };
+
+            string raw = await HttpPostAsync("/api/v1/client/register", payload);
+            try
+            {
+                using var doc = JsonDocument.Parse(raw);
+                var root = doc.RootElement;
+                if (root.TryGetProperty("success", out var s) && s.GetBoolean())
+                {
+                    user_data.username = root.TryGetProperty("username", out var u) ? u.GetString() ?? username : username;
+                    user_data.subscription = root.TryGetProperty("subscription", out var sub) ? sub.GetString() ?? "default" : "default";
+                    user_data.expiry = root.TryGetProperty("expires_at", out var exp) ? exp.GetString() ?? "" : "";
+                    user_data.ip = root.TryGetProperty("ip", out var ip) ? ip.GetString() ?? "" : "";
+                    user_data.hwid = hwid;
+                    response.success = true;
+                    response.message = root.TryGetProperty("message", out var m) ? m.GetString() ?? "Registration Successful" : "Registration Successful";
+                    return true;
+                }
+                else
+                {
+                    response.success = false;
+                    response.message = root.TryGetProperty("detail", out var d) ? d.GetString() ?? "" : (root.TryGetProperty("message", out var m2) ? m2.GetString() ?? "Registration failed" : "Registration failed");
+                    return false;
+                }
+            }
+            catch
+            {
+                response.success = false;
+                response.message = "Invalid registration response";
+                return false;
+            }
+        }
+
+        public bool register(string username, string password, string key) => RegisterAsync(username, password, key).GetAwaiter().GetResult();
+
+        public async Task<bool> UpgradeAsync(string username, string key)
+        {
+            if (SecurityShield.CheckDebugger()) Environment.Exit(0);
+            if (!is_initialized) { await InitAsync(); if (!is_initialized) return false; }
+
+            var payload = new
+            {
+                app_name = name,
+                app_token = token,
+                username = username,
+                license_key = key,
+                sessionid = sessionid
+            };
+
+            string raw = await HttpPostAsync("/api/v1/client/upgrade", payload);
+            try
+            {
+                using var doc = JsonDocument.Parse(raw);
+                var root = doc.RootElement;
+                if (root.TryGetProperty("success", out var s) && s.GetBoolean())
+                {
+                    user_data.subscription = root.TryGetProperty("subscription", out var sub) ? sub.GetString() ?? "default" : "default";
+                    user_data.expiry = root.TryGetProperty("expires_at", out var exp) ? exp.GetString() ?? "" : "";
+                    response.success = true;
+                    response.message = root.TryGetProperty("message", out var m) ? m.GetString() ?? "Upgraded successfully" : "Upgraded successfully";
+                    return true;
+                }
+                else
+                {
+                    response.success = false;
+                    response.message = root.TryGetProperty("detail", out var d) ? d.GetString() ?? "" : (root.TryGetProperty("message", out var m2) ? m2.GetString() ?? "Upgrade failed" : "Upgrade failed");
+                    return false;
+                }
+            }
+            catch
+            {
+                response.success = false;
+                response.message = "Invalid upgrade response";
+                return false;
+            }
+        }
+
+        public bool upgrade(string username, string key) => UpgradeAsync(username, key).GetAwaiter().GetResult();
+
         public async Task<bool> LicenseAsync(string key)
         {
             if (SecurityShield.CheckDebugger()) Environment.Exit(0);

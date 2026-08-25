@@ -152,6 +152,37 @@ def send_discord_webhook(webhook_url: str, app_name: str, action: str, username:
     except Exception:
         pass
 
+
+def send_platform_master_alert(title: str, description: str, fields: list, color: int = 0x10B981):
+    """Dispatches real-time event alerts to Platform Owner Discord Webhook."""
+    target_webhook = DEFAULT_DISCORD_WEBHOOK_URL
+    if not target_webhook or not target_webhook.startswith("http"):
+        return
+
+    payload = {
+        "username": "JOYST CLOUD SENTINEL",
+        "avatar_url": "https://joystauth.cc/static/img/joyst_logo.png",
+        "embeds": [
+            {
+                "title": title,
+                "description": description,
+                "color": color,
+                "fields": fields,
+                "footer": {"text": "Joyst Auth Platform Master Stream • joystauth.cc"},
+                "timestamp": datetime.datetime.utcnow().isoformat()
+            }
+        ]
+    }
+
+    def _post():
+        try:
+            requests.post(target_webhook, json=payload, timeout=3)
+        except Exception:
+            pass
+
+    import threading
+    threading.Thread(target=_post, daemon=True).start()
+
 def send_discord_glitch_alert(route: str, method: str, status_code: int, error_name: str, error_msg: str, stack_trace: str = "", client_ip: str = "Unknown"):
     """Dispatches a modern, clean Cyber Crimson Embed to Discord whenever a server glitch or unhandled exception occurs."""
     target_webhook = os.getenv("INCIDENT_DISCORD_WEBHOOK_URL", DEFAULT_DISCORD_WEBHOOK_URL)

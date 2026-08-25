@@ -275,6 +275,20 @@ async def create_app(data: CreateAppRequest, dev: Developer = Depends(get_curren
     db.commit()
 
     log_audit(db, new_app.id, "APP_CREATED", details=f"New application '{new_app.name}' initialized with Joyst Auth", status="SUCCESS")
+    try:
+        from ..config import send_platform_master_alert
+        send_platform_master_alert(
+            title="⚡ NEW APPLICATION CREATED",
+            description=f"Developer **@{dev.username}** just created a new application!",
+            fields=[
+                {"name": "📱 Application Name", "value": f"**{new_app.name}**", "inline": True},
+                {"name": "👤 Developer", "value": f"**@{dev.username}**", "inline": True},
+                {"name": "🔢 Version", "value": f"`v{new_app.version}`", "inline": True}
+            ],
+            color=0x8B5CF6
+        )
+    except Exception:
+        pass
 
     return {"success": True, "message": "Application created successfully", "app": {
         "id": new_app.id,
@@ -1867,6 +1881,44 @@ class BotGenPlanKeyRequest(BaseModel):
     discord_username: Optional[str] = ""
     count: int = 1
     plan: Optional[str] = "Paid"
+
+
+class BotGlobalStatsRequest(BaseModel):
+    discord_id: str
+    discord_username: Optional[str] = ""
+
+@router.post("/bot/globalstats")
+async def bot_get_global_platform_stats(data: BotGlobalStatsRequest, db: Session = Depends(get_db)):
+    """Returns platform-wide master telemetry for Platform Owners (Master Admin Only)."""
+    master_admins = ["956388318961086465", "1307214230134591559"]
+    d_id = str(data.discord_id).strip()
+    if d_id not in master_admins:
+        raise HTTPException(status_code=403, detail="Platform Master Admin authorization required.")
+
+    tot_devs = db.query(Developer).count()
+    tot_apps = db.query(Application).count()
+    tot_users = db.query(User).count()
+    tot_keys = db.query(License).count()
+    unused_keys = db.query(License).filter(License.status == "unused").count()
+    used_keys = db.query(License).filter(License.status == "used").count()
+    tot_resellers = db.query(Reseller).count()
+    tot_blacklists = db.query(Blacklist).count()
+
+    recent_devs = db.query(Developer).order_by(Developer.id.desc()).limit(5).all()
+    recent_list = [f"@{d.username} ({d.email or 'No email'}) • {d.plan}" for d in recent_devs]
+
+    return {
+        "success": True,
+        "total_developers": tot_devs,
+        "total_applications": tot_apps,
+        "total_clients": tot_users,
+        "total_keys": tot_keys,
+        "unused_keys": unused_keys,
+        "used_keys": used_keys,
+        "total_resellers": tot_resellers,
+        "total_blacklists": tot_blacklists,
+        "recent_developers": recent_list
+    }
 
 @router.post("/bot/genplankey")
 async def bot_gen_plan_upgrade_keys(data: BotGenPlanKeyRequest, db: Session = Depends(get_db)):

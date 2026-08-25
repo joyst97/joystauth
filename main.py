@@ -235,7 +235,7 @@ class GenKeyAppSelectView(discord.ui.View):
             discord.SelectOption(
                 label=f"{a['name']}",
                 description=f"App ID: #{a['id']} • Version: v{a.get('version', '1.0')} • Active Node",
-                emoji="📦",
+                emoji=discord.PartialEmoji(name="dev", id=1528079861283946538, animated=True),
                 value=a["name"]
             )
             for a in apps[:25]
@@ -322,7 +322,7 @@ class AddUserAppSelectView(discord.ui.View):
             discord.SelectOption(
                 label=f"{a['name']}",
                 description=f"App ID: #{a['id']} • Version: v{a.get('version', '1.0')} • Active Node",
-                emoji="📦",
+                emoji=discord.PartialEmoji(name="dev", id=1528079861283946538, animated=True),
                 value=a["name"]
             )
             for a in apps[:25]
@@ -391,6 +391,160 @@ class AddUserAppSelectView(discord.ui.View):
         except Exception as e:
             await interaction.edit_original_response(content=f"Error: {e}", embed=None, view=None)
 
+
+class MaintenanceAppSelectView(discord.ui.View):
+    def __init__(self, effective_dev_id: str, apps: list, guild: discord.Guild, custom_msg: str = ""):
+        super().__init__(timeout=90)
+        self.effective_dev_id = effective_dev_id
+        self.apps = apps
+        self.guild = guild
+        self.custom_msg = custom_msg
+
+        options = [
+            discord.SelectOption(
+                label=f"{a['name']}",
+                description=f"ID: #{a['id']} • Version: v{a.get('version', '1.0')}",
+                emoji=discord.PartialEmoji(name="22593alert", id=1441088162976895120, animated=True),
+                value=a["name"]
+            )
+            for a in apps[:25]
+        ]
+
+        select = discord.ui.Select(
+            placeholder="🚨 Choose Application to Toggle Maintenance...",
+            min_values=1,
+            max_values=1,
+            options=options
+        )
+        select.callback = self.select_callback
+        self.add_item(select)
+
+    async def select_callback(self, interaction: discord.Interaction):
+        selected_app = interaction.data["values"][0]
+        await interaction.response.defer()
+
+        try:
+            res = requests.post(f"{API_URL}/api/v1/admin/bot/maintenance", json={
+                "discord_id": self.effective_dev_id,
+                "discord_username": str(interaction.user.name),
+                "app_name": selected_app,
+                "state": "toggle",
+                "message": self.custom_msg or None
+            }, timeout=15)
+            data = parse_api_response(res)
+            if res.status_code == 200 and data.get("success"):
+                is_m = data.get("is_maintenance", False)
+                embed = discord.Embed(
+                    title=f"{EMOJI['alert']}  MAINTENANCE MODE STATUS CHANGED",
+                    description=(
+                        f"### {EMOJI['tick'] if not is_m else EMOJI['alert']} Target Application: `{selected_app}`
+
+"
+                        f"{EMOJI['arrow']} **Status:** `{data.get('status_label', 'Updated')}`
+"
+                        f"{EMOJI['arrow']} **Message:** `{data.get('maintenance_message', 'Under maintenance')}`
+
+"
+                        f"**━━━━━━━━━━━━━━━━━━━━━━━━━━━━━**
+"
+                        f"{EMOJI['dot']} *{'🚨 ALL RUNNING EXEs ARE CURRENTLY FORCE-TERMINATED.' if is_m else '🟢 EXEs ARE RUNNING NORMALLY.'}*"
+                    ),
+                    color=COLOR_DANGER if is_m else COLOR_SUCCESS
+                )
+                embed.set_footer(text=f"Joyst Auth • Toggled by @{interaction.user.name}", icon_url=interaction.user.display_avatar.url)
+                await interaction.followup.send(embed=embed)
+                await log_to_channels(
+                    action_title="MAINTENANCE_TOGGLED",
+                    user=interaction.user,
+                    details=f"Application '{selected_app}' maintenance set to {data.get('status')}",
+                    guild=self.guild,
+                    app_name=selected_app,
+                    status="DANGER" if is_m else "SUCCESS"
+                )
+            else:
+                embed_err = discord.Embed(title=f"{EMOJI['cross']}  ERROR", description=f"> {EMOJI['alert']} `{data.get('detail', 'Failed to toggle maintenance.')}`", color=COLOR_DANGER)
+                await interaction.followup.send(embed=embed_err)
+        except Exception as e:
+            await interaction.followup.send(f"Error: {e}")
+
+class WarningAppSelectView(discord.ui.View):
+    def __init__(self, title: str, message: str, warn_type: str, effective_dev_id: str, apps: list, guild: discord.Guild):
+        super().__init__(timeout=90)
+        self.title_text = title
+        self.message_text = message
+        self.warn_type = warn_type
+        self.effective_dev_id = effective_dev_id
+        self.apps = apps
+        self.guild = guild
+
+        options = [
+            discord.SelectOption(
+                label=f"{a['name']}",
+                description=f"Broadcast Notice to v{a.get('version', '1.0')} Executables",
+                emoji=discord.PartialEmoji(name="22593alert", id=1441088162976895120, animated=True),
+                value=a["name"]
+            )
+            for a in apps[:25]
+        ]
+
+        select = discord.ui.Select(
+            placeholder="📢 Choose Application to Broadcast Notice...",
+            min_values=1,
+            max_values=1,
+            options=options
+        )
+        select.callback = self.select_callback
+        self.add_item(select)
+
+    async def select_callback(self, interaction: discord.Interaction):
+        selected_app = interaction.data["values"][0]
+        await interaction.response.defer()
+
+        try:
+            res = requests.post(f"{API_URL}/api/v1/admin/bot/warning", json={
+                "discord_id": self.effective_dev_id,
+                "discord_username": str(interaction.user.name),
+                "app_name": selected_app,
+                "title": self.title_text,
+                "message": self.message_text,
+                "type": self.warn_type
+            }, timeout=15)
+            data = parse_api_response(res)
+            if res.status_code == 200 and data.get("success"):
+                embed = discord.Embed(
+                    title=f"{EMOJI['alert']}  LIVE IN-APP NOTICE BROADCASTED",
+                    description=(
+                        f"### {EMOJI['tick']} Broadcasted to `{selected_app}` Clients!
+
+"
+                        f"{EMOJI['arrow']} **Notice Title:** `{data['title']}`
+"
+                        f"{EMOJI['arrow']} **Severity Type:** `{data['type'].upper()}`
+"
+                        f"{EMOJI['arrow']} **Message Content:** `{self.message_text}`
+
+"
+                        f"**━━━━━━━━━━━━━━━━━━━━━━━━━━━━━**
+"
+                        f"{EMOJI['dot']} *Active on all client .EXE loaders on next start/heartbeat!*"
+                    ),
+                    color=COLOR_WARNING if self.warn_type == "warning" else COLOR_DANGER
+                )
+                embed.set_footer(text=f"Joyst Auth • Broadcasted by @{interaction.user.name}", icon_url=interaction.user.display_avatar.url)
+                await interaction.followup.send(embed=embed)
+                await log_to_channels(
+                    action_title="WARNING_BROADCAST",
+                    user=interaction.user,
+                    details=f"In-App notice '{self.title_text}' broadcasted to '{selected_app}'",
+                    guild=self.guild,
+                    app_name=selected_app
+                )
+            else:
+                embed_err = discord.Embed(title=f"{EMOJI['cross']}  ERROR", description=f"> {EMOJI['alert']} `{data.get('detail', 'Failed to broadcast warning.')}`", color=COLOR_DANGER)
+                await interaction.followup.send(embed=embed_err)
+        except Exception as e:
+            await interaction.followup.send(f"Error: {e}")
+
 class ListKeysDropdownView(discord.ui.View):
     def __init__(self, effective_dev_id: str, apps: list, guild: discord.Guild):
         super().__init__(timeout=120)
@@ -406,7 +560,7 @@ class ListKeysDropdownView(discord.ui.View):
                 label=f"{a['name']}",
                 description=f"App ID: #{a['id']} • Version: v{a.get('version', '1.0')} • Online",
                 value=a["name"],
-                emoji="📦",
+                emoji=discord.PartialEmoji(name="dev", id=1528079861283946538, animated=True),
                 default=(i==0)
             )
             for i, a in enumerate(apps[:20])
@@ -498,7 +652,7 @@ class ListUsersDropdownView(discord.ui.View):
                 label=f"{a['name']}",
                 description=f"App ID: #{a['id']} • Version: v{a.get('version', '1.0')} • Online",
                 value=a["name"],
-                emoji="📦",
+                emoji=discord.PartialEmoji(name="dev", id=1528079861283946538, animated=True),
                 default=(i==0)
             )
             for i, a in enumerate(apps[:20])
@@ -1086,6 +1240,317 @@ async def ping_cmd(interaction: discord.Interaction):
         color=COLOR_SUCCESS
     )
     await interaction.followup.send(embed=embed)
+
+
+# 17. /addreseller
+@bot.tree.command(name="addreseller", description="🤝 Create a Reseller account with Key Balance")
+@app_commands.describe(username="Reseller Username", password="Reseller Password", balance="Starting Credit Balance")
+async def addreseller_cmd(interaction: discord.Interaction, username: str, password: str, balance: int = 50):
+    if not (interaction.user.id == interaction.guild.owner_id or is_master_admin(interaction.user.id) or (hasattr(interaction.user, "guild_permissions") and interaction.user.guild_permissions.administrator)):
+        await reject_unauthorized(interaction, "Server Owner or Administrator Required")
+        return
+
+    effective_dev_id = get_effective_developer_id(interaction)
+    await interaction.response.defer()
+    try:
+        res = requests.post(f"{API_URL}/api/v1/admin/bot/addreseller", json={
+            "discord_id": effective_dev_id,
+            "discord_username": str(interaction.user.name),
+            "reseller_username": username.strip(),
+            "reseller_password": password.strip(),
+            "balance": max(0, balance)
+        }, timeout=15)
+        data = parse_api_response(res)
+        if res.status_code == 200 and data.get("success"):
+            embed = discord.Embed(
+                title=f"{EMOJI['crown']}  RESELLER ACCOUNT PROVISIONED",
+                description=(
+                    f"### {EMOJI['tick']} Reseller **`@{data['reseller_username']}`** Created!
+
+"
+                    f"{EMOJI['arrow']} **Credit Balance:** `{data['balance']} Credits` {EMOJI['bolt']}
+"
+                    f"{EMOJI['arrow']} **Password:** `{password.strip()}`
+"
+                    f"{EMOJI['arrow']} **Portal:** [joystauth.cc/reseller/login](https://joystauth.cc/reseller/login)
+
+"
+                    f"**━━━━━━━━━━━━━━━━━━━━━━━━━━━━━**
+"
+                    f"{EMOJI['dot']} *Reseller can generate keys from their web portal using their credits.*"
+                ),
+                color=COLOR_PURPLE
+            )
+            embed.set_footer(text=f"Joyst Auth • Provisioned by @{interaction.user.name}", icon_url=interaction.user.display_avatar.url)
+            await interaction.followup.send(embed=embed)
+            await log_to_channels(
+                action_title="RESELLER_CREATED",
+                user=interaction.user,
+                details=f"Created reseller @{data['reseller_username']} with {data['balance']} credits",
+                guild=interaction.guild
+            )
+        else:
+            embed = discord.Embed(title=f"{EMOJI['cross']}  NOTICE", description=f"> {EMOJI['alert']} `{data.get('detail', 'Failed to create reseller.')}`", color=COLOR_WARNING)
+            await interaction.followup.send(embed=embed)
+    except Exception as e:
+        await interaction.followup.send(f"Error: {e}")
+
+# 18. /addbalance
+@bot.tree.command(name="addbalance", description="💰 Top-up Key Credits for an existing Reseller")
+@app_commands.describe(username="Reseller Username", credits="Amount of credits to add")
+async def addbalance_cmd(interaction: discord.Interaction, username: str, credits: int = 20):
+    if not (interaction.user.id == interaction.guild.owner_id or is_master_admin(interaction.user.id) or (hasattr(interaction.user, "guild_permissions") and interaction.user.guild_permissions.administrator)):
+        await reject_unauthorized(interaction, "Server Owner or Administrator Required")
+        return
+
+    effective_dev_id = get_effective_developer_id(interaction)
+    await interaction.response.defer()
+    try:
+        res = requests.post(f"{API_URL}/api/v1/admin/bot/addbalance", json={
+            "discord_id": effective_dev_id,
+            "discord_username": str(interaction.user.name),
+            "reseller_username": username.strip(),
+            "amount": credits
+        }, timeout=15)
+        data = parse_api_response(res)
+        if res.status_code == 200 and data.get("success"):
+            embed = discord.Embed(
+                title=f"{EMOJI['bolt']}  RESELLER CREDITS TOP-UP",
+                description=(
+                    f"### {EMOJI['tick']} Added `+{data['added_amount']}` Credits to **`@{data['reseller_username']}`**
+"
+                    f"{EMOJI['arrow']} **New Total Balance:** `{data['new_balance']} Credits` {EMOJI['crown']}"
+                ),
+                color=COLOR_SUCCESS
+            )
+            embed.set_footer(text=f"Joyst Auth • Refilled by @{interaction.user.name}", icon_url=interaction.user.display_avatar.url)
+            await interaction.followup.send(embed=embed)
+            await log_to_channels(
+                action_title="RESELLER_BALANCE_ADDED",
+                user=interaction.user,
+                details=f"Added {credits} credits to reseller @{data['reseller_username']} (New: {data['new_balance']})",
+                guild=interaction.guild
+            )
+        else:
+            embed = discord.Embed(title=f"{EMOJI['cross']}  NOTICE", description=f"> {EMOJI['alert']} `{data.get('detail', 'Failed to add credits.')}`", color=COLOR_WARNING)
+            await interaction.followup.send(embed=embed)
+    except Exception as e:
+        await interaction.followup.send(f"Error: {e}")
+
+# 19. /resellerinfo
+@bot.tree.command(name="resellerinfo", description="🔍 Check Reseller balance, permissions and stats")
+@app_commands.describe(username="Reseller Username")
+async def resellerinfo_cmd(interaction: discord.Interaction, username: str):
+    effective_dev_id = get_effective_developer_id(interaction)
+    await interaction.response.defer()
+    try:
+        res = requests.post(f"{API_URL}/api/v1/admin/bot/resellerinfo", json={
+            "discord_id": effective_dev_id,
+            "discord_username": str(interaction.user.name),
+            "reseller_username": username.strip()
+        }, timeout=15)
+        data = parse_api_response(res)
+        if res.status_code == 200 and data.get("success"):
+            r = data["reseller"]
+            embed = discord.Embed(
+                title=f"{EMOJI['crown']}  RESELLER: @{r['username']}",
+                description=(
+                    f"{EMOJI['arrow']} **Credit Balance:** `{r['balance']} Credits` {EMOJI['bolt']}
+"
+                    f"{EMOJI['arrow']} **Account Status:** `{'ACTIVE' if r['is_active'] else 'DISABLED'}`
+"
+                    f"{EMOJI['arrow']} **Allowed Applications:** `{r['allowed_apps']}`
+"
+                    f"{EMOJI['arrow']} **Registered Date:** `{r['created_at'][:10]}`"
+                ),
+                color=COLOR_PURPLE
+            )
+            await interaction.followup.send(embed=embed)
+        else:
+            embed = discord.Embed(title=f"{EMOJI['cross']}  NOTICE", description=f"> {EMOJI['alert']} `{data.get('detail', 'Reseller not found.')}`", color=COLOR_WARNING)
+            await interaction.followup.send(embed=embed)
+    except Exception as e:
+        await interaction.followup.send(f"Error: {e}")
+
+# 20. /maintenance (Instant Dropdown Menu)
+@bot.tree.command(name="maintenance", description="🚨 1-Click Toggle Emergency Maintenance Mode for an Application")
+@app_commands.describe(custom_message="Optional custom message shown to blocked clients")
+async def maintenance_cmd(interaction: discord.Interaction, custom_message: str = ""):
+    if not (interaction.user.id == interaction.guild.owner_id or is_master_admin(interaction.user.id) or (hasattr(interaction.user, "guild_permissions") and interaction.user.guild_permissions.administrator)):
+        await reject_unauthorized(interaction, "Server Owner or Administrator Required")
+        return
+
+    effective_dev_id = get_effective_developer_id(interaction)
+    apps = fetch_developer_apps(effective_dev_id, str(interaction.user.name))
+    if not apps:
+        await interaction.response.send_message(f"{EMOJI['alert']} **No Apps found!** Run `/link [email_or_username]` first.", ephemeral=True)
+        return
+
+    view = MaintenanceAppSelectView(effective_dev_id, apps, interaction.guild, custom_message.strip())
+    embed = discord.Embed(
+        title=f"{EMOJI['alert']}  EMERGENCY MAINTENANCE CONTROLLER",
+        description=(
+            f"### {EMOJI['gear']} Application Selection Required:
+
+"
+            f"{EMOJI['arrow']} **Action:** `1-Click Toggle Online / Maintenance`
+"
+            f"{EMOJI['arrow']} **Notice String:** `{custom_message.strip() or 'Default Maintenance Notice'}`
+
+"
+            f"**━━━━━━━━━━━━━━━━━━━━━━━━━━━━━**
+"
+            f"{EMOJI['dot']} *Select target Application from dropdown below:* {EMOJI['audio']}"
+        ),
+        color=COLOR_DANGER
+    )
+    embed.set_footer(text="Joyst Auth Master Killswitch", icon_url=interaction.user.display_avatar.url)
+    await interaction.response.send_message(embed=embed, view=view)
+
+# 21. /warning (Instant Dropdown Menu)
+@bot.tree.command(name="warning", description="📢 Broadcast Live In-App Warning / Announcement to .EXE Clients")
+@app_commands.describe(title="Notice Title (e.g. CHEAT DETECTED / UPDATE COMING)", message="Detailed warning text", type="Severity Level")
+@app_commands.choices(type=[
+    app_commands.Choice(name="🚨 Danger / Emergency (Red)", value="danger"),
+    app_commands.Choice(name="⚠️ Warning / Notice (Yellow)", value="warning"),
+    app_commands.Choice(name="ℹ️ Info / Announcement (Blue)", value="info"),
+    app_commands.Choice(name="🟢 Success / Safe (Green)", value="success")
+])
+async def warning_cmd(interaction: discord.Interaction, title: str, message: str, type: str = "danger"):
+    if not (interaction.user.id == interaction.guild.owner_id or is_master_admin(interaction.user.id) or (hasattr(interaction.user, "guild_permissions") and interaction.user.guild_permissions.administrator)):
+        await reject_unauthorized(interaction, "Server Owner or Administrator Required")
+        return
+
+    effective_dev_id = get_effective_developer_id(interaction)
+    apps = fetch_developer_apps(effective_dev_id, str(interaction.user.name))
+    if not apps:
+        await interaction.response.send_message(f"{EMOJI['alert']} **No Apps found!** Run `/link [email_or_username]` first.", ephemeral=True)
+        return
+
+    view = WarningAppSelectView(title.strip(), message.strip(), type, effective_dev_id, apps, interaction.guild)
+    embed = discord.Embed(
+        title=f"{EMOJI['alert']}  LIVE IN-APP BROADCAST CONTROLLER",
+        description=(
+            f"### {EMOJI['gear']} Broadcast Notice Parameters:
+
+"
+            f"{EMOJI['arrow']} **Title:** `{title.strip()}`
+"
+            f"{EMOJI['arrow']} **Type:** `{type.upper()}`
+"
+            f"{EMOJI['arrow']} **Message:** `{message.strip()}`
+
+"
+            f"**━━━━━━━━━━━━━━━━━━━━━━━━━━━━━**
+"
+            f"{EMOJI['dot']} *Select target Application from dropdown to broadcast notice:* {EMOJI['audio']}"
+        ),
+        color=COLOR_WARNING if type == "warning" else COLOR_DANGER
+    )
+    embed.set_footer(text="Joyst Auth Live Broadcast System", icon_url=interaction.user.display_avatar.url)
+    await interaction.response.send_message(embed=embed, view=view)
+
+# 22. /redeem (Customer License Key Redemption)
+@bot.tree.command(name="redeem", description="🎁 Redeem your license key to activate your client account")
+@app_commands.describe(key="Your License Key (JOYST-XXXX-XXXX-XXXX)")
+async def redeem_cmd(interaction: discord.Interaction, key: str):
+    await interaction.response.defer(ephemeral=True)
+    try:
+        res = requests.post(f"{API_URL}/api/v1/admin/bot/redeem", json={
+            "discord_id": str(interaction.user.id),
+            "discord_username": str(interaction.user.name),
+            "license_key": key.strip()
+        }, timeout=15)
+        data = parse_api_response(res)
+        if res.status_code == 200 and data.get("success"):
+            dur = f"{data['duration_days']} Days" if data['duration_days'] > 0 else "Lifetime"
+            embed = discord.Embed(
+                title=f"{EMOJI['tick']}  LICENSE KEY REDEEMED SUCCESSFULLY",
+                description=(
+                    f"### {EMOJI['wave']} Welcome **@{interaction.user.name}**!
+
+"
+                    f"{EMOJI['arrow']} **Application:** `{data['app_name']}`
+"
+                    f"{EMOJI['arrow']} **Assigned Rank:** `{data['rank']}` {EMOJI['crown']}
+"
+                    f"{EMOJI['arrow']} **Duration:** `{dur}`
+"
+                    f"{EMOJI['arrow']} **Expires At:** `{data['expires_at']}`
+
+"
+                    f"**━━━━━━━━━━━━━━━━━━━━━━━━━━━━━**
+"
+                    f"{EMOJI['dot']} *You can now open the software .exe and login immediately!* {EMOJI['shield']}"
+                ),
+                color=COLOR_SUCCESS
+            )
+            embed.set_footer(text="Joyst Auth • Client Activation", icon_url=interaction.user.display_avatar.url)
+            await interaction.followup.send(embed=embed, ephemeral=True)
+            await log_to_channels(
+                action_title="LICENSE_REDEEMED",
+                user=interaction.user,
+                details=f"Customer @{interaction.user.name} redeemed key for '{data['app_name']}' ({dur})",
+                guild=interaction.guild,
+                app_name=data['app_name']
+            )
+        else:
+            embed = discord.Embed(title=f"{EMOJI['cross']}  REDEMPTION FAILED", description=f"> {EMOJI['alert']} `{data.get('detail', 'Invalid or used key.')}`", color=COLOR_WARNING)
+            await interaction.followup.send(embed=embed, ephemeral=True)
+    except Exception as e:
+        await interaction.followup.send(f"Error: {e}", ephemeral=True)
+
+
+# 23. /adminstats (MASTER ADMIN ONLY)
+@bot.tree.command(name="adminstats", description="👑 Master Admin: Platform-Wide Global Statistics & Accounts")
+async def adminstats_cmd(interaction: discord.Interaction):
+    if not is_master_admin(interaction.user.id):
+        await reject_unauthorized(interaction, "Platform Master Admin Authorization Required")
+        return
+
+    await interaction.response.defer(ephemeral=True)
+    try:
+        res = requests.post(f"{API_URL}/api/v1/admin/bot/globalstats", json={
+            "discord_id": str(interaction.user.id),
+            "discord_username": str(interaction.user.name)
+        }, timeout=15)
+        data = parse_api_response(res)
+        if res.status_code == 200 and data.get("success"):
+            recent_formatted = "\n".join([f"{EMOJI['dot']} `{d}`" for d in data.get('recent_developers', [])]) or "None yet"
+            embed = discord.Embed(
+                title=f"{EMOJI['crown']}  JOYST AUTH • PLATFORM MASTER TELEMETRY",
+                description=(
+                    f"### {EMOJI['shield']} Complete Global Platform Overview:
+
+"
+                    f"{EMOJI['arrow']} **Total Developers (Website Accounts):** `{data['total_developers']}` {EMOJI['bot']}
+"
+                    f"{EMOJI['arrow']} **Total Applications Created:** `{data['total_applications']}` {EMOJI['bolt']}
+"
+                    f"{EMOJI['arrow']} **Total End-Users / Clients:** `{data['total_clients']}`
+"
+                    f"{EMOJI['arrow']} **Total License Keys Minted:** `{data['total_keys']}` (Unused: `{data['unused_keys']}` | Used: `{data['used_keys']}`)
+"
+                    f"{EMOJI['arrow']} **Total Reseller Sub-Accounts:** `{data['total_resellers']}`
+"
+                    f"{EMOJI['arrow']} **Total Blacklisted Hardware/IPs:** `{data['total_blacklists']}` {EMOJI['alert']}
+
+"
+                    f"**━━━━━━━━ RECENT DEVELOPERS ━━━━━━━━**
+"
+                    f"{recent_formatted}
+"
+                    f"**━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━**"
+                ),
+                color=COLOR_WARNING
+            )
+            embed.set_footer(text="Joyst Auth Master Control System", icon_url=interaction.user.display_avatar.url)
+            await interaction.followup.send(embed=embed, ephemeral=True)
+        else:
+            embed = discord.Embed(title=f"{EMOJI['cross']}  ERROR", description=f"> {EMOJI['alert']} `{data.get('detail', 'Failed to fetch global stats.')}`", color=COLOR_DANGER)
+            await interaction.followup.send(embed=embed, ephemeral=True)
+    except Exception as e:
+        await interaction.followup.send(f"Error: {e}", ephemeral=True)
 
 @bot.tree.command(name="help", description="📖 View all available Joyst Auth slash commands")
 async def help_cmd(interaction: discord.Interaction):
