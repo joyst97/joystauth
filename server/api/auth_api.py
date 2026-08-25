@@ -24,6 +24,7 @@ class GoogleAuthRequest(BaseModel):
     email: Optional[str] = None
     name: Optional[str] = None
     google_id: Optional[str] = None
+    picture: Optional[str] = None
 
 @router.get("/google/config")
 async def get_google_config():
@@ -246,6 +247,7 @@ async def google_auth(data: GoogleAuthRequest, db: Session = Depends(get_db)):
     google_id = data.google_id.strip() if data.google_id else None
 
     # If credential JWT token is passed, decode payload safely
+    picture = data.picture
     if data.credential:
         import base64
         import json
@@ -257,6 +259,7 @@ async def google_auth(data: GoogleAuthRequest, db: Session = Depends(get_db)):
                 email = payload.get("email", email)
                 name = payload.get("name", payload.get("given_name", name))
                 google_id = payload.get("sub", google_id)
+                picture = payload.get("picture", picture)
         except Exception:
             pass
 
@@ -271,8 +274,15 @@ async def google_auth(data: GoogleAuthRequest, db: Session = Depends(get_db)):
         clean_user = "".join(c for c in name if c.isalnum() or c in ("_", "-"))[:30]
         dev = db.query(Developer).filter(Developer.username == clean_user).first()
 
-    # 3. If new user, create developer account automatically
-    if not dev:
+    if dev:
+        if picture:
+            dev.avatar_url = picture
+        if name and (dev.username == "Developer" or dev.username.startswith("dev_")):
+            clean_name = "".join(c for c in name if c.isalnum() or c in ("_", "-"))[:24]
+            if clean_name and not db.query(Developer).filter(Developer.username == clean_name, Developer.id != dev.id).first():
+                dev.username = clean_name
+        db.commit()
+    else:
         base_username = email.split("@")[0]
         clean_username = "".join(c for c in base_username if c.isalnum() or c in ("_", "-"))[:24]
         if len(clean_username) < 3:
@@ -295,6 +305,7 @@ async def google_auth(data: GoogleAuthRequest, db: Session = Depends(get_db)):
             email=email,
             password_hash=hash_password(random_pass),
             owner_id=owner_id,
+            avatar_url=picture,
             plan="Free",
             max_apps=3,
             max_users_per_app=1000
@@ -316,6 +327,8 @@ async def google_auth(data: GoogleAuthRequest, db: Session = Depends(get_db)):
         "access_token": token,
         "token_type": "bearer",
         "username": dev.username,
+        "avatar_url": dev.avatar_url or "",
+        "email": dev.email or "",
         "owner_id": dev.owner_id,
         "plan": dev.plan,
         "message": f"Welcome back, {dev.username}!"
@@ -358,7 +371,8 @@ async def google_callback_redirect():
                                 body: JSON.stringify({
                                     email: profile.email,
                                     name: profile.name || profile.given_name,
-                                    google_id: profile.sub
+                                    google_id: profile.sub,
+                                    picture: profile.picture
                                 })
                             });
                             const authData = await authRes.json();
@@ -644,6 +658,8 @@ async def discord_verify_token(data: DiscordVerifyRequest, db: Session = Depends
         "access_token": jwt_token,
         "token_type": "bearer",
         "username": dev.username,
+        "avatar_url": dev.avatar_url or "",
+        "email": dev.email or "",
         "owner_id": dev.owner_id,
         "plan": dev.plan,
         "redirect_url": "/dashboard",
