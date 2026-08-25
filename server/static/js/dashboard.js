@@ -1,3 +1,175 @@
+// ==================== CORE PLATFORM UTILITIES & API CLIENT ====================
+
+function getAuthToken() {
+    return localStorage.getItem("auth_admin_token") || localStorage.getItem("token") || "";
+}
+
+async function apiFetch(url, options = {}) {
+    const token = getAuthToken();
+    const headers = {
+        "Content-Type": "application/json",
+        ...(options.headers || {})
+    };
+    if (token) {
+        headers["Authorization"] = `Bearer ${token}`;
+    }
+
+    try {
+        const res = await fetch(url, {
+            ...options,
+            headers
+        });
+
+        if (res.status === 401) {
+            console.warn("Session expired or unauthorized. Redirecting to login...");
+            localStorage.removeItem("auth_admin_token");
+            localStorage.removeItem("token");
+            window.location.href = "/login";
+            return null;
+        }
+
+        const data = await res.json().catch(() => null);
+        return data;
+    } catch (err) {
+        console.error(`API Fetch Error on ${url}:`, err);
+        return null;
+    }
+}
+
+function escapeHtml(str) {
+    if (str === null || str === undefined) return "";
+    return String(str)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(new RegExp('"', 'g'), "&quot;")
+        .replace(new RegExp("'", 'g'), "&#039;");
+}
+
+function formatDate(dateStr) {
+    if (!dateStr) return "N/A";
+    try {
+        const d = new Date(dateStr);
+        if (isNaN(d.getTime())) return String(dateStr);
+        return d.toLocaleString("en-US", {
+            month: "short",
+            day: "numeric",
+            year: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+            second: "2-digit"
+        });
+    } catch (e) {
+        return String(dateStr);
+    }
+}
+
+function showToast(message, type = "info") {
+    let container = document.getElementById("toast-container");
+    if (!container) {
+        container = document.createElement("div");
+        container.id = "toast-container";
+        container.className = "toast-container";
+        document.body.appendChild(container);
+    }
+    const toast = document.createElement("div");
+    toast.className = `toast toast-${type}`;
+    
+    let icon = "⚡";
+    if (type === "success") icon = "✅";
+    if (type === "error") icon = "🚫";
+    if (type === "warning") icon = "⚠️";
+    if (type === "info") icon = "🛡️";
+
+    toast.innerHTML = `<span style="font-size: 16px;">${icon}</span> <span>${escapeHtml(message)}</span>`;
+    container.appendChild(toast);
+
+    setTimeout(() => {
+        toast.style.opacity = "0";
+        toast.style.transform = "translateX(100%)";
+        setTimeout(() => toast.remove(), 300);
+    }, 3500);
+}
+
+function showConfirmDialog(title, message, confirmBtnText = "Confirm", isDanger = false) {
+    return new Promise((resolve) => {
+        let overlay = document.getElementById("custom-confirm-modal");
+        if (!overlay) {
+            overlay = document.createElement("div");
+            overlay.id = "custom-confirm-modal";
+            overlay.className = "modal-overlay";
+            document.body.appendChild(overlay);
+        }
+        overlay.innerHTML = `
+            <div class="modal" style="max-width: 440px; border: 1px solid ${isDanger ? 'rgba(239, 68, 68, 0.4)' : 'rgba(255, 42, 95, 0.4)'};">
+                <div class="modal-header">
+                    <h3 style="color: ${isDanger ? '#ef4444' : '#ff4d79'};">${escapeHtml(title)}</h3>
+                </div>
+                <div class="modal-body" style="padding: 16px 0; color: #e2e8f0; font-size: 14px; line-height: 1.5;">
+                    ${escapeHtml(message)}
+                </div>
+                <div class="modal-footer" style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 16px;">
+                    <button id="confirm-btn-cancel" class="btn btn-secondary btn-sm">Cancel</button>
+                    <button id="confirm-btn-ok" class="btn ${isDanger ? 'btn-danger' : 'btn-primary'} btn-sm">${escapeHtml(confirmBtnText)}</button>
+                </div>
+            </div>
+        `;
+        overlay.classList.add("active");
+
+        document.getElementById("confirm-btn-cancel").onclick = () => {
+            overlay.classList.remove("active");
+            resolve(false);
+        };
+        document.getElementById("confirm-btn-ok").onclick = () => {
+            overlay.classList.remove("active");
+            resolve(true);
+        };
+    });
+}
+
+function showDiscordOutputModal(title, jsonPayload) {
+    let overlay = document.getElementById("discord-output-modal");
+    if (!overlay) {
+        overlay = document.createElement("div");
+        overlay.id = "discord-output-modal";
+        overlay.className = "modal-overlay";
+        document.body.appendChild(overlay);
+    }
+    overlay.innerHTML = `
+        <div class="modal" style="max-width: 580px;">
+            <div class="modal-header">
+                <h3>${escapeHtml(title)}</h3>
+                <button class="modal-close" onclick="document.getElementById('discord-output-modal').classList.remove('active')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <pre style="background: rgba(0,0,0,0.6); padding: 14px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.08); color: #38bdf8; font-family: monospace; font-size: 12px; overflow-x: auto; max-height: 350px;">${escapeHtml(typeof jsonPayload === 'string' ? jsonPayload : JSON.stringify(jsonPayload, null, 2))}</pre>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary btn-sm" onclick="copyToClipboard(typeof jsonPayload === 'string' ? jsonPayload : JSON.stringify(jsonPayload, null, 2))">Copy JSON</button>
+                <button class="btn btn-primary btn-sm" onclick="document.getElementById('discord-output-modal').classList.remove('active')">Close</button>
+            </div>
+        </div>
+    `;
+    overlay.classList.add("active");
+}
+
+function getTableSkeletonHtml(colSpan, title = "Loading Application Records...") {
+    return `
+        <tr>
+            <td colspan="${colSpan}" style="text-align: center; padding: 50px 20px;">
+                <div style="display: inline-flex; flex-direction: column; align-items: center; gap: 14px;">
+                    <div style="width: 38px; height: 38px; border: 3.5px solid rgba(244, 63, 94, 0.2); border-top-color: #ff2a5f; border-radius: 50%; animation: spin 0.65s linear infinite;"></div>
+                    <div style="display: flex; flex-direction: column; align-items: center; gap: 4px;">
+                        <strong style="color: #fff; font-size: 14px; letter-spacing: 0.5px;">⚡ ${escapeHtml(title)}</strong>
+                        <span style="color: var(--text-muted); font-size: 12px;">Fetching real-time records...</span>
+                    </div>
+                </div>
+            </td>
+        </tr>
+    `;
+}
+
+
 // Joyst Corporation Developer Dashboard Controller
 let currentAppId = null;
 let appsList = [];
