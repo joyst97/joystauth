@@ -3424,6 +3424,10 @@ async function submitProfileChangePassword() {
     }
 }
 
-window.addEventListener("DOMContentLoaded", () => {
+if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", initDashboard);
+} else {
     initDashboard();
-});
+}
+
+window.initDashboard = initDashboard;
