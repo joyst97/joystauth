@@ -3311,6 +3311,8 @@ async function submitQuickEditApp() {
 
 function renderAvatarElement(el, username, avatarUrl, isLarge = false) {
     if (!el) return;
+    el.style.borderRadius = "50%";
+    el.style.overflow = "hidden";
     if (avatarUrl && (avatarUrl.startsWith("http://") || avatarUrl.startsWith("https://"))) {
         el.innerHTML = `<img src="${avatarUrl}" alt="Avatar" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover; box-shadow: 0 0 15px rgba(255, 42, 95, 0.45);">`;
         el.style.background = "transparent";

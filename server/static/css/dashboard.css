@@ -607,7 +607,8 @@ code, pre, .mono {
 
 
 
-/* ==================== DASHBOARD ADVANCED LUXURY GLASS LAYOUT ==================== */
+
+/* ==================== CLEAN SLEEK DASHBOARD LAYOUT ==================== */
 .app-container {
     display: flex;
     width: 100vw;
@@ -617,44 +618,44 @@ code, pre, .mono {
 }
 
 .sidebar {
-    width: 285px !important;
-    background: rgba(16, 4, 11, 0.52) !important;
-    backdrop-filter: blur(35px) saturate(190%) !important;
-    -webkit-backdrop-filter: blur(35px) saturate(190%) !important;
-    border-right: 1px solid rgba(255, 42, 95, 0.16) !important;
+    width: 260px !important;
+    background: rgba(12, 3, 8, 0.85) !important;
+    backdrop-filter: blur(25px) !important;
+    -webkit-backdrop-filter: blur(25px) !important;
+    border-right: 1px solid rgba(255, 255, 255, 0.06) !important;
     display: flex;
     flex-direction: column;
-    padding: 24px 16px;
+    padding: 18px 12px !important;
     flex-shrink: 0;
     position: sticky;
     top: 0;
     height: 100vh;
     z-index: 100;
     overflow-y: auto;
-    box-shadow: 14px 0 50px rgba(0, 0, 0, 0.75), inset -1px 0 0 rgba(255, 255, 255, 0.05) !important;
+    box-shadow: 10px 0 35px rgba(0, 0, 0, 0.5) !important;
 }
 
 .brand-logo {
     display: flex;
     align-items: center;
-    gap: 12px;
-    padding: 0 8px 20px 8px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
-    margin-bottom: 20px;
+    gap: 10px;
+    padding: 0 6px 16px 6px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06) !important;
+    margin-bottom: 14px;
 }
 
 .brand-text h1 {
-    font-size: 16.5px;
-    font-weight: 900;
+    font-size: 15px;
+    font-weight: 800;
     color: #ffffff;
     letter-spacing: 0.2px;
 }
 
 .brand-text span {
-    font-size: 10.5px;
+    font-size: 10px;
     color: #ff4d79;
-    font-weight: 800;
-    letter-spacing: 0.6px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
     text-transform: uppercase;
 }
 
@@ -662,70 +663,72 @@ code, pre, .mono {
     list-style: none;
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: 4px !important;
     flex-grow: 1;
+    margin: 0;
+    padding: 0;
 }
 
 .nav-item {
     display: flex;
     align-items: center;
-    gap: 13px;
-    padding: 12px 18px !important;
-    border-radius: 12px !important;
-    color: #cbd5e1 !important;
-    background: rgba(255, 255, 255, 0.04) !important;
-    border: 1px solid rgba(255, 255, 255, 0.08) !important;
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 2px 8px rgba(0, 0, 0, 0.3) !important;
-    font-size: 13.5px;
-    font-weight: 700;
+    gap: 11px;
+    padding: 9px 13px !important;
+    border-radius: 9px !important;
+    color: #94a3b8 !important;
+    background: transparent !important;
+    border: 1px solid transparent !important;
+    box-shadow: none !important;
+    font-size: 13px !important;
+    font-weight: 600 !important;
     cursor: pointer;
-    transition: all 0.22s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    transition: all 0.18s ease !important;
     user-select: none;
     position: relative;
     overflow: hidden;
 }
 
 .nav-item svg {
-    width: 18px;
-    height: 18px;
-    stroke-width: 2.2;
-    transition: all 0.2s ease;
-    opacity: 0.85;
+    width: 17px;
+    height: 17px;
+    stroke-width: 2;
+    transition: all 0.18s ease;
+    opacity: 0.8;
 }
 
 .nav-item:hover {
     color: #ffffff !important;
-    background: rgba(255, 42, 95, 0.16) !important;
-    border-color: rgba(255, 42, 95, 0.5) !important;
-    transform: translateX(6px) !important;
-    box-shadow: 0 6px 25px rgba(255, 42, 95, 0.28) !important;
+    background: rgba(255, 42, 95, 0.08) !important;
+    border-color: rgba(255, 42, 95, 0.2) !important;
+    transform: none !important;
+    box-shadow: none !important;
 }
 
 .nav-item:hover svg {
     opacity: 1;
     color: #ff4d79;
-    transform: scale(1.08);
+    transform: scale(1.05);
 }
 
 .nav-item.active {
     color: #ffffff !important;
-    background: linear-gradient(135deg, rgba(255, 42, 95, 0.32) 0%, rgba(225, 29, 72, 0.18) 100%) !important;
-    border: 1px solid rgba(255, 42, 95, 0.75) !important;
-    box-shadow: 0 0 32px rgba(255, 42, 95, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.3) !important;
-    font-weight: 800;
-    transform: translateX(6px) !important;
+    background: rgba(255, 42, 95, 0.14) !important;
+    border: 1px solid rgba(255, 42, 95, 0.4) !important;
+    box-shadow: 0 0 18px rgba(255, 42, 95, 0.2) !important;
+    font-weight: 700 !important;
+    transform: none !important;
 }
 
 .nav-item.active::before {
     content: '';
     position: absolute;
     left: 0;
-    top: 18%;
-    height: 64%;
-    width: 4px;
+    top: 20%;
+    height: 60%;
+    width: 3px;
     background: #ff2a5f;
-    border-radius: 0 4px 4px 0;
-    box-shadow: 0 0 16px #ff2a5f, 0 0 30px #ff2a5f;
+    border-radius: 0 3px 3px 0;
+    box-shadow: 0 0 10px #ff2a5f;
 }
 
 .nav-item.active svg {
@@ -734,32 +737,104 @@ code, pre, .mono {
 }
 
 .sidebar-footer {
-    padding-top: 16px;
-    border-top: 1px solid rgba(255, 255, 255, 0.08) !important;
+    padding-top: 12px;
+    border-top: 1px solid rgba(255, 255, 255, 0.06) !important;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    background: rgba(255, 255, 255, 0.04);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 14px;
-    padding: 10px 14px;
-    margin-top: 10px;
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 10px;
+    padding: 8px 12px;
+    margin-top: 8px;
 }
 
 .top-header {
-    height: 88px !important;
-    border-bottom: 1px solid rgba(255, 42, 95, 0.16) !important;
-    background: rgba(18, 5, 12, 0.45) !important;
-    backdrop-filter: blur(35px) saturate(190%) !important;
-    -webkit-backdrop-filter: blur(35px) saturate(190%) !important;
+    height: 68px !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06) !important;
+    background: rgba(10, 2, 6, 0.75) !important;
+    backdrop-filter: blur(25px) !important;
+    -webkit-backdrop-filter: blur(25px) !important;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 0 38px !important;
+    padding: 0 28px !important;
     position: sticky;
     top: 0;
     z-index: 90;
-    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.65), 0 1px 0 rgba(255, 42, 95, 0.12) !important;
+    box-shadow: 0 6px 25px rgba(0, 0, 0, 0.4) !important;
+}
+
+/* ==================== GLOBAL LANDING & PUBLIC NAVBAR ==================== */
+.landing-nav, .nav-bar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 72px !important;
+    background: rgba(8, 2, 5, 0.8) !important;
+    backdrop-filter: blur(30px) !important;
+    -webkit-backdrop-filter: blur(30px) !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    padding: 0 40px !important;
+    z-index: 1000 !important;
+    box-sizing: border-box !important;
+}
+
+.brand-wrap {
+    display: flex !important;
+    align-items: center !important;
+    gap: 12px !important;
+    text-decoration: none !important;
+}
+
+.brand-title {
+    color: #ffffff !important;
+    font-size: 17px !important;
+    font-weight: 900 !important;
+    letter-spacing: -0.3px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    line-height: 1.15 !important;
+}
+
+.brand-title span {
+    font-size: 10.5px !important;
+    color: #ff4d79 !important;
+    font-weight: 700 !important;
+    letter-spacing: 0.4px !important;
+}
+
+.nav-menu {
+    list-style: none !important;
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    gap: 28px !important;
+    margin: 0 !important;
+    padding: 0 !important;
+}
+
+.nav-menu li {
+    list-style: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+}
+
+.nav-menu a {
+    color: #94a3b8 !important;
+    font-size: 13.5px !important;
+    font-weight: 600 !important;
+    text-decoration: none !important;
+    transition: color 0.2s ease !important;
+}
+
+.nav-menu a:hover {
+    color: #ffffff !important;
+    text-shadow: 0 0 10px rgba(255, 42, 95, 0.5) !important;
 }
 
 
@@ -2356,4 +2431,70 @@ html, body {
     .top-header {
         padding: 12px 14px !important;
     }
+}
+
+
+/* User Profile Bottom-Left Footer */
+.user-profile {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    overflow: hidden;
+    flex-grow: 1;
+    cursor: pointer;
+    user-select: none;
+}
+
+.user-avatar {
+    width: 36px !important;
+    height: 36px !important;
+    min-width: 36px !important;
+    min-height: 36px !important;
+    max-width: 36px !important;
+    max-height: 36px !important;
+    border-radius: 50% !important;
+    background: linear-gradient(135deg, #ff2a5f, #7928ca) !important;
+    color: #ffffff !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    font-size: 15px !important;
+    font-weight: 800 !important;
+    box-shadow: 0 0 12px rgba(255, 42, 95, 0.4) !important;
+    border: 1.5px solid rgba(255, 42, 95, 0.4) !important;
+    overflow: hidden !important;
+    flex-shrink: 0 !important;
+}
+
+.user-avatar img {
+    width: 100% !important;
+    height: 100% !important;
+    border-radius: 50% !important;
+    object-fit: cover !important;
+}
+
+.user-info {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    line-height: 1.25;
+}
+
+.user-info .username {
+    font-size: 13px !important;
+    font-weight: 800 !important;
+    color: #ffffff !important;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 135px;
+}
+
+.user-info .role {
+    font-size: 10.5px !important;
+    font-weight: 700 !important;
+    color: #10b981 !important;
+    display: flex;
+    align-items: center;
+    gap: 5px;
 }

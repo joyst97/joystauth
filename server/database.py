@@ -17,8 +17,14 @@ if DATABASE_URL:
     try:
         if DATABASE_URL.startswith("postgres://"):
             DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
+        
+        connect_args = {}
+        if "supabase" in DATABASE_URL.lower() or "sslmode" not in DATABASE_URL.lower():
+            connect_args["sslmode"] = "require"
+
         engine = create_engine(
             DATABASE_URL,
+            connect_args=connect_args,
             pool_pre_ping=True,
             pool_size=10,
             max_overflow=20,

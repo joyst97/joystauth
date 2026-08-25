@@ -1,3 +1,4 @@
+from sqlalchemy import func
 from fastapi import APIRouter, Depends, HTTPException, status, Header, Request
 from fastapi.responses import HTMLResponse
 from sqlalchemy.orm import Session
@@ -585,10 +586,10 @@ async def discord_verify_token(data: DiscordVerifyRequest, db: Session = Depends
     dev = None
     if discord_id:
         dev = db.query(Developer).filter(Developer.discord_id == discord_id).first()
+    if not dev and data.email and "@" in data.email:
+        dev = db.query(Developer).filter(func.lower(Developer.email) == data.email.strip().lower()).first()
     if not dev:
-        dev = db.query(Developer).filter(Developer.email == discord_email).first()
-    if not dev:
-        dev = db.query(Developer).filter(Developer.username == discord_username).first()
+        dev = db.query(Developer).filter(func.lower(Developer.username) == discord_username.lower()).first()
 
     if dev:
         if data.avatar:
