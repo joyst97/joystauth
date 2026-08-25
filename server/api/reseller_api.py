@@ -113,7 +113,7 @@ async def get_reseller_profile(reseller: Reseller = Depends(get_current_reseller
                 "id": app.id,
                 "name": app.name,
                 "version": app.version,
-                "secret_token": app.secret_token,
+                "secret_token": app.secret,
                 "status": app.custom_status or "ONLINE",
                 "created_at": app.created_at.isoformat() if app.created_at else None,
                 "total_users": user_count,
