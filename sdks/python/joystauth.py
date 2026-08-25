@@ -4,28 +4,29 @@ import json
 import base64
 import hashlib
 import subprocess
+import threading
+import time
 import requests
-from Crypto.Cipher import AES
-from Crypto.Util.Padding import pad, unpad
 
 class UserData:
-    def __init__(self, username="", subscription="", expiry="", hwid="", ip="", created_date=""):
+    def __init__(self, username="", subscription="", expiry="", hwid="", ip=""):
         self.username = username
         self.subscription = subscription
-        self.expires = expiry
         self.expiry = expiry
+        self.expires = expiry
         self.hwid = hwid
         self.ip = ip
-        self.created_date = created_date
 
 class ResponseData:
-    def __init__(self, success=False, message=""):
+    def __init__(self, success=False, message="", is_maintenance=False, active_notification=""):
         self.success = success
         self.message = message
+        self.is_maintenance = is_maintenance
+        self.active_notification = active_notification
 
 class api:
     """
-    Joyst Corporation Auth API Client (Exact KeyAuth parity, Simplified Setup)
+    Joyst Corporation Auth Python SDK (100% Inbuilt Zero-Boilerplate Autopilot)
     """
     def __init__(self, name: str, token: str, version: str = "1.0", url: str = "https://joystauth.cc"):
         self.name = name
@@ -34,217 +35,170 @@ class api:
         self.url = (url or "https://joystauth.cc").rstrip("/")
         
         self.sessionid = None
-        self.enckey = None
         self.is_initialized = False
         self.hwid = self._get_hwid()
         self.user_data = UserData()
         self.response = ResponseData()
-        self.notifications = []
+        self._last_notification = ""
+
+        # ⚡ 1. Auto-init on launch
+        self.init(auto_exit_on_maint=True)
+
+        # ⚡ 2. Auto-launch background real-time heartbeat watchdog
+        self._start_heartbeat_watchdog()
 
     def _get_hwid(self) -> str:
-        """Extract Hardware ID from computer."""
         hwid_str = ""
         try:
             if sys.platform == "win32":
-                cmd = "wmic csproduct get uuid"
-                output = subprocess.check_output(cmd, shell=True, stderr=subprocess.DEVNULL).decode().strip()
-                lines = [line.strip() for line in output.split("\n") if line.strip() and "UUID" not in line]
-                if lines:
-                    hwid_str = lines[0]
+                output = subprocess.check_output("wmic csproduct get uuid", shell=True, stderr=subprocess.DEVNULL).decode().strip()
+                lines = [l.strip() for l in output.split("\n") if l.strip() and "UUID" not in l]
+                if lines: hwid_str = lines[0]
             if not hwid_str:
                 import uuid
                 hwid_str = str(uuid.getnode())
         except Exception:
             import uuid
             hwid_str = str(uuid.getnode())
-        
         return hashlib.sha256(hwid_str.strip().upper().encode("utf-8")).hexdigest()
 
-    def _derive_key(self, secret: str) -> bytes:
-        return hashlib.sha256(secret.encode("utf-8")).digest()
-
-    def _encrypt(self, plaintext: str, key_str: str) -> str:
-        key = self._derive_key(key_str)
-        iv = os.urandom(16)
-        cipher = AES.new(key, AES.MODE_CBC, iv)
-        padded = pad(plaintext.encode("utf-8"), AES.block_size)
-        encrypted = cipher.encrypt(padded)
-        return base64.b64encode(iv + encrypted).decode("utf-8")
-
-    def _decrypt(self, ciphertext_b64: str, key_str: str) -> str:
-        key = self._derive_key(key_str)
-        raw = base64.b64decode(ciphertext_b64.encode("utf-8"))
-        iv = raw[:16]
-        cipher = AES.new(key, AES.MODE_CBC, iv)
-        decrypted_padded = cipher.decrypt(raw[16:])
-        return unpad(decrypted_padded, AES.block_size).decode("utf-8")
-
-    def init(self) -> bool:
-        """Initialize session with Joyst Auth Server."""
+    def init(self, auto_exit_on_maint: bool = True) -> bool:
         try:
-            payload = {
-                "name": self.name,
-                "token": self.token,
-                "version": self.version,
-                "hwid": self.hwid
-            }
+            payload = {"app_name": self.name, "app_token": self.token, "version": self.version, "hwid": self.hwid}
             res = requests.post(f"{self.url}/api/v1/client/init", json=payload, timeout=8)
             data = res.json()
 
             if data.get("success"):
                 self.sessionid = data.get("sessionid")
-                # Decrypt session encryption key using master app token
-                encrypted_key = data.get("enckey")
-                self.enckey = self._decrypt(encrypted_key, self.token)
                 self.is_initialized = True
-                self.custom_status = data.get("custom_status", "UNDETECTED")
-                self.notifications = data.get("notifications", [])
-                self.response = ResponseData(True, "Initialized successfully")
-                
-                # Auto-start live watchdog heartbeat in background (Zero extra code needed)
-                self.start_watchdog(15)
+                self.response.success = True
+                self.response.message = data.get("message", "Initialized successfully")
+                self.response.is_maintenance = False
+
+                notifs = data.get("notifications", [])
+                if notifs and auto_exit_on_maint:
+                    n = notifs[0]
+                    self._last_notification = f"{n.get('title', 'ANNOUNCEMENT')}\n{n.get('message', '')}"
+                    print(f"\n📢 [JOYST NOTIFICATION] {n.get('title')}: {n.get('message')}\n")
                 return True
             else:
-                msg = data.get("message", "Initialization failed")
-                self.response = ResponseData(False, msg)
+                self.response.success = False
+                self.response.message = data.get("message") or data.get("detail") or "Failed to connect to authentication server."
+                self.response.is_maintenance = bool(data.get("is_maintenance"))
 
-                # Inbuilt Automatic Maintenance Killswitch
-                if "maintenance" in msg.lower() or data.get("is_maintenance"):
-                    if sys.platform == "win32":
-                        import ctypes
-                        ctypes.windll.user32.MessageBoxW(0, f"{msg}\n\nClient execution is forcefully terminated by developer.", "🚨 EMERGENCY MAINTENANCE", 0x10 | 0x40000)
-                    else:
-                        print(f"\n🚨 [EMERGENCY MAINTENANCE ACTIVE] {msg}")
-                    os._exit(0)
-
+                if auto_exit_on_maint:
+                    print(f"\n🚨 [JOYST ALERT] {self.response.message}\n")
+                    sys.exit(1)
                 return False
         except Exception as e:
-            self.response = ResponseData(False, f"Connection failed: {str(e)}")
+            self.response.success = False
+            self.response.message = f"Connection error: {str(e)}"
             return False
 
-    def _send_action(self, action_type: str, **kwargs) -> bool:
-        if not self.is_initialized:
-            if not self.init():
-                return False
+    def _start_heartbeat_watchdog(self):
+        def _loop():
+            while True:
+                time.sleep(3)
+                try:
+                    payload = {
+                        "app_name": self.name,
+                        "app_token": self.token,
+                        "hwid": self.hwid,
+                        "username": self.user_data.username,
+                        "sessionid": self.sessionid
+                    }
+                    res = requests.post(f"{self.url}/api/v1/client/check", json=payload, timeout=5)
+                    if res.status_code == 200:
+                        d = res.json()
+                        if not d.get("success"):
+                            msg = d.get("message", "Application placed into maintenance mode.")
+                            print(f"\n🚨 [JOYST SECURITY ALERT] {msg}\n")
+                            os._exit(1)
+                        
+                        notifs = d.get("notifications", [])
+                        if notifs:
+                            n = notifs[0]
+                            content = f"{n.get('title')}:{n.get('message')}"
+                            if content != self._last_notification:
+                                self._last_notification = content
+                                print(f"\n📢 [JOYST NOTIFICATION] {n.get('title')}: {n.get('message')}\n")
+                except Exception:
+                    pass
+        threading.Thread(target=_loop, daemon=True).start()
 
+    def license(self, key: str) -> bool:
         try:
-            payload_data = {"type": action_type, "hwid": self.hwid, **kwargs}
-            encrypted_payload = self._encrypt(json.dumps(payload_data), self.enckey)
+            payload = {"app_name": self.name, "app_token": self.token, "license_key": key.strip(), "hwid": self.hwid, "sessionid": self.sessionid}
+            res = requests.post(f"{self.url}/api/v1/client/license", json=payload, timeout=8)
+            d = res.json()
 
-            body = {
-                "sessionid": self.sessionid,
-                "data": encrypted_payload
-            }
-            res = requests.post(f"{self.url}/api/v1/client/gateway", json=body, timeout=8)
-            res_json = res.json()
-
-            if "data" in res_json:
-                decrypted_res = self._decrypt(res_json["data"], self.enckey)
-                parsed = json.loads(decrypted_res)
-                success = parsed.get("success", False)
-                message = parsed.get("message", "")
-
-                if "notifications" in parsed:
-                    self.notifications = parsed["notifications"]
-
-                if success and "info" in parsed:
-                    info = parsed["info"]
-                    self.user_data = UserData(
-                        username=info.get("username", ""),
-                        subscription=info.get("subscription", ""),
-                        expiry=info.get("expiry", ""),
-                        hwid=info.get("hwid", ""),
-                        ip=info.get("ip", ""),
-                        created_date=info.get("created_date", "")
-                    )
-
-                self.response = ResponseData(success, message)
-                return success
+            if d.get("success"):
+                self.user_data.username = d.get("username", "")
+                self.user_data.subscription = d.get("subscription", "default")
+                self.user_data.expiry = d.get("expires_at", "Lifetime")
+                self.user_data.ip = d.get("ip", "")
+                self.response.success = True
+                self.response.message = d.get("message", "License verified successfully")
+                return True
             else:
-                msg = res_json.get("message", "Request failed")
-                self.response = ResponseData(False, msg)
+                self.response.success = False
+                self.response.message = d.get("message") or d.get("detail") or "Invalid license key."
                 return False
         except Exception as e:
-            self.response = ResponseData(False, f"Error: {str(e)}")
+            self.response.success = False
+            self.response.message = str(e)
             return False
 
     def login(self, username: str, password: str) -> bool:
-        """Login with username and password (HWID lock enforced)."""
-        return self._send_action("login", username=username, password=password)
+        try:
+            payload = {"app_name": self.name, "app_token": self.token, "username": username.strip(), "password": password, "hwid": self.hwid, "sessionid": self.sessionid}
+            res = requests.post(f"{self.url}/api/v1/client/login", json=payload, timeout=8)
+            d = res.json()
+
+            if d.get("success"):
+                self.user_data.username = d.get("username", "")
+                self.user_data.subscription = d.get("subscription", "default")
+                self.user_data.expiry = d.get("expires_at", "Lifetime")
+                self.user_data.ip = d.get("ip", "")
+                self.response.success = True
+                self.response.message = d.get("message", "Login successful")
+                return True
+            else:
+                self.response.success = False
+                self.response.message = d.get("message") or d.get("detail") or "Invalid credentials."
+                return False
+        except Exception as e:
+            self.response.success = False
+            self.response.message = str(e)
+            return False
 
     def register(self, username: str, password: str, key: str) -> bool:
-        """Register a new user account with a license key."""
-        return self._send_action("register", username=username, password=password, key=key)
+        try:
+            payload = {"app_name": self.name, "app_token": self.token, "username": username.strip(), "password": password, "license_key": key.strip(), "hwid": self.hwid, "sessionid": self.sessionid}
+            res = requests.post(f"{self.url}/api/v1/client/register", json=payload, timeout=8)
+            d = res.json()
 
-    def license(self, key: str) -> bool:
-        """Login using license key only."""
-        return self._send_action("license", key=key)
+            if d.get("success"):
+                self.user_data.username = d.get("username", "")
+                self.user_data.subscription = d.get("subscription", "default")
+                self.user_data.expiry = d.get("expires_at", "Lifetime")
+                self.response.success = True
+                self.response.message = d.get("message", "Registered successfully")
+                return True
+            else:
+                self.response.success = False
+                self.response.message = d.get("message") or d.get("detail") or "Registration failed."
+                return False
+        except Exception as e:
+            self.response.success = False
+            self.response.message = str(e)
+            return False
 
-    def var(self, varid: str) -> str:
-        """Fetch remote cloud variable."""
-        if self._send_action("var", varid=varid):
-            return self.response.message
-        return ""
-
-    def check(self) -> bool:
-        """Check session validity and receive live maintenance status and warnings."""
-        return self._send_action("check")
-
-    def log(self, message: str) -> bool:
-        """Send custom message log to dashboard."""
-        return self._send_action("log", message=message)
-
-    def start_watchdog(self, interval_seconds: int = 10, on_warning=None, on_maintenance=None):
-        """
-        Start live background watchdog thread.
-        Automatically checks for Maintenance Mode killswitch and real-time Warning popups.
-        """
-        import threading
-        import time
-
-        seen_notif_ids = set(n.get("id") for n in self.notifications if isinstance(n, dict) and "id" in n)
-
-        def watchdog_loop():
-            while True:
-                time.sleep(interval_seconds)
-                if not self.is_initialized or not self.sessionid:
-                    continue
-
-                valid = self.check()
-                if not valid:
-                    # Check if session died due to Maintenance Mode
-                    if hasattr(self, "response") and "maintenance" in self.response.message.lower():
-                        if on_maintenance:
-                            on_maintenance(self.response.message)
-                        else:
-                            if sys.platform == "win32":
-                                import ctypes
-                                ctypes.windll.user32.MessageBoxW(0, f"{self.response.message}\n\nProgram is forcefully terminated by developer.", "🚨 EMERGENCY MAINTENANCE", 0x10 | 0x40000)
-                            else:
-                                print(f"\n🚨 [EMERGENCY MAINTENANCE ACTIVE] {self.response.message}")
-                            os._exit(0)
-                        break
-
-                # Check for newly broadcasted real-time warnings
-                if hasattr(self, "notifications") and self.notifications:
-                    for notif in self.notifications:
-                        n_id = notif.get("id")
-                        if n_id and n_id not in seen_notif_ids:
-                            seen_notif_ids.add(n_id)
-                            if on_warning:
-                                on_warning(notif)
-                            else:
-                                if sys.platform == "win32":
-                                    import ctypes
-                                    ctypes.windll.user32.MessageBoxW(0, notif.get("message", ""), f"📢 {notif.get('title', 'DEVELOPER NOTICE')}", 0x30 | 0x40000)
-                                else:
-                                    print(f"\n📢 [LIVE BROADCAST NOTICE - {notif.get('type', 'ALERT').upper()}]")
-                                    print(f"👉 {notif.get('title')}: {notif.get('message')}\n")
-
-        t = threading.Thread(target=watchdog_loop, daemon=True)
-        t.start()
-        return t
-
-# Alias for backwards compatibility
-JoystAuth = api
-AuthClient = api
+    def var(self, var_name: str) -> str:
+        try:
+            payload = {"app_name": self.name, "app_token": self.token, "var_name": var_name.strip(), "sessionid": self.sessionid}
+            res = requests.post(f"{self.url}/api/v1/client/var", json=payload, timeout=8)
+            d = res.json()
+            return d.get("value", "") if d.get("success") else ""
+        except Exception:
+            return ""

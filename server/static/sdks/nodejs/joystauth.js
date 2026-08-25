@@ -1,11 +1,6 @@
-/**
- * JOYST CORPORATION AUTH - Node.js / Electron Standalone SDK
- * Pure vanilla Node.js (crypto + https/http) with zero external npm dependencies!
- */
-
-const crypto = require('crypto');
-const http = require('http');
 const https = require('https');
+const http = require('http');
+const crypto = require('crypto');
 const os = require('os');
 
 class JoystAuth {
@@ -13,165 +8,108 @@ class JoystAuth {
         this.name = name;
         this.token = token;
         this.version = version;
-        this.url = (url || "https://joystauth.cc").replace(/\/$/, "");
+        this.url = (url || "https://joystauth.cc").replace(/\/+$/, '');
         this.sessionid = null;
-        this.enckey = null;
-        this.hwid = this.getHwid();
-        this.userData = {};
+        this.hwid = crypto.createHash('sha256').update(os.hostname() + os.userInfo().username).digest('hex');
+        this.userData = { username: "", subscription: "default", expiry: "Lifetime", hwid: this.hwid };
         this.response = { success: false, message: "" };
-        this.notifications = [];
+
+        // ⚡ 1. Inbuilt Auto-Init
+        this.init(true);
+
+        // ⚡ 2. Inbuilt Live Heartbeat Watchdog
+        this.startHeartbeatWatchdog();
     }
 
-    getHwid() {
-        const raw = `${os.hostname()}-${os.platform()}-${os.arch()}-${os.cpus()[0]?.model || ''}`;
-        return crypto.createHash('sha256').update(raw.toUpperCase()).digest('hex');
-    }
-
-    deriveKey(token) {
-        return crypto.createHash('sha256').update(token).digest();
-    }
-
-    decryptAes(cipherBase64, keyStr) {
-        const key = this.deriveKey(keyStr);
-        const raw = Buffer.from(cipherBase64, 'base64');
-        const iv = raw.slice(0, 16);
-        const encrypted = raw.slice(16);
-        const decipher = crypto.createDecipheriv('aes-256-cbc', key, iv);
-        let decrypted = decipher.update(encrypted);
-        decrypted = Buffer.concat([decrypted, decipher.final()]);
-        return decrypted.toString('utf8');
-    }
-
-    encryptAes(plainText, keyStr) {
-        const key = this.deriveKey(keyStr);
-        const iv = crypto.randomBytes(16);
-        const cipher = crypto.createCipheriv('aes-256-cbc', key, iv);
-        let encrypted = cipher.update(Buffer.from(plainText, 'utf8'));
-        encrypted = Buffer.concat([encrypted, cipher.final()]);
-        return Buffer.concat([iv, encrypted]).toString('base64');
-    }
-
-    async postJson(endpoint, data) {
+    _post(endpoint, data) {
         return new Promise((resolve) => {
-            const urlObj = new URL(`${this.url}${endpoint}`);
-            const body = JSON.stringify(data);
+            const urlObj = new URL(this.url + endpoint);
             const isHttps = urlObj.protocol === 'https:';
             const client = isHttps ? https : http;
+            const body = JSON.stringify(data);
 
-            const req = client.request({
-                hostname: urlObj.hostname,
-                port: urlObj.port || (isHttps ? 443 : 80),
-                path: urlObj.pathname,
+            const req = client.request(urlObj, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Content-Length': Buffer.byteLength(body)
+                    'Content-Length': Buffer.byteLength(body),
+                    'User-Agent': 'JoystEnclave-Node/2.0'
                 }
             }, (res) => {
                 let chunks = '';
-                res.on('data', d => chunks += d);
+                res.on('data', c => chunks += c);
                 res.on('end', () => {
-                    try {
-                        resolve(JSON.parse(chunks));
-                    } catch (e) {
-                        resolve({ success: false, message: chunks });
-                    }
+                    try { resolve(JSON.parse(chunks)); }
+                    catch(e) { resolve({ success: false, message: "Invalid JSON response" }); }
                 });
             });
 
-            req.on('error', (err) => resolve({ success: false, message: err.message }));
+            req.on('error', (e) => resolve({ success: false, message: e.message }));
             req.write(body);
             req.end();
         });
     }
 
-    async init() {
-        const res = await this.postJson('/api/v1/client/init', {
-            name: this.name,
-            token: this.token,
+    async init(autoExitOnMaint = true) {
+        const res = await this._post('/api/v1/client/init', {
+            app_name: this.name,
+            app_token: this.token,
             version: this.version,
             hwid: this.hwid
         });
 
         if (res.success) {
             this.sessionid = res.sessionid;
-            this.enckey = this.decryptAes(res.enckey, this.token);
-            this.response = { success: true, message: "Initialized successfully" };
-            this.notifications = res.notifications || [];
-            
-            // Auto-start watchdog heartbeat
-            this.startWatchdog(15);
+            this.response = { success: true, message: res.message || "Initialized" };
             return true;
         } else {
-            const msg = res.message || "Init failed";
+            const msg = res.message || res.detail || "Authentication server error.";
             this.response = { success: false, message: msg };
-
-            // Inbuilt Automatic Maintenance Killswitch
-            if (msg.toLowerCase().includes("maintenance") || res.is_maintenance) {
-                console.error("\n🚨 [EMERGENCY MAINTENANCE ACTIVE] " + msg);
-                console.error("❌ Application execution forcefully terminated by developer.");
-                process.exit(0);
+            if (autoExitOnMaint) {
+                console.error(`\n🚨 [JOYST ALERT] ${msg}\n`);
+                process.exit(1);
             }
-
             return false;
         }
     }
 
-    async sendAction(payloadData) {
-        if (!this.sessionid) {
-            const ok = await this.init();
-            if (!ok) return false;
-        }
-
-        const encPayload = this.encryptAes(JSON.stringify({ ...payloadData, hwid: this.hwid }), this.enckey);
-        const res = await this.postJson('/api/v1/client/gateway', {
-            sessionid: this.sessionid,
-            data: encPayload
-        });
-
-        if (res.data) {
-            const decrypted = JSON.parse(this.decryptAes(res.data, this.enckey));
-            this.response = { success: decrypted.success, message: decrypted.message || "" };
-            if (decrypted.success && decrypted.info) {
-                this.userData = decrypted.info;
-            }
-            return decrypted.success;
-        } else {
-            this.response = { success: false, message: res.message || "Request failed" };
-            return false;
-        }
-    }
-
-    async login(username, password) {
-        return this.sendAction({ type: "login", username, password });
-    }
-
-    async register(username, password, key) {
-        return this.sendAction({ type: "register", username, password, key });
+    startHeartbeatWatchdog() {
+        setInterval(async () => {
+            try {
+                const res = await this._post('/api/v1/client/check', {
+                    app_name: this.name,
+                    app_token: this.token,
+                    hwid: this.hwid,
+                    username: this.userData.username,
+                    sessionid: this.sessionid
+                });
+                if (res && res.success === false) {
+                    console.error(`\n🚨 [JOYST SECURITY ALERT] ${res.message || "Application placed into maintenance."}\n`);
+                    process.exit(1);
+                }
+            } catch(e) {}
+        }, 3000);
     }
 
     async license(key) {
-        return this.sendAction({ type: "license", key });
-    }
+        const res = await this._post('/api/v1/client/license', {
+            app_name: this.name,
+            app_token: this.token,
+            license_key: key.trim(),
+            hwid: this.hwid,
+            sessionid: this.sessionid
+        });
 
-    async var(varid) {
-        await this.sendAction({ type: "var", varid });
-        return this.response.message;
-    }
-
-    async check() {
-        return this.sendAction({ type: "check" });
-    }
-
-    startWatchdog(intervalSeconds = 15) {
-        setInterval(async () => {
-            if (!this.sessionid) return;
-            const valid = await this.check();
-            if (!valid && this.response.message.toLowerCase().includes("maintenance")) {
-                console.error("\n🚨 [EMERGENCY MAINTENANCE ACTIVE] " + this.response.message);
-                process.exit(0);
-            }
-        }, intervalSeconds * 1000);
+        if (res.success) {
+            this.userData.username = res.username;
+            this.userData.subscription = res.subscription || "default";
+            this.userData.expiry = res.expires_at || "Lifetime";
+            this.response = { success: true, message: res.message || "License verified" };
+            return true;
+        } else {
+            this.response = { success: false, message: res.message || res.detail || "Invalid license key." };
+            return false;
+        }
     }
 }
 

@@ -3,6 +3,7 @@
 #include <iostream>
 #include <string>
 #include <vector>
+#include <set>
 #include <windows.h>
 #include <wininet.h>
 #include <wincrypt.h>
@@ -29,6 +30,7 @@ namespace JoystAuth {
         bool success = false;
         std::string message;
         bool is_maintenance = false;
+        std::string active_notification;
     };
 
     // ==================== INBUILT MILITARY-GRADE ANTI-CRACK ENGINE ====================
@@ -44,12 +46,11 @@ namespace JoystAuth {
 
         static std::string to_lower(const std::string& str) {
             std::string res = str;
-            for (char& c : res) c = std::tolower(c);
+            for (char& c : res) c = (char)std::tolower(c);
             return res;
         }
 
     public:
-        // 1. Inbuilt Debugger Check
         static bool CheckDebugger() {
             if (IsDebuggerPresent()) return true;
 
@@ -57,16 +58,14 @@ namespace JoystAuth {
             CheckRemoteDebuggerPresent(GetCurrentProcess(), &is_remote);
             if (is_remote) return true;
 
-            // Direct PEB Check (x86 / x64)
 #if defined(_WIN64)
             unsigned char* ppeb = (unsigned char*)__readgsqword(0x60);
-            if (ppeb && ppeb[2]) return true; // BeingDebugged flag
+            if (ppeb && ppeb[2]) return true;
 #elif defined(_WIN32)
             unsigned char* ppeb = (unsigned char*)__readfsdword(0x30);
             if (ppeb && ppeb[2]) return true;
 #endif
 
-            // Hardware Breakpoints Check (DR0-DR3)
             CONTEXT ctx = { 0 };
             ctx.ContextFlags = CONTEXT_DEBUG_REGISTERS;
             HANDLE hThread = GetCurrentThread();
@@ -77,7 +76,6 @@ namespace JoystAuth {
             return false;
         }
 
-        // 2. Kill / Detect Reversing Tools & Sniffers
         static bool ScanAndKillBlacklist() {
             HANDLE hSnapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
             if (hSnapshot == INVALID_HANDLE_VALUE) return false;
@@ -92,7 +90,6 @@ namespace JoystAuth {
                     for (const auto& bl : blacklist_processes) {
                         if (pName.find(bl) != std::string::npos) {
                             found = true;
-                            // Terminate reverse tool
                             HANDLE hProc = OpenProcess(PROCESS_TERMINATE, FALSE, pe.th32ProcessID);
                             if (hProc) {
                                 TerminateProcess(hProc, 0);
@@ -106,7 +103,6 @@ namespace JoystAuth {
             return found;
         }
 
-        // 3. Detect Virtual Machine / Sandbox
         static bool CheckVirtualMachine() {
             HKEY hKey;
             if (RegOpenKeyExA(HKEY_LOCAL_MACHINE, "HARDWARE\\DESCRIPTION\\System", 0, KEY_READ, &hKey) == ERROR_SUCCESS) {
@@ -126,7 +122,6 @@ namespace JoystAuth {
             return false;
         }
 
-        // 4. Run Watchdog Loop (Runs in silent background thread)
         static void StartWatchdog() {
             std::thread([]() {
                 while (true) {
@@ -148,6 +143,7 @@ namespace JoystAuth {
         std::string sessionid;
         std::string hwid;
         bool is_initialized = false;
+        static inline std::string last_shown_notification = "";
 
         std::string GetHwid() {
             HW_PROFILE_INFO hwProfileInfo;
@@ -235,10 +231,71 @@ namespace JoystAuth {
             pos = json.find(searchBool);
             if (pos != std::string::npos) {
                 size_t start = pos + searchBool.length();
-                if (json.substr(start, 4) == "true") return "true";
-                if (json.substr(start, 5) == "false") return "false";
+                while (start < json.length() && (json[start] == ' ' || json[start] == '\t')) start++;
+                if (json.compare(start, 4, "true") == 0) return "true";
+                if (json.compare(start, 5, "false") == 0) return "false";
             }
             return "";
+        }
+
+        std::string ExtractFirstNotification(const std::string& json) {
+            size_t notifsPos = json.find("\"notifications\":");
+            if (notifsPos == std::string::npos) return "";
+
+            std::string titleKey = "\"title\":\"";
+            std::string msgKey = "\"message\":\"";
+
+            size_t titlePos = json.find(titleKey, notifsPos);
+            size_t msgPos = json.find(msgKey, notifsPos);
+
+            if (titlePos != std::string::npos && msgPos != std::string::npos) {
+                size_t tStart = titlePos + titleKey.length();
+                size_t tEnd = json.find("\"", tStart);
+                std::string title = (tEnd != std::string::npos) ? json.substr(tStart, tEnd - tStart) : "ANNOUNCEMENT";
+
+                size_t mStart = msgPos + msgKey.length();
+                size_t mEnd = json.find("\"", mStart);
+                std::string message = (mEnd != std::string::npos) ? json.substr(mStart, mEnd - mStart) : "";
+
+                if (!message.empty()) {
+                    return title + "\n\n" + message;
+                }
+            }
+            return "";
+        }
+
+        // ⚡ REAL-TIME LIVE BACKGROUND WATCHDOG:
+        // Continuously polls server every 3s. If maintenance / ban / warning is triggered live while EXE is running,
+        // it instantly displays a popup and terminates the app!
+        void StartLiveHeartbeatWatchdog() {
+            std::thread([this]() {
+                while (true) {
+                    std::this_thread::sleep_for(std::chrono::seconds(3));
+                    try {
+                        std::string payload = "{\"app_name\":\"" + this->name + "\",\"app_token\":\"" + this->token + "\",\"hwid\":\"" + this->hwid + "\",\"username\":\"" + this->user_data.username + "\",\"sessionid\":\"" + this->sessionid + "\"}";
+                        std::string res = this->HttpPost("/api/v1/client/check", payload);
+
+                        if (res.empty() || res == "{}") continue;
+
+                        if (this->ExtractJsonValue(res, "success") == "false") {
+                            std::string msg = this->ExtractJsonValue(res, "message");
+                            if (msg.empty()) msg = "🚨 Application has been placed into maintenance mode or access revoked by administrator.";
+                            bool is_maint = (this->ExtractJsonValue(res, "is_maintenance") == "true" || res.find("\"is_maintenance\":true") != std::string::npos);
+
+                            std::string title = is_maint ? "JOYST - APPLICATION MAINTENANCE" : "JOYST - SECURITY ALERT";
+                            MessageBoxA(NULL, msg.c_str(), title.c_str(), MB_ICONWARNING | MB_TOPMOST);
+                            ExitProcess(0);
+                        }
+
+                        // Check for live broadcast announcements / warnings:
+                        std::string liveNotif = this->ExtractFirstNotification(res);
+                        if (!liveNotif.empty() && liveNotif != last_shown_notification) {
+                            last_shown_notification = liveNotif;
+                            MessageBoxA(NULL, liveNotif.c_str(), "JOYST NOTIFICATION", MB_ICONINFORMATION | MB_TOPMOST);
+                        }
+                    } catch (...) {}
+                }
+            }).detach();
         }
 
     public:
@@ -252,15 +309,19 @@ namespace JoystAuth {
             this->url = url;
             this->hwid = GetHwid();
 
-            // 🛡️ Automatic Zero-Config Anti-Crack Shield Launch
             if (SecurityShield::CheckDebugger() || SecurityShield::ScanAndKillBlacklist() || SecurityShield::CheckVirtualMachine()) {
                 ExitProcess(0);
             }
             SecurityShield::StartWatchdog();
+
+            // ⚡ Startup initialization
+            this->init();
+
+            // ⚡ Launch real-time background watchdog
+            this->StartLiveHeartbeatWatchdog();
         }
 
-        void init() {
-            // Guard Check
+        void init(bool auto_handle_maintenance_and_popup = true) {
             if (SecurityShield::CheckDebugger()) ExitProcess(0);
 
             std::string payload = "{\"app_name\":\"" + name + "\",\"app_token\":\"" + token + "\",\"hwid\":\"" + hwid + "\"}";
@@ -271,16 +332,32 @@ namespace JoystAuth {
                 this->is_initialized = true;
                 this->response.success = true;
                 this->response.message = ExtractJsonValue(res, "message");
+                this->response.is_maintenance = false;
+                this->response.active_notification = ExtractFirstNotification(res);
+
+                if (auto_handle_maintenance_and_popup && !this->response.active_notification.empty()) {
+                    last_shown_notification = this->response.active_notification;
+                    MessageBoxA(NULL, this->response.active_notification.c_str(), "JOYST NOTIFICATION", MB_ICONINFORMATION | MB_TOPMOST);
+                }
             } else {
                 this->response.success = false;
-                this->response.message = ExtractJsonValue(res, "detail");
-                if (this->response.message.empty()) this->response.message = "Failed to initialize enclave session";
+                std::string msg = ExtractJsonValue(res, "message");
+                if (msg.empty()) msg = ExtractJsonValue(res, "detail");
+                if (msg.empty()) msg = "Failed to connect to authentication server.";
+                this->response.message = msg;
+                this->response.is_maintenance = (ExtractJsonValue(res, "is_maintenance") == "true" || res.find("\"is_maintenance\":true") != std::string::npos);
+
+                if (auto_handle_maintenance_and_popup) {
+                    std::string title = this->response.is_maintenance ? "JOYST - APPLICATION MAINTENANCE" : "JOYST - ACCESS BLOCKED";
+                    MessageBoxA(NULL, this->response.message.c_str(), title.c_str(), MB_ICONWARNING | MB_TOPMOST);
+                    ExitProcess(0);
+                }
             }
         }
 
         bool login(std::string username, std::string password) {
             if (SecurityShield::CheckDebugger()) ExitProcess(0);
-            if (!is_initialized) { init(); if (!is_initialized) return false; }
+            if (!is_initialized) { init(false); if (!is_initialized) return false; }
 
             std::string payload = "{\"app_name\":\"" + name + "\",\"app_token\":\"" + token + "\",\"username\":\"" + username + "\",\"password\":\"" + password + "\",\"hwid\":\"" + hwid + "\",\"sessionid\":\"" + sessionid + "\"}";
             std::string res = HttpPost("/api/v1/client/login", payload);
@@ -289,69 +366,27 @@ namespace JoystAuth {
                 user_data.username = ExtractJsonValue(res, "username");
                 user_data.subscription = ExtractJsonValue(res, "subscription");
                 user_data.expiry = ExtractJsonValue(res, "expires_at");
+                if (user_data.expiry.empty()) user_data.expiry = ExtractJsonValue(res, "expiry");
                 user_data.ip = ExtractJsonValue(res, "ip");
                 user_data.hwid = this->hwid;
                 this->response.success = true;
-                this->response.message = "Authentication Successful";
+                std::string msg = ExtractJsonValue(res, "message");
+                if (msg.empty()) msg = "Authentication Successful";
+                this->response.message = msg;
                 return true;
             } else {
                 this->response.success = false;
-                this->response.message = ExtractJsonValue(res, "detail");
-                return false;
-            }
-        }
-
-        
-        bool register_account(std::string username, std::string password, std::string key) {
-            if (SecurityShield::CheckDebugger()) ExitProcess(0);
-            if (!is_initialized) { init(); if (!is_initialized) return false; }
-
-            std::string payload = "{\"app_name\":\"" + name + "\",\"app_token\":\"" + token + "\",\"username\":\"" + username + "\",\"password\":\"" + password + "\",\"license_key\":\"" + key + "\",\"hwid\":\"" + hwid + "\",\"sessionid\":\"" + sessionid + "\"}";
-            std::string res = HttpPost("/api/v1/client/register", payload);
-
-            if (ExtractJsonValue(res, "success") == "true") {
-                user_data.username = ExtractJsonValue(res, "username");
-                user_data.subscription = ExtractJsonValue(res, "subscription");
-                user_data.expiry = ExtractJsonValue(res, "expires_at");
-                user_data.ip = ExtractJsonValue(res, "ip");
-                user_data.hwid = this->hwid;
-                this->response.success = true;
-                this->response.message = ExtractJsonValue(res, "message");
-                if (this->response.message.empty()) this->response.message = "Account registered successfully!";
-                return true;
-            } else {
-                this->response.success = false;
-                this->response.message = ExtractJsonValue(res, "detail");
-                if (this->response.message.empty()) this->response.message = ExtractJsonValue(res, "message");
-                return false;
-            }
-        }
-
-        bool upgrade(std::string username, std::string key) {
-            if (SecurityShield::CheckDebugger()) ExitProcess(0);
-            if (!is_initialized) { init(); if (!is_initialized) return false; }
-
-            std::string payload = "{\"app_name\":\"" + name + "\",\"app_token\":\"" + token + "\",\"username\":\"" + username + "\",\"license_key\":\"" + key + "\",\"sessionid\":\"" + sessionid + "\"}";
-            std::string res = HttpPost("/api/v1/client/upgrade", payload);
-
-            if (ExtractJsonValue(res, "success") == "true") {
-                user_data.username = ExtractJsonValue(res, "username");
-                user_data.subscription = ExtractJsonValue(res, "subscription");
-                user_data.expiry = ExtractJsonValue(res, "expires_at");
-                this->response.success = true;
-                this->response.message = ExtractJsonValue(res, "message");
-                return true;
-            } else {
-                this->response.success = false;
-                this->response.message = ExtractJsonValue(res, "detail");
-                if (this->response.message.empty()) this->response.message = ExtractJsonValue(res, "message");
+                std::string msg = ExtractJsonValue(res, "message");
+                if (msg.empty()) msg = ExtractJsonValue(res, "detail");
+                if (msg.empty()) msg = "Invalid username or password.";
+                this->response.message = msg;
                 return false;
             }
         }
 
         bool license(std::string key) {
             if (SecurityShield::CheckDebugger()) ExitProcess(0);
-            if (!is_initialized) { init(); if (!is_initialized) return false; }
+            if (!is_initialized) { init(false); if (!is_initialized) return false; }
 
             std::string payload = "{\"app_name\":\"" + name + "\",\"app_token\":\"" + token + "\",\"license_key\":\"" + key + "\",\"hwid\":\"" + hwid + "\",\"sessionid\":\"" + sessionid + "\"}";
             std::string res = HttpPost("/api/v1/client/license", payload);
@@ -360,14 +395,20 @@ namespace JoystAuth {
                 user_data.username = ExtractJsonValue(res, "username");
                 user_data.subscription = ExtractJsonValue(res, "subscription");
                 user_data.expiry = ExtractJsonValue(res, "expires_at");
+                if (user_data.expiry.empty()) user_data.expiry = ExtractJsonValue(res, "expiry");
                 user_data.ip = ExtractJsonValue(res, "ip");
                 user_data.hwid = this->hwid;
                 this->response.success = true;
-                this->response.message = "License Verified Successfully";
+                std::string msg = ExtractJsonValue(res, "message");
+                if (msg.empty()) msg = "License Authenticated Successfully";
+                this->response.message = msg;
                 return true;
             } else {
                 this->response.success = false;
-                this->response.message = ExtractJsonValue(res, "detail");
+                std::string msg = ExtractJsonValue(res, "message");
+                if (msg.empty()) msg = ExtractJsonValue(res, "detail");
+                if (msg.empty()) msg = "Invalid license key.";
+                this->response.message = msg;
                 return false;
             }
         }

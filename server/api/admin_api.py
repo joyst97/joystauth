@@ -85,6 +85,7 @@ class UpdateNotificationRequest(BaseModel):
 class CreateLicenseRequest(BaseModel):
     app_id: int
     count: int = 1
+    amount: Optional[int] = None
     duration_days: int = 30
     level: str = "default"
     level_rank: int = 1
@@ -139,7 +140,7 @@ class CreateTierRequest(BaseModel):
 class CreateFileRequest(BaseModel):
     app_id: int
     file_id: str
-    file_name: str
+    file_name: Optional[str] = None
     file_url: str
     file_size: Optional[int] = 0
 
@@ -152,8 +153,11 @@ class CreateBlacklistRequest(BaseModel):
 class CreateResellerRequest(BaseModel):
     username: str
     password: str
-    balance: int = 100
+    balance: Optional[int] = 100
+    balance_credits: Optional[int] = None
+    app_id: Optional[int] = None
     allowed_apps: Optional[str] = "all"
+    allowed_tiers: Optional[str] = "default,VIP"
 
 class UpdateResellerCreditsRequest(BaseModel):
     amount: int
@@ -573,7 +577,7 @@ async def generate_licenses(
     if not app:
         raise HTTPException(status_code=404, detail="Application not found")
     
-    count = min(max(1, data.count), 500)
+    count = min(max(1, data.amount or data.count), 500)
 
     # Check if caller is a Reseller
     token = authorization.replace("Bearer ", "").strip() if authorization else ""
@@ -764,7 +768,7 @@ async def reset_user_hwid(user_id: int, dev: Developer = Depends(get_current_dev
     return {"success": True, "message": f"HWID for user '{user.username}' reset successfully."}
 
 @router.post("/users/{user_id}/toggle-ban")
-async def toggle_ban_user(user_id: int, data: BanUserRequest, dev: Developer = Depends(get_current_developer), db: Session = Depends(get_db)):
+async def toggle_ban_user(user_id: int, data: Optional[BanUserRequest] = None, dev: Developer = Depends(get_current_developer), db: Session = Depends(get_db)):
     user = db.query(User).join(Application).filter(
         User.id == user_id,
         Application.developer_id == dev.id
@@ -774,7 +778,7 @@ async def toggle_ban_user(user_id: int, data: BanUserRequest, dev: Developer = D
     
     user.is_banned = not user.is_banned
     if user.is_banned:
-        user.ban_reason = data.reason or "Banned by developer"
+        user.ban_reason = (data.reason if data else None) or "Banned by developer"
         log_audit(db, user.app_id, "BAN_USER", username=user.username, details=f"Banned: {user.ban_reason}", status="DANGER")
     else:
         user.ban_reason = ""
@@ -1017,7 +1021,7 @@ async def create_file(data: CreateFileRequest, dev: Developer = Depends(get_curr
     app_file = AppFile(
         app_id=data.app_id,
         file_id=data.file_id.strip(),
-        file_name=data.file_name.strip(),
+        file_name=(data.file_name or data.file_id).strip(),
         file_url=data.file_url.strip(),
         file_size=data.file_size or 0,
         auth_required=True
@@ -1105,12 +1109,15 @@ async def create_reseller(data: CreateResellerRequest, dev: Developer = Depends(
     if existing:
         raise HTTPException(status_code=400, detail="Reseller username already exists")
     
+    balance_val = data.balance_credits if data.balance_credits is not None else (data.balance or 50)
+    allowed_apps_val = str(data.app_id) if data.app_id else (data.allowed_apps or "all")
+
     reseller = Reseller(
         developer_id=dev.id,
         username=data.username.strip(),
         password_hash=hash_password(data.password),
-        balance=data.balance or 50,
-        allowed_apps=data.allowed_apps or "all"
+        balance=balance_val,
+        allowed_apps=allowed_apps_val
     )
     db.add(reseller)
     db.commit()

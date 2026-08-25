@@ -468,14 +468,54 @@ async def client_gateway(req_data: EncryptedPayloadRequest, request: Request, db
         license_obj = db.query(License).filter(License.app_id == app.id, License.license_key == license_key).first()
 
         if not license_obj:
-            is_banned = check_and_record_failure(db, app.id, app.name, ip, hwid, f"Key:{license_key}", "Invalid direct license key")
-            if is_banned:
-                bf_msg = getattr(app, "brute_force_ban_message", "") or "Too many invalid attempts! Your PC hardware and IP are permanently banned."
-                response_data = {"success": False, "message": bf_msg}
+            # Smart Single-Box Login Fallback: Check if license_key matches a registered Username directly
+            direct_user = db.query(User).filter(User.app_id == app.id, User.username == license_key).first()
+            if direct_user:
+                if direct_user.is_banned:
+                    ban_prefix = getattr(app, "banned_user_message", "") or "Account is banned!"
+                    response_data = {"success": False, "message": f"{ban_prefix} Reason: {direct_user.ban_reason or 'No reason provided'}"}
+                elif direct_user.expires_at and datetime.datetime.utcnow() > direct_user.expires_at:
+                    exp_msg = getattr(app, "expired_sub_message", "") or "Your subscription has expired! Please renew."
+                    response_data = {"success": False, "message": exp_msg}
+                else:
+                    is_hwid_locked = app.hwid_lock_enabled if direct_user.hwid_lock_override is None else direct_user.hwid_lock_override
+                    if not direct_user.hwid and hwid:
+                        direct_user.hwid = hwid
+                        db.commit()
+                    if is_hwid_locked and direct_user.hwid and hwid and direct_user.hwid != hwid:
+                        log_audit(db, app.id, "HWID_MISMATCH", username=direct_user.username, ip_address=ip, hwid=hwid, details="Hardware ID mismatch", status="DANGER")
+                        mismatch_msg = getattr(app, "hwid_mismatch_message", "") or "HWID Mismatch! This account is bound to another PC."
+                        response_data = {"success": False, "message": mismatch_msg}
+                    else:
+                        direct_user.last_login = datetime.datetime.utcnow()
+                        direct_user.last_ip = ip
+                        session.user_id = direct_user.id
+                        db.commit()
+
+                        key = f"{app.id}_{hwid}" if hwid else f"{app.id}_{ip}"
+                        failed_attempts_tracker.pop(key, None)
+
+                        log_audit(db, app.id, "LOGIN_SUCCESS", username=direct_user.username, ip_address=ip, hwid=hwid, details="Logged in directly via username/key", status="SUCCESS")
+                        lic_ok_msg = getattr(app, "license_login_success_message", "") or "Authenticated successfully!"
+                        response_data = {
+                            "success": True,
+                            "message": lic_ok_msg,
+                            "info": {
+                                "username": direct_user.username,
+                                "subscription": direct_user.subscription_tier or "default",
+                                "expiry": direct_user.expires_at.isoformat() if direct_user.expires_at else "Lifetime",
+                                "hwid": direct_user.hwid or ""
+                            }
+                        }
             else:
-                log_audit(db, app.id, "LICENSE_FAIL", ip_address=ip, hwid=hwid, details=f"Invalid key {license_key}", status="WARNING")
-                inv_key_msg = getattr(app, "invalid_license_message", "") or "Invalid license key."
-                response_data = {"success": False, "message": inv_key_msg}
+                is_banned = check_and_record_failure(db, app.id, app.name, ip, hwid, f"Key:{license_key}", "Invalid direct license key")
+                if is_banned:
+                    bf_msg = getattr(app, "brute_force_ban_message", "") or "Too many invalid attempts! Your PC hardware and IP are permanently banned."
+                    response_data = {"success": False, "message": bf_msg}
+                else:
+                    log_audit(db, app.id, "LICENSE_FAIL", ip_address=ip, hwid=hwid, details=f"Invalid key {license_key}", status="WARNING")
+                    inv_key_msg = getattr(app, "invalid_license_message", "") or "Invalid license key."
+                    response_data = {"success": False, "message": inv_key_msg}
         elif license_obj.status == "paused":
             paused_msg = getattr(app, "paused_license_message", "") or "This license key is paused by administrator."
             response_data = {"success": False, "message": paused_msg}
@@ -529,7 +569,7 @@ async def client_gateway(req_data: EncryptedPayloadRequest, request: Request, db
                     }
         elif license_obj.status == "unused":
             # Auto create user with the key
-            username = f"user_{generate_random_token(8)}"
+            username = license_key
             expires_at = None
             if license_obj.duration_days > 0 and license_obj.duration_days < 90000:
                 expires_at = datetime.datetime.utcnow() + datetime.timedelta(days=license_obj.duration_days)
@@ -762,7 +802,7 @@ async def client_direct_login(data: ClientLoginRequest, request: Request, db: Se
         if is_banned:
             return {"success": False, "message": getattr(app, "brute_force_ban_message", "") or "Too many failed attempts! Blacklisted."}
         log_audit(db, app.id, "LOGIN_FAILED", username=username, ip_address=ip, hwid=hwid, details="Username not found", status="WARNING")
-        return {"success": False, "message": getattr(app, "user_not_found_message", "") or "Username does not exist."}
+        return {"success": False, "message": getattr(app, "user_not_found_message", "") or f"Username '{username}' does not exist."}
 
     if user.is_banned:
         log_audit(db, app.id, "LOGIN_BLOCKED", username=username, ip_address=ip, hwid=hwid, details=f"Banned: {user.ban_reason}", status="DANGER")
@@ -773,7 +813,7 @@ async def client_direct_login(data: ClientLoginRequest, request: Request, db: Se
         if is_banned:
             return {"success": False, "message": getattr(app, "brute_force_ban_message", "") or "Too many failed attempts! Blacklisted."}
         log_audit(db, app.id, "LOGIN_FAILED", username=username, ip_address=ip, hwid=hwid, details="Incorrect password", status="WARNING")
-        return {"success": False, "message": getattr(app, "login_failed_message", "") or "Invalid username or password."}
+        return {"success": False, "message": getattr(app, "login_failed_message", "") or "Incorrect password for this account."}
 
     if user.expires_at and datetime.datetime.utcnow() > user.expires_at:
         log_audit(db, app.id, "LOGIN_EXPIRED", username=username, ip_address=ip, hwid=hwid, details="Subscription expired", status="WARNING")
@@ -821,18 +861,27 @@ async def client_direct_register(data: ClientRegisterRequest, request: Request, 
     if not username or not password or not license_key:
         return {"success": False, "message": "Username, password, and license key are all required."}
 
+    if len(password) < 4:
+        return {"success": False, "message": "Password must be at least 4 characters long."}
+
     existing_user = db.query(User).filter(User.app_id == app.id, User.username == username).first()
     if existing_user:
-        return {"success": False, "message": "Username is already registered."}
+        return {"success": False, "message": f"Username '{username}' is already taken. Please choose another username."}
 
     license_obj = db.query(License).filter(License.app_id == app.id, License.license_key == license_key).first()
     if not license_obj:
         log_audit(db, app.id, "REGISTER_FAIL", username=username, ip_address=ip, hwid=hwid, details=f"Invalid key: {license_key}", status="WARNING")
-        return {"success": False, "message": getattr(app, "invalid_license_message", "") or "Invalid license key."}
+        return {"success": False, "message": getattr(app, "invalid_license_message", "") or "License key is invalid or does not exist."}
 
-    if license_obj.status != "unused":
-        log_audit(db, app.id, "REGISTER_FAIL", username=username, ip_address=ip, hwid=hwid, details=f"License already {license_obj.status}", status="WARNING")
-        return {"success": False, "message": getattr(app, "used_license_message", "") or f"This license key is already {license_obj.status}."}
+    if license_obj.status == "paused":
+        return {"success": False, "message": getattr(app, "paused_license_message", "") or "This license key is paused by administrator."}
+
+    if license_obj.status == "revoked":
+        return {"success": False, "message": getattr(app, "revoked_license_message", "") or "This license key has been revoked."}
+
+    if license_obj.status == "used":
+        log_audit(db, app.id, "REGISTER_FAIL", username=username, ip_address=ip, hwid=hwid, details=f"License already used", status="WARNING")
+        return {"success": False, "message": getattr(app, "used_license_message", "") or "This license key has already been used and activated."}
 
     expires_at = None
     if license_obj.duration_days > 0 and license_obj.duration_days < 90000:
@@ -886,6 +935,37 @@ async def client_direct_license(data: ClientLicenseRequest, request: Request, db
 
     license_obj = db.query(License).filter(License.app_id == app.id, License.license_key == license_key).first()
     if not license_obj:
+        # Smart Single-Box Login Fallback: Check if license_key matches a registered Username directly
+        direct_user = db.query(User).filter(User.app_id == app.id, User.username == license_key).first()
+        if direct_user:
+            if direct_user.is_banned:
+                return {"success": False, "message": f"{getattr(app, 'banned_user_message', '') or 'Account is banned!'} Reason: {direct_user.ban_reason or 'None'}"}
+            if direct_user.expires_at and datetime.datetime.utcnow() > direct_user.expires_at:
+                return {"success": False, "message": getattr(app, "expired_sub_message", "") or "Your subscription has expired! Please renew."}
+            
+            is_hwid_locked = app.hwid_lock_enabled if direct_user.hwid_lock_override is None else direct_user.hwid_lock_override
+            if not direct_user.hwid and hwid:
+                direct_user.hwid = hwid
+                db.commit()
+            if is_hwid_locked and direct_user.hwid and hwid and direct_user.hwid != hwid:
+                log_audit(db, app.id, "HWID_MISMATCH", username=direct_user.username, ip_address=ip, hwid=hwid, details="Hardware ID mismatch", status="DANGER")
+                return {"success": False, "message": getattr(app, "hwid_mismatch_message", "") or "HWID Mismatch! This account is bound to another PC."}
+            
+            direct_user.last_login = datetime.datetime.utcnow()
+            direct_user.last_ip = ip
+            db.commit()
+            
+            log_audit(db, app.id, "LOGIN_SUCCESS", username=direct_user.username, ip_address=ip, hwid=hwid, details="Logged in directly via username/key", status="SUCCESS")
+            return {
+                "success": True,
+                "message": getattr(app, "license_login_success_message", "") or "Authenticated successfully!",
+                "username": direct_user.username,
+                "subscription": direct_user.subscription_tier or "default",
+                "expires_at": direct_user.expires_at.isoformat() if direct_user.expires_at else "Lifetime",
+                "ip": ip,
+                "hwid": direct_user.hwid or ""
+            }
+
         log_audit(db, app.id, "LICENSE_FAIL", ip_address=ip, hwid=hwid, details=f"Invalid key {license_key}", status="WARNING")
         return {"success": False, "message": getattr(app, "invalid_license_message", "") or "Invalid license key."}
 
@@ -932,7 +1012,7 @@ async def client_direct_license(data: ClientLicenseRequest, request: Request, db
         }
 
     elif license_obj.status == "unused":
-        username = f"user_{generate_random_token(8)}"
+        username = license_key
         expires_at = None
         if license_obj.duration_days > 0 and license_obj.duration_days < 90000:
             expires_at = datetime.datetime.utcnow() + datetime.timedelta(days=license_obj.duration_days)
@@ -1020,6 +1100,67 @@ async def client_direct_var(data: ClientVarRequest, request: Request, db: Sessio
 
     return {"success": True, "value": var_obj.value}
 
+
+
+class ClientHeartbeatRequest(BaseModel):
+    app_name: Optional[str] = ""
+    app_token: Optional[str] = ""
+    sessionid: Optional[str] = ""
+    hwid: Optional[str] = ""
+    username: Optional[str] = ""
+
+@router.post("/check")
+@router.post("/ping")
+@router.post("/heartbeat")
+async def client_realtime_heartbeat(data: ClientHeartbeatRequest, request: Request, db: Session = Depends(get_db)):
+    ip = get_client_ip(request)
+    hwid = normalize_hwid(data.hwid)
+    app = resolve_app_for_client(db, data.app_name, data.app_token)
+    if not app:
+        return {"success": False, "message": "Application not found."}
+
+    # 1. Real-time Maintenance Check
+    if app.status in ("maintenance", "paused"):
+        msg = getattr(app, "maintenance_message", "") or "🚨 Application has been placed into Maintenance Mode by administrator."
+        return {"success": False, "is_maintenance": True, "message": msg}
+
+    if app.status == "disabled":
+        msg = getattr(app, "custom_message", "") or "🚨 Application has been disabled by administrator."
+        return {"success": False, "is_disabled": True, "message": msg}
+
+    # 2. Real-time Blacklist Check
+    if hwid:
+        bl_hwid = db.query(Blacklist).filter(Blacklist.app_id == app.id, Blacklist.type == "hwid", Blacklist.data == hwid).first()
+        if bl_hwid:
+            return {"success": False, "is_banned": True, "message": f"🚨 Your machine has been banned: {bl_hwid.reason}"}
+
+    if ip and ip != "127.0.0.1":
+        bl_ip = db.query(Blacklist).filter(Blacklist.app_id == app.id, Blacklist.type == "ip", Blacklist.data == ip).first()
+        if bl_ip:
+            return {"success": False, "is_banned": True, "message": f"🚨 Your IP address has been banned: {bl_ip.reason}"}
+
+    # 3. Real-time User Account Ban & Expiry Check
+    if data.username:
+        user = db.query(User).filter(User.app_id == app.id, User.username == data.username.strip()).first()
+        if user:
+            if user.is_banned:
+                return {"success": False, "is_banned": True, "message": f"🚨 Account Banned: {user.ban_reason or 'Access revoked by administrator'}"}
+            if user.expires_at and datetime.datetime.utcnow() > user.expires_at:
+                return {"success": False, "is_expired": True, "message": "🚨 Your subscription has expired! Session terminated."}
+
+    # 4. Fetch Active In-App Broadcast Announcements
+    from ..database import AppNotification
+    notifs = db.query(AppNotification).filter(AppNotification.app_id == app.id, AppNotification.is_active == True).all()
+    active_notifs = [
+        {"id": n.id, "title": n.title, "message": n.message, "type": n.type}
+        for n in notifs
+    ]
+
+    return {
+        "success": True,
+        "status": "online",
+        "notifications": active_notifs
+    }
 
 @router.post("/telemetry/visit")
 async def record_website_visit(request: Request):

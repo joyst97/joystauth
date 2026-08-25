@@ -64,7 +64,16 @@ function formatDate(dateStr) {
     }
 }
 
-function showToast(message, type = "info") {
+function showToast(messageOrOpts, typeArg = "info") {
+    let message = "";
+    let type = typeArg;
+    if (typeof messageOrOpts === "object" && messageOrOpts !== null) {
+        message = messageOrOpts.message || messageOrOpts.msg || messageOrOpts.detail || JSON.stringify(messageOrOpts);
+        type = messageOrOpts.type || typeArg || "info";
+    } else {
+        message = String(messageOrOpts || "");
+    }
+
     let container = document.getElementById("toast-container");
     if (!container) {
         container = document.createElement("div");
@@ -91,7 +100,27 @@ function showToast(message, type = "info") {
     }, 3500);
 }
 
-function showConfirmDialog(title, message, confirmBtnText = "Confirm", isDanger = false) {
+function showConfirmDialog(optsOrTitle, messageArg, confirmBtnTextArg = "Confirm", isDangerArg = false) {
+    let title = "Confirm Action";
+    let message = "";
+    let confirmBtnText = "Confirm";
+    let isDanger = false;
+    let icon = "";
+
+    if (typeof optsOrTitle === "object" && optsOrTitle !== null) {
+        title = optsOrTitle.title || "Confirm Action";
+        message = optsOrTitle.message || optsOrTitle.msg || optsOrTitle.text || "";
+        confirmBtnText = optsOrTitle.okText || optsOrTitle.confirmBtnText || optsOrTitle.confirmText || "Confirm";
+        isDanger = optsOrTitle.isDanger !== undefined ? !!optsOrTitle.isDanger : (optsOrTitle.danger !== undefined ? !!optsOrTitle.danger : false);
+        icon = optsOrTitle.icon || (isDanger ? "⚠️" : "❓");
+    } else {
+        title = String(optsOrTitle || "Confirm Action");
+        message = String(messageArg || "");
+        confirmBtnText = String(confirmBtnTextArg || "Confirm");
+        isDanger = !!isDangerArg;
+        icon = isDanger ? "⚠️" : "❓";
+    }
+
     return new Promise((resolve) => {
         let overlay = document.getElementById("custom-confirm-modal");
         if (!overlay) {
@@ -101,14 +130,15 @@ function showConfirmDialog(title, message, confirmBtnText = "Confirm", isDanger 
             document.body.appendChild(overlay);
         }
         overlay.innerHTML = `
-            <div class="modal" style="max-width: 440px; border: 1px solid ${isDanger ? 'rgba(239, 68, 68, 0.4)' : 'rgba(255, 42, 95, 0.4)'};">
-                <div class="modal-header">
-                    <h3 style="color: ${isDanger ? '#ef4444' : '#ff4d79'};">${escapeHtml(title)}</h3>
+            <div class="modal" style="max-width: 460px; border: 1px solid ${isDanger ? 'rgba(239, 68, 68, 0.45)' : 'rgba(255, 42, 95, 0.45)'}; box-shadow: 0 20px 60px rgba(0,0,0,0.8), 0 0 30px ${isDanger ? 'rgba(239, 68, 68, 0.2)' : 'rgba(255, 42, 95, 0.2)'};">
+                <div class="modal-header" style="display: flex; align-items: center; gap: 8px; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 12px;">
+                    <span style="font-size: 18px;">${icon}</span>
+                    <h3 style="color: ${isDanger ? '#ef4444' : '#ff4d79'}; font-size: 16px; font-weight: 700; margin: 0;">${escapeHtml(title)}</h3>
                 </div>
-                <div class="modal-body" style="padding: 16px 0; color: #e2e8f0; font-size: 14px; line-height: 1.5;">
+                <div class="modal-body" style="padding: 18px 0; color: #e2e8f0; font-size: 14px; line-height: 1.6;">
                     ${escapeHtml(message)}
                 </div>
-                <div class="modal-footer" style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 16px;">
+                <div class="modal-footer" style="display: flex; justify-content: flex-end; gap: 10px; border-top: 1px solid rgba(255,255,255,0.08); padding-top: 14px;">
                     <button id="confirm-btn-cancel" class="btn btn-secondary btn-sm">Cancel</button>
                     <button id="confirm-btn-ok" class="btn ${isDanger ? 'btn-danger' : 'btn-primary'} btn-sm">${escapeHtml(confirmBtnText)}</button>
                 </div>
@@ -116,18 +146,76 @@ function showConfirmDialog(title, message, confirmBtnText = "Confirm", isDanger 
         `;
         overlay.classList.add("active");
 
-        document.getElementById("confirm-btn-cancel").onclick = () => {
-            overlay.classList.remove("active");
-            resolve(false);
-        };
-        document.getElementById("confirm-btn-ok").onclick = () => {
-            overlay.classList.remove("active");
-            resolve(true);
-        };
+        const cancelBtn = document.getElementById("confirm-btn-cancel");
+        const okBtn = document.getElementById("confirm-btn-ok");
+
+        if (cancelBtn) {
+            cancelBtn.onclick = () => {
+                overlay.classList.remove("active");
+                resolve(false);
+            };
+        }
+        if (okBtn) {
+            okBtn.onclick = () => {
+                overlay.classList.remove("active");
+                resolve(true);
+            };
+        }
     });
 }
 
-function showDiscordOutputModal(title, jsonPayload) {
+function showDiscordOutputModal(optionsOrTitle, jsonPayload) {
+    let header = "JOYST CORPORATION";
+    let title = "CREDENTIALS OUTPUT";
+    let rawText = "";
+
+    if (typeof optionsOrTitle === "object" && optionsOrTitle !== null) {
+        header = optionsOrTitle.header || "JOYST CORPORATION";
+        title = optionsOrTitle.title || "CREDENTIALS OUTPUT";
+        rawText = optionsOrTitle.rawText || (optionsOrTitle.formattedHtml ? optionsOrTitle.formattedHtml.replace(/<[^>]*>/g, '') : "");
+    } else {
+        header = "JOYST CORPORATION";
+        title = optionsOrTitle || "CREDENTIALS OUTPUT";
+        rawText = typeof jsonPayload === "string" ? jsonPayload : JSON.stringify(jsonPayload, null, 2);
+    }
+
+    const staticModal = document.getElementById("modal-discord-output");
+    if (staticModal) {
+        const headerEl = document.getElementById("discord-output-modal-header");
+        const titleEl = document.getElementById("discord-card-title");
+        const bodyEl = document.getElementById("discord-card-body");
+        const copyBtn = document.getElementById("btn-copy-discord-output");
+
+        if (headerEl) headerEl.textContent = header;
+        if (titleEl) titleEl.textContent = title;
+        if (bodyEl) bodyEl.textContent = rawText;
+
+        if (copyBtn) {
+            copyBtn.onclick = async () => {
+                try {
+                    await navigator.clipboard.writeText(rawText);
+                    showToast("Copied to clipboard!", "success");
+                } catch (e) {
+                    const ta = document.createElement("textarea");
+                    ta.value = rawText;
+                    document.body.appendChild(ta);
+                    ta.select();
+                    document.execCommand("copy");
+                    document.body.removeChild(ta);
+                    showToast("Copied to clipboard!", "success");
+                }
+            };
+        }
+
+        // Auto copy to clipboard
+        try {
+            navigator.clipboard.writeText(rawText);
+        } catch (e) {}
+
+        openModal("modal-discord-output");
+        return;
+    }
+
     let overlay = document.getElementById("discord-output-modal");
     if (!overlay) {
         overlay = document.createElement("div");
@@ -135,21 +223,46 @@ function showDiscordOutputModal(title, jsonPayload) {
         overlay.className = "modal-overlay";
         document.body.appendChild(overlay);
     }
+
     overlay.innerHTML = `
-        <div class="modal" style="max-width: 580px;">
-            <div class="modal-header">
-                <h3>${escapeHtml(title)}</h3>
-                <button class="modal-close" onclick="document.getElementById('discord-output-modal').classList.remove('active')">&times;</button>
+        <div class="modal" style="max-width: 600px; border: 1px solid rgba(255, 42, 95, 0.35); box-shadow: 0 20px 60px rgba(0,0,0,0.8), 0 0 30px rgba(255, 42, 95, 0.2);">
+            <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 12px;">
+                <h3 style="color: #ff2a5f; display: flex; align-items: center; gap: 8px; font-size: 16px; font-weight: 700; margin: 0;">
+                    <span style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: #ff2a5f; box-shadow: 0 0 10px #ff2a5f;"></span>
+                    ${escapeHtml(title)}
+                </h3>
+                <button class="modal-close" style="background: transparent; border: none; color: #94a3b8; font-size: 20px; cursor: pointer;" onclick="document.getElementById('discord-output-modal').classList.remove('active')">&times;</button>
             </div>
-            <div class="modal-body">
-                <pre style="background: rgba(0,0,0,0.6); padding: 14px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.08); color: #38bdf8; font-family: monospace; font-size: 12px; overflow-x: auto; max-height: 350px;">${escapeHtml(typeof jsonPayload === 'string' ? jsonPayload : JSON.stringify(jsonPayload, null, 2))}</pre>
+            <div class="modal-body" style="padding: 16px 0; color: #e2e8f0; font-size: 13px; max-height: 400px; overflow-y: auto;">
+                <pre style="background: #09090b; padding: 14px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.08); color: #38bdf8; font-family: monospace; font-size: 12px; overflow-x: auto;">${escapeHtml(rawText)}</pre>
             </div>
-            <div class="modal-footer">
-                <button class="btn btn-secondary btn-sm" onclick="copyToClipboard(typeof jsonPayload === 'string' ? jsonPayload : JSON.stringify(jsonPayload, null, 2))">Copy JSON</button>
+            <div class="modal-footer" style="display: flex; justify-content: flex-end; gap: 10px; border-top: 1px solid rgba(255,255,255,0.08); padding-top: 14px;">
+                <button id="discord-modal-copy-btn" class="btn btn-secondary btn-sm" style="display: inline-flex; align-items: center; gap: 6px;">
+                    📋 Copy Text
+                </button>
                 <button class="btn btn-primary btn-sm" onclick="document.getElementById('discord-output-modal').classList.remove('active')">Close</button>
             </div>
         </div>
     `;
+
+    const copyBtn = document.getElementById("discord-modal-copy-btn");
+    if (copyBtn) {
+        copyBtn.onclick = async () => {
+            try {
+                await navigator.clipboard.writeText(rawText);
+                showToast("Copied to clipboard!", "success");
+            } catch (e) {
+                const ta = document.createElement("textarea");
+                ta.value = rawText;
+                document.body.appendChild(ta);
+                ta.select();
+                document.execCommand("copy");
+                document.body.removeChild(ta);
+                showToast("Copied to clipboard!", "success");
+            }
+        };
+    }
+
     overlay.classList.add("active");
 }
 
