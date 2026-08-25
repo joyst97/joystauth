@@ -501,16 +501,17 @@ async def link_cmd(interaction: discord.Interaction, email_or_username: str):
         await interaction.followup.send(embed=embed, ephemeral=False)
 
 # 3. /genkey
-@bot.tree.command(name="genkey", description="⚡ Generate license keys for your application")
+@bot.tree.command(name="genkey", description="⚡ Generate license keys or create a custom key for your application")
 @app_commands.allowed_contexts(guilds=True, dms=True, private_channels=True)
 @app_commands.allowed_installs(guilds=True, users=True)
 @app_commands.describe(
     days="Duration in days (-1 for lifetime)",
     count="Number of keys to generate (1-50)",
+    custom_key="Optional custom key name (e.g. VIP-TEST or 123)",
     level="Subscription Rank (e.g. default, VIP)",
     app="Application Name (leave empty for Dropdown selector)"
 )
-async def genkey(interaction: discord.Interaction, days: int = 30, count: int = 1, level: str = "default", app: str = None):
+async def genkey(interaction: discord.Interaction, days: int = 30, count: int = 1, custom_key: Optional[str] = None, level: str = "default", app: str = None):
     await interaction.response.defer(ephemeral=False)
     payload = get_bot_payload(
         interaction,
@@ -518,7 +519,8 @@ async def genkey(interaction: discord.Interaction, days: int = 30, count: int = 
         count=min(max(1, count), 50),
         duration_days=days,
         level=level,
-        mask="JOYST-XXXX-XXXX-XXXX"
+        mask="JOYST-XXXX-XXXX-XXXX",
+        custom_key=custom_key.strip() if custom_key else None
     )
 
     if not app:

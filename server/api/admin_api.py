@@ -1453,6 +1453,7 @@ class BotGenKeyRequest(BaseModel):
     duration_days: int = 30
     level: str = "default"
     mask: str = "JOYST-XXXX-XXXX-XXXX"
+    custom_key: Optional[str] = None
     guild_id: Optional[str] = None
     guild_owner_id: Optional[str] = None
     is_staff: Optional[bool] = False
@@ -1490,20 +1491,39 @@ async def bot_auto_genkey(data: BotGenKeyRequest, db: Session = Depends(get_db))
         db.commit()
         db.refresh(app)
 
-    count = min(max(1, data.count), 50)
     created_keys = []
-    for _ in range(count):
-        k = generate_license_key(data.mask)
+    custom_k = data.custom_key.strip() if data.custom_key else None
+    if custom_k:
+        existing_lic = db.query(License).filter(License.app_id == app.id, License.license_key == custom_k).first()
+        if existing_lic:
+            raise HTTPException(status_code=400, detail=f"License key '{custom_k}' already exists in application '{app.name}'.")
+        
         lic = License(
             app_id=app.id,
-            license_key=k,
+            license_key=custom_k,
             duration_days=data.duration_days,
             level=data.level,
             level_rank=1,
-            notes=f"Auto-generated via Discord Bot for {data.discord_username or dev.username}"
+            notes=f"Custom key created via Discord Bot for {data.discord_username or dev.username}"
         )
         db.add(lic)
-        created_keys.append(k)
+        created_keys.append(custom_k)
+    else:
+        count = min(max(1, data.count), 50)
+        for _ in range(count):
+            k = generate_license_key(data.mask)
+            while db.query(License).filter(License.app_id == app.id, License.license_key == k).first():
+                k = generate_license_key(data.mask)
+            lic = License(
+                app_id=app.id,
+                license_key=k,
+                duration_days=data.duration_days,
+                level=data.level,
+                level_rank=1,
+                notes=f"Auto-generated via Discord Bot for {data.discord_username or dev.username}"
+            )
+            db.add(lic)
+            created_keys.append(k)
 
     db.commit()
     log_audit(db, app.id, "KEYS_GENERATED", details=f"Generated {len(created_keys)} key(s) via Discord Bot for {dev.username}", status="SUCCESS")
