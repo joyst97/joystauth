@@ -710,6 +710,7 @@ async def get_me(authorization: Optional[str] = Header(None), dev: Developer = D
         "plan": f"Reseller ({reseller_balance} Credits)" if role == "reseller" else dev.plan,
         "max_apps": dev.max_apps,
         "max_users_per_app": dev.max_users_per_app,
+        "is_master_admin": is_master_admin_account(dev),
         "created_at": dev.created_at.isoformat()
     }
 
@@ -756,7 +757,7 @@ async def delete_account(data: DeleteAccountRequest, dev: Developer = Depends(ge
     if user_confirm.lower() != dev.username.strip().lower() and user_confirm.upper() != "DELETE":
         raise HTTPException(status_code=400, detail=f"Please type '{dev.username}' or 'DELETE' to confirm account deletion.")
 
-    from ..database import Application, User, License, AppVariable, AppFile, Blacklist, Reseller, AuditLog, SubscriptionTier, AppNotification, Session as ClientSession, WebhookLog
+    from ..database import Application, User, License, AppVariable, AppFile, Blacklist, Reseller, AuditLog, SubscriptionTier, AppNotification, Session as ClientSession
     
     try:
         # 1. Delete all Resellers belonging to this developer
@@ -776,7 +777,6 @@ async def delete_account(data: DeleteAccountRequest, dev: Developer = Depends(ge
             db.query(AppNotification).filter(AppNotification.app_id.in_(app_ids)).delete(synchronize_session=False)
             db.query(ClientSession).filter(ClientSession.app_id.in_(app_ids)).delete(synchronize_session=False)
             db.query(AuditLog).filter(AuditLog.app_id.in_(app_ids)).delete(synchronize_session=False)
-            db.query(WebhookLog).filter(WebhookLog.app_id.in_(app_ids)).delete(synchronize_session=False)
             db.query(Application).filter(Application.developer_id == dev.id).delete(synchronize_session=False)
 
         # 3. Delete developer account
@@ -787,3 +787,16 @@ async def delete_account(data: DeleteAccountRequest, dev: Developer = Depends(ge
         raise HTTPException(status_code=500, detail=f"Failed to delete account: {str(e)}")
 
     return {"success": True, "message": "Your developer account and all applications have been permanently deleted."}
+
+
+def is_master_admin_account(dev: Developer) -> bool:
+    if not dev:
+        return False
+    from ..config import MASTER_ADMIN_IDS
+    if dev.discord_id and dev.discord_id in MASTER_ADMIN_IDS:
+        return True
+    if dev.email and dev.email.lower() in ["tgarmy859@gmail.com", "joystauth@gmail.com"]:
+        return True
+    if dev.username and dev.username.lower() in ["tgarmy859", "joystxcheats", "joyst_admin"]:
+        return True
+    return False

@@ -261,6 +261,16 @@ async function loadUserProfile() {
         if (pJoined && data.created_at) pJoined.textContent = `Joined ${data.created_at.substring(0, 10)}`;
         if (pAvatarInput && activeAvatarUrl) pAvatarInput.value = activeAvatarUrl;
         const activePlan = data.plan || 'Free';
+        
+        const btnCl = document.getElementById("btn-subtab-changelog");
+        if (btnCl) {
+            if (data.is_master_admin === true) {
+                btnCl.style.display = "inline-flex";
+            } else {
+                btnCl.style.display = "none";
+            }
+        }
+
         window.currentUserPlan = activePlan;
         if (planBadge) planBadge.textContent = `${activePlan} Plan`;
 
@@ -3388,3 +3398,5 @@ async function submitProfileChangePassword() {
         showToast((res && res.detail) || "Failed to update password.", "error");
     }
 }
+
+

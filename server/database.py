@@ -257,6 +257,17 @@ class Session(Base):
 
     user = relationship("User", back_populates="sessions")
 
+
+class ChangelogEntry(Base):
+    __tablename__ = "changelog_entries"
+    id = Column(Integer, primary_key=True, index=True)
+    version = Column(String(50), nullable=False)
+    title = Column(String(200), nullable=False)
+    category = Column(String(50), default="Feature") # Security, Feature, Performance, UI, Fix
+    description = Column(Text, nullable=False)
+    author = Column(String(100), default="Joyst Core Team")
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+
 class AuditLog(Base):
     __tablename__ = "audit_logs"
     id = Column(Integer, primary_key=True, index=True)
@@ -273,6 +284,47 @@ class AuditLog(Base):
 
 def init_db():
     Base.metadata.create_all(bind=engine)
+
+    try:
+        from sqlalchemy.orm import sessionmaker
+        SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+        seed_db = SessionLocal()
+        if seed_db.query(ChangelogEntry).count() == 0:
+            entries = [
+                ChangelogEntry(
+                    version="v2.5.0",
+                    title="Direct Bot Dispatch & Unified OAuth Account Linking",
+                    category="Security",
+                    description="• Instant real-time platform event logs dispatched directly to Discord Channel 1538975494207438928 with zero webhook delay.\n• Unified single-developer workspace linking Google and Discord logins with identical email.\n• Motherboard BIOS UUID enclave encryption upgrade with anti-tamper telemetry.",
+                    author="Joyst SecOps"
+                ),
+                ChangelogEntry(
+                    version="v2.4.0",
+                    title="Modern Cyber Aesthetics & Responsive Full-Width Engine",
+                    category="UI",
+                    description="• Obsidian glass inputs with vibrant crimson focus glows and cyber stat pods.\n• Full-width zero-overflow flexbox engine across all dashboard consoles.\n• Per-account circular avatar synchronization with Discord CDN profile images.",
+                    author="Joyst UI Team"
+                ),
+                ChangelogEntry(
+                    version="v2.2.0",
+                    title="Dynamic Multi-Tier Encryption & Reseller Protocol",
+                    category="Feature",
+                    description="• Autonomous Sub-Account credit provisioning with automated license generation.\n• AES-256-GCM ephemeral session token rotation for C++, C#, Python, and Node.js SDKs.\n• Real-time heartbeat keep-alive with instant killswitch protection.",
+                    author="Joyst Core Team"
+                ),
+                ChangelogEntry(
+                    version="v2.0.0",
+                    title="Next-Gen HWID & Cloud Authentication Enclave Release",
+                    category="Performance",
+                    description="• Launch of Joyst Auth cloud licensing framework.\n• Microsecond rest round-trip caching with 99.99% infrastructure uptime.",
+                    author="Joyst Architect"
+                )
+            ]
+            seed_db.add_all(entries)
+            seed_db.commit()
+        seed_db.close()
+    except Exception as e:
+        print(f"Changelog seed notice: {e}")
     from sqlalchemy import text
     
     columns = [

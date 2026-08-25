@@ -1026,3 +1026,26 @@ async def record_website_visit(request: Request):
     from server.config import notify_website_visitor
     notify_website_visitor(page_name=page, ip=ip, user_agent=user_agent, referrer=referrer, country=country, screen=screen)
     return {"status": "ok"}
+
+
+@router.get("/changelog")
+def get_public_changelog(db: Session = Depends(get_db)):
+    """Returns chronological timeline of all published system updates and improvements."""
+    from ..database import ChangelogEntry
+    entries = db.query(ChangelogEntry).order_by(ChangelogEntry.created_at.desc()).all()
+    return {
+        "success": True,
+        "count": len(entries),
+        "updates": [
+            {
+                "id": e.id,
+                "version": e.version,
+                "title": e.title,
+                "category": e.category,
+                "description": e.description,
+                "author": e.author,
+                "created_at": e.created_at.strftime("%B %d, %Y") if e.created_at else "Recent"
+            }
+            for e in entries
+        ]
+    }

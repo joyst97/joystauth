@@ -288,42 +288,42 @@
                     </div>
                 </div>
 
-                <!--minent Application Selector & Credentials Vault Box -->
-                <div class="app-credentials-banner spotlight-card" id="app-credentials-banner" style="background: var(--bg-surface); border: 1px solid rgba(225, 29, 72, 0.35); box-shadow: 0 12px 35px -10px rgba(225, 29, 72, 0.25); border-radius: 18px; padding: 26px 30px; margin-bottom: 26px;">
+                <!-- Prominent Application Selector & Credentials Vault Box -->
+                <div class="app-credentials-banner spotlight-card" id="app-credentials-banner" style="background: var(--bg-surface); border: 1px solid rgba(225, 29, 72, 0.35); box-shadow: 0 10px 30px -10px rgba(225, 29, 72, 0.25); border-radius: 16px; padding: 20px 24px; margin-bottom: 22px;">
                     <!-- Big App Selector Header -->
-                    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; margin-bottom: 20px; border-bottom: 1px solid var(--border-glass); padding-bottom: 18px;">
-                        <div style="display: flex; align-items: center; gap: 14px; flex-wrap: wrap;">
-                            <div style="width: 42px; height: 42px; border-radius: 12px; background: var(--gradient-primary); display: flex; align-items: center; justify-content: center; font-size: 22px; box-shadow: 0 0 20px rgba(225, 29, 72, 0.5);">⚡</div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 14px; margin-bottom: 16px; border-bottom: 1px solid var(--border-glass); padding-bottom: 14px;">
+                        <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+                            <div style="width: 38px; height: 38px; border-radius: 10px; background: var(--gradient-primary); display: flex; align-items: center; justify-content: center; font-size: 20px; box-shadow: 0 0 16px rgba(225, 29, 72, 0.5);">⚡</div>
                             <div>
-                                <span style="font-size: 11px; color: #ff4d79; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; display: block; margin-bottom: 4px;">ACTIVE APPLICATION</span>
-                                <div style="display: flex; align-items: center; gap: 10px;">
-                                    <select id="overview-app-select" style="background: #120408; color: #fff; border: 1.5px solid rgba(244, 63, 94, 0.5); padding: 9px 18px; border-radius: 10px; font-size: 16px; font-weight: 800; outline: none; cursor: pointer; min-width: 240px; box-shadow: 0 0 15px rgba(225, 29, 72, 0.2);">
+                                <span style="font-size: 10.5px; color: #ff4d79; font-weight: 800; text-transform: uppercase; letter-spacing: 0.8px; display: block; margin-bottom: 3px;">ACTIVE APPLICATION</span>
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <select id="overview-app-select" style="background: #120408; color: #fff; border: 1.5px solid rgba(244, 63, 94, 0.5); padding: 7px 14px; border-radius: 8px; font-size: 14.5px; font-weight: 800; outline: none; cursor: pointer; min-width: 220px; box-shadow: 0 0 12px rgba(225, 29, 72, 0.2);">
                                         <option>Loading Applications...</option>
                                     </select>
-                                    <button class="btn btn-secondary btn-sm" onclick="openModal('modal-create-app')" title="Create New App">➕ New</button>
+                                    <button class="btn btn-secondary btn-sm" onclick="openModal('modal-create-app')" title="Create New App" style="padding: 7px 12px; font-size: 12px;">➕ New</button>
                                 </div>
                             </div>
                         </div>
 
-                        <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
-                            <span class="badge badge-cyan" id="banner-app-version" style="padding: 7px 14px; font-size: 13px; font-weight: 800;">v1.0</span>
-                            <span class="badge badge-success" style="padding: 7px 14px; font-size: 13px;"><span class="badge-dot"></span>tected</span>
+                        <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                            <span class="badge badge-cyan" id="banner-app-version" style="padding: 6px 12px; font-size: 12px; font-weight: 800;">v1.0</span>
+                            <span class="badge badge-success" style="padding: 6px 12px; font-size: 12px;"><span class="badge-dot"></span> Protected</span>
                         </div>
                     </div>
 
                     <!-- Credentials & Token Grid -->
-                    <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 18px; align-items: center;">
+                    <div style="display: grid; grid-template-columns: 1.8fr 1fr; gap: 14px; align-items: center;">
                         <div>
-                            <span style="font-size: 11.5px; color: var(--text-muted); font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px;">Master App Token (Secret)</span>
-                            <div class="cred-copy-box" style="margin-top: 8px; background: rgba(0,0,0,0.5); padding: 12px 16px; border-radius: 12px; border: 1px solid var(--border-glass); display: flex; justify-content: space-between; align-items: center; gap: 10px;">
-                                <span class="mono" id="banner-app-secret" style="color: #fff; font-size: 13.5px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">Loading...</span>
-                                <button class="btn btn-primary btn-sm" style="padding: 6px 12px; font-size: 11.5px; border-radius: 8px;" onclick="copyToClipboard(document.getElementById('banner-app-secret').textContent)">📋 Copy Token</button>
+                            <span style="font-size: 11px; color: var(--text-muted); font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px;">Master App Token (Secret)</span>
+                            <div class="cred-copy-box" style="margin-top: 6px; background: rgba(0,0,0,0.5); padding: 9px 14px; border-radius: 10px; border: 1px solid var(--border-glass); display: flex; justify-content: space-between; align-items: center; gap: 10px;">
+                                <span class="mono" id="banner-app-secret" style="color: #fff; font-size: 13px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">Loading...</span>
+                                <button class="btn btn-primary btn-sm" style="padding: 6px 12px; font-size: 11.5px; border-radius: 8px; flex-shrink: 0;" onclick="copyToClipboard(document.getElementById('banner-app-secret').textContent)">📋 Copy Token</button>
                             </div>
                         </div>
 
-                        <div style="background: rgba(0,0,0,0.35); padding: 14px 18px; border-radius: 12px; border: 1px solid var(--border-glass);">
-                            <div style="font-size: 11.5px; color: var(--text-muted); font-weight: 800; text-transform: uppercase;">Motherboard HWID Lock</div>
-                            <div style="font-size: 13.5px; color: #10b981; font-weight: 800; margin-top: 5px;">🔒 Strict Motherboard Binding</div>
+                        <div style="background: rgba(0,0,0,0.35); padding: 12px 16px; border-radius: 10px; border: 1px solid var(--border-glass);">
+                            <div style="font-size: 10.5px; color: var(--text-muted); font-weight: 800; text-transform: uppercase;">Motherboard HWID Lock</div>
+                            <div style="font-size: 13px; color: #10b981; font-weight: 800; margin-top: 3px;">🔒 Strict Motherboard Binding</div>
                         </div>
                     </div>
                 </div>
@@ -638,7 +638,7 @@
                     </div>
                     <div class="paywall-actions">
                         <button class="btn btn-primary" onclick="switchTab('settings')">🔑 Redeem Paid Plan Upgrade Key</button>
-                        <a href="/pricing" target="_blank" class="btn btn-secondary">💳 View Paid Plan ($19.99/mo)</a>
+                        <a href="/pricing" target="_blank" class="btn btn-secondary">💳 View Paid Plan ($2 (₹200 INR)/mo)</a>
                     </div>
                 </div>
 
@@ -686,7 +686,7 @@
                     </div>
                     <div class="paywall-actions">
                         <button class="btn btn-primary" onclick="switchTab('settings')">🔑 Redeem Paid Plan Upgrade Key</button>
-                        <a href="/pricing" target="_blank" class="btn btn-secondary">💳 View Paid Plan ($19.99/mo)</a>
+                        <a href="/pricing" target="_blank" class="btn btn-secondary">💳 View Paid Plan ($2 (₹200 INR)/mo)</a>
                     </div>
                 </div>
 
@@ -1134,7 +1134,7 @@
                                     <span class="badge badge-success">PAID </span>
                                     <span class="glowing-pill" style="font-size: 10px; padding: 2px 8px;">ALL UNLOCKED</span>
                                 </div>
-                                <h3 style="font-size: 24px; font-weight: 900; color: #fff;">$19.99 <span style="font-size: 13px; color: var(--text-muted); font-weight: 500;">/ month or key</span></h3>
+                                <h3 style="font-size: 24px; font-weight: 900; color: #fff;">$2 (₹200 INR) <span style="font-size: 13px; color: var(--text-muted); font-weight: 500;">/ month or key</span></h3>
                                 <ul style="list-style: none; margin: 20px 0; display: flex; flex-direction: column; gap: 10px; font-size: 13px; color: #fff;">
                                     <li>✅ <strong>Unlimited Applications</strong></li>
                                     <li>✅ <strong>Unlimited Users</strong></li>

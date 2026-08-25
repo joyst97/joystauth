@@ -2231,3 +2231,44 @@ async def bot_list_keys(data: BotListKeysRequest, db: Session = Depends(get_db))
             for k in keys
         ]
     }
+
+
+class ChangelogCreateRequest(BaseModel):
+    version: str
+    title: str
+    category: Optional[str] = "Feature"
+    description: str
+
+@router.post("/changelog")
+def publish_changelog_entry(data: ChangelogCreateRequest, dev: Developer = Depends(get_current_developer), db: Session = Depends(get_db)):
+    """Publish a new system release note / update entry to the live website timeline."""
+    from .auth_api import is_master_admin_account
+    if not is_master_admin_account(dev):
+        raise HTTPException(status_code=403, detail="Access Denied: Only Joyst Platform Master Owner can publish global website updates.")
+    from ..database import ChangelogEntry
+    entry = ChangelogEntry(
+        version=data.version.strip(),
+        title=data.title.strip(),
+        category=data.category.strip() if data.category else "Feature",
+        description=data.description.strip(),
+        author=dev.username
+    )
+    db.add(entry)
+    db.commit()
+    db.refresh(entry)
+    return {"success": True, "message": "Changelog entry published live to website!", "entry_id": entry.id}
+
+
+@router.delete("/changelog/{entry_id}")
+def delete_changelog_entry(entry_id: int, dev: Developer = Depends(get_current_developer), db: Session = Depends(get_db)):
+    """Delete a changelog update entry from live website."""
+    from .auth_api import is_master_admin_account
+    if not is_master_admin_account(dev):
+        raise HTTPException(status_code=403, detail="Access Denied: Only Joyst Platform Master Owner can delete global website updates.")
+    from ..database import ChangelogEntry
+    entry = db.query(ChangelogEntry).filter(ChangelogEntry.id == entry_id).first()
+    if not entry:
+        raise HTTPException(status_code=404, detail="Changelog entry not found")
+    db.delete(entry)
+    db.commit()
+    return {"success": True, "message": "Changelog entry deleted successfully"}

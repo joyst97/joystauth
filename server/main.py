@@ -228,6 +228,10 @@ async def serve_docs(request: Request):
             return HTMLResponse(content=f.read())
     return HTMLResponse("<h1>Documentation</h1>")
 
+
+@app.get("/changelog", response_class=HTMLResponse)
+async def page_changelog(request: Request):
+    return templates.TemplateResponse("changelog.html", {"request": request})
 @app.get("/status", response_class=HTMLResponse)
 async def serve_status(request: Request):
     s_file = os.path.join(TEMPLATES_DIR, "status.html")
