@@ -1443,6 +1443,30 @@ async function submitManualUser() {
             expDate.setDate(expDate.getDate() + days);
             const expStr = days > 90000 ? "Lifetime (Never Expires)" : expDate.toISOString().split("T")[0];
 
+            const isSameKey = (username === password) || (res && res.is_same_key);
+            if (isSameKey) {
+                const rawDiscordText = `**JOYST CORPORATION**\n` +
+                    `**${appName.toUpperCase()} LICENSE KEY**\n\n` +
+                    `• **Key:** \`${username}\`\n` +
+                    `• **Duration:** \`${days > 90000 ? 'Lifetime' : days + ' Days'}\`\n` +
+                    `• **Expiry Date:** \`${expStr}\`\n` +
+                    `• **Rank Tier:** \`${tier}\`\n\n` +
+                    `*Thank you for choosing JOYST CORPORATION!*`;
+
+                const formattedHtml = `• <strong>Key:</strong> <code style="background:#1e1f22; padding:2px 6px; border-radius:4px; color:#ff4d79; font-weight:800;">${escapeHtml(username)}</code><br>` +
+                    `• <strong>Duration:</strong> <code style="background:#1e1f22; padding:2px 6px; border-radius:4px; color:#10b981;">${days > 90000 ? 'Lifetime' : days + ' Days'}</code><br>` +
+                    `• <strong>Expiry Date:</strong> <code style="background:#1e1f22; padding:2px 6px; border-radius:4px;">${expStr}</code><br>` +
+                    `• <strong>Rank Tier:</strong> <code style="background:#1e1f22; padding:2px 6px; border-radius:4px; color:#38bdf8;">${escapeHtml(tier)}</code>`;
+
+                showDiscordOutputModal({
+                    header: `JOYST CORPORATION`,
+                    title: `${appName.toUpperCase()} LICENSE KEY`,
+                    rawText: rawDiscordText,
+                    formattedHtml: formattedHtml
+                });
+                return;
+            }
+
             const rawDiscordText = `**JOYST CORPORATION**\n` +
                 `**${appName.toUpperCase()} REGISTRATION INFO**\n\n` +
                 `• **Username:** \`${username}\`\n` +
@@ -1454,7 +1478,7 @@ async function submitManualUser() {
 
             const formattedHtml = `• <strong>Username:</strong> <code style="background:#1e1f22; padding:2px 6px; border-radius:4px; color:#fff;">${escapeHtml(username)}</code><br>` +
                 `• <strong>Password:</strong> <code style="background:#1e1f22; padding:2px 6px; border-radius:4px; color:#38bdf8;">${escapeHtml(password)}</code><br>` +
-                `• <strong>Duration:** <code style="background:#1e1f22; padding:2px 6px; border-radius:4px; color:#10b981;">${days} Days</code><br>` +
+                `• <strong>Duration:</strong> <code style="background:#1e1f22; padding:2px 6px; border-radius:4px; color:#10b981;">${days} Days</code><br>` +
                 `• <strong>Expiry Date:</strong> <code style="background:#1e1f22; padding:2px 6px; border-radius:4px;">${expStr}</code><br>` +
                 `• <strong>Created At:</strong> <code style="background:#1e1f22; padding:2px 6px; border-radius:4px;">${nowStr}</code>`;
 

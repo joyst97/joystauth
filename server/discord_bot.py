@@ -601,19 +601,39 @@ async def adduser(interaction: discord.Interaction, username: str, password: str
         res = requests.post(f"{config['api_url']}/api/v1/admin/bot/adduser", json=payload, timeout=15)
         data = parse_api_response(res)
         if res.status_code == 200 and data.get("success"):
-            embed = discord.Embed(
-                title=f"{EMOJI['bot']}  CLIENT ACCOUNT CREATED",
-                description=(
-                    f"### {EMOJI['tick']} User `{data['username']}` Created for `{data['app_name']}`\n\n"
-                    f"{EMOJI['arrow']} **Username:** `{data['username']}`\n"
-                    f"{EMOJI['arrow']} **Password:** `{password}`\n"
-                    f"{EMOJI['arrow']} **Application:** `{data['app_name']}`\n"
-                    f"{EMOJI['arrow']} **Subscription:** `{data['subscription']}`\n"
-                    f"{EMOJI['arrow']} **Expires:** `{data['expires_at']}`\n"
-                    f"{EMOJI['arrow']} **HWID Binding:** `Ready on 1st Login` {EMOJI['shield']}"
-                ),
-                color=COLOR_SUCCESS
-            )
+            is_same = data.get("is_same_key") or (username.strip() == password.strip())
+            if is_same:
+                dur_text = f"**{days} Days**" if days > 0 and days < 90000 else f"**Lifetime** {EMOJI['crown']}"
+                embed = discord.Embed(
+                    title=f"{EMOJI['bolt']}  UNIVERSAL LICENSE KEY CREATED",
+                    description=(
+                        f"### {EMOJI['tick']} Key `{data['username']}` is Ready for `{data['app_name']}`!\n\n"
+                        f"{EMOJI['arrow']} **Key:** `{data['username']}`\n"
+                        f"{EMOJI['arrow']} **Application:** `{data['app_name']}`\n"
+                        f"{EMOJI['arrow']} **Duration:** {dur_text}\n"
+                        f"{EMOJI['arrow']} **Rank Tier:** `{data.get('subscription', 'default')}`\n"
+                        f"{EMOJI['arrow']} **Expiry Date:** `{data.get('expires_at', 'Lifetime')}`\n"
+                        f"{EMOJI['arrow']} **Dual Auth:** `Works with Key Login & User/Pass Login` {EMOJI['shield']}\n\n"
+                        f"**━━━━━━━━━ KEY VAULT ━━━━━━━━━**\n"
+                        f"{EMOJI['dot']} **`{data['username']}`**\n"
+                        f"**━━━━━━━━━━━━━━━━━━━━━━━━━━━━━**"
+                    ),
+                    color=COLOR_BRAND
+                )
+            else:
+                embed = discord.Embed(
+                    title=f"{EMOJI['bot']}  CLIENT ACCOUNT CREATED",
+                    description=(
+                        f"### {EMOJI['tick']} User `{data['username']}` Created for `{data['app_name']}`\n\n"
+                        f"{EMOJI['arrow']} **Username:** `{data['username']}`\n"
+                        f"{EMOJI['arrow']} **Password:** `{password}`\n"
+                        f"{EMOJI['arrow']} **Application:** `{data['app_name']}`\n"
+                        f"{EMOJI['arrow']} **Subscription:** `{data['subscription']}`\n"
+                        f"{EMOJI['arrow']} **Expires:** `{data['expires_at']}`\n"
+                        f"{EMOJI['arrow']} **HWID Binding:** `Ready on 1st Login` {EMOJI['shield']}"
+                    ),
+                    color=COLOR_SUCCESS
+                )
             embed.set_footer(text="Joyst Auth • Zero-Leak Security", icon_url=interaction.user.display_avatar.url)
             await interaction.followup.send(embed=embed, ephemeral=False)
         else:

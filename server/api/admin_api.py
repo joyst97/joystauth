@@ -596,7 +596,7 @@ async def generate_licenses(
 
     for _ in range(count):
         raw_key = generate_license_key(mask)
-        while db.query(License).filter(License.license_key == raw_key).first():
+        while db.query(License).filter(License.app_id == data.app_id, License.license_key == raw_key).first():
             raw_key = generate_license_key(mask)
         
         lic = License(
@@ -755,8 +755,8 @@ async def create_user_manual(data: CreateUserManualRequest, dev: Developer = Dep
     db.add(new_user)
 
     if is_same_key:
-        lic_existing = db.query(License).filter(License.app_id == data.app_id, License.license_key == uname).first()
-        if not lic_existing:
+        global_lic = db.query(License).filter(License.license_key == uname).first()
+        if not global_lic:
             new_lic = License(
                 app_id=data.app_id,
                 license_key=uname,
@@ -768,9 +768,9 @@ async def create_user_manual(data: CreateUserManualRequest, dev: Developer = Dep
                 notes=f"Universal Key Account (User=Pass) created by {dev.username}"
             )
             db.add(new_lic)
-        else:
-            lic_existing.status = "used"
-            lic_existing.used_by_username = uname
+        elif global_lic.app_id == data.app_id:
+            global_lic.status = "used"
+            global_lic.used_by_username = uname
 
     db.commit()
     log_audit(db, app.id, "MANUAL_USER_CREATE", username=new_user.username, details="Created universal key/account" if is_same_key else "Created manually by developer", status="SUCCESS")
@@ -1608,22 +1608,26 @@ async def bot_add_user(data: BotCreateUserRequest, db: Session = Depends(get_db)
     db.add(new_user)
 
     if is_same_key:
-        lic_existing = db.query(License).filter(License.app_id == app.id, License.license_key == uname).first()
+        lic_existing = db.query(License).filter(License.app_id == data.app_id, License.license_key == uname).first()
         if not lic_existing:
-            new_lic = License(
-                app_id=app.id,
-                license_key=uname,
-                duration_days=data.duration_days if data.duration_days > 0 else 99999,
-                level=data.subscription_tier or "default",
-                status="used",
-                used_by_username=uname,
-                used_at=datetime.datetime.utcnow(),
-                notes=f"Universal Key (User=Pass) created via Bot by @{data.discord_username or dev.username}"
-            )
-            db.add(new_lic)
+            try:
+                new_lic = License(
+                    app_id=app.id,
+                    license_key=uname,
+                    duration_days=data.duration_days if data.duration_days > 0 else 99999,
+                    level=data.subscription_tier or "default",
+                    status="used",
+                    used_by_username=uname,
+                    used_at=datetime.datetime.utcnow(),
+                    notes=f"Universal Key (User=Pass) created via Bot by @{data.discord_username or dev.username}"
+                )
+                db.add(new_lic)
+            except Exception as e:
+                print(f"[BOT UNIVERSAL KEY NOTICE] {e}")
         else:
-            lic_existing.status = "used"
-            lic_existing.used_by_username = uname
+            if lic_existing.app_id == app.id:
+                lic_existing.status = "used"
+                lic_existing.used_by_username = uname
 
     db.commit()
     db.refresh(new_user)

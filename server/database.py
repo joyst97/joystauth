@@ -1,6 +1,6 @@
 import os
 import datetime
-from sqlalchemy import create_engine, Column, String, Integer, Boolean, DateTime, Text, ForeignKey
+from sqlalchemy import create_engine, Column, String, Integer, Boolean, DateTime, Text, ForeignKey, UniqueConstraint
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, relationship
 
@@ -144,9 +144,10 @@ class User(Base):
 
 class License(Base):
     __tablename__ = "licenses"
+    __table_args__ = (UniqueConstraint('app_id', 'license_key', name='uix_app_license_key'),)
     id = Column(Integer, primary_key=True, index=True)
     app_id = Column(Integer, ForeignKey("applications.id"), nullable=False)
-    license_key = Column(String(100), unique=True, index=True, nullable=False)
+    license_key = Column(String(100), index=True, nullable=False)
     duration_days = Column(Integer, default=30)
     level = Column(String(50), default="default")
     level_rank = Column(Integer, default=1)
