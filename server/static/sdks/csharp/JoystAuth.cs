@@ -1,49 +1,87 @@
 using System;
+using System.IO;
 using System.Net.Http;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
-using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Diagnostics;
-using System.Runtime.InteropServices;
-using System.Collections.Generic;
+using Microsoft.Win32;
 
 namespace JoystAuth
 {
+    public class SecurityShield
+    {
+        public static bool CheckCheatEngineInstalled()
+        {
+            try
+            {
+                // 1. Process Check
+                string[] ceProcs = { "cheatengine", "cheatengine-x86_64", "cheatengine-i386", "processhacker", "x64dbg", "x32dbg", "ida64", "dnspy" };
+                foreach (var p in Process.GetProcesses())
+                {
+                    string pName = p.ProcessName.ToLower();
+                    foreach (var cep in ceProcs)
+                    {
+                        if (pName.Contains(cep)) return true;
+                    }
+                }
+
+                // 2. Registry Check
+                string[] regKeys = { @"Software\Cheat Engine", @"SOFTWARE\Cheat Engine", @"SOFTWARE\WOW6432Node\Cheat Engine" };
+                foreach (var rk in regKeys)
+                {
+                    using var k1 = Registry.CurrentUser.OpenSubKey(rk);
+                    if (k1 != null) return true;
+                    using var k2 = Registry.LocalMachine.OpenSubKey(rk);
+                    if (k2 != null) return true;
+                }
+
+                // 3. Directory Check
+                string[] dirs = {
+                    @"C:\Program Files\Cheat Engine",
+                    @"C:\Program Files (x86)\Cheat Engine",
+                    Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Cheat Engine")
+                };
+                foreach (var d in dirs)
+                {
+                    if (Directory.Exists(d)) return true;
+                }
+            }
+            catch { }
+            return false;
+        }
+    }
+
     public class UserData
     {
-        [JsonPropertyName("username")] public string username { get; set; } = "";
-        [JsonPropertyName("subscription")] public string subscription { get; set; } = "default";
-        [JsonPropertyName("expires_at")] public string expiry { get; set; } = "Lifetime";
-        [JsonPropertyName("hwid")] public string hwid { get; set; } = "";
-        [JsonPropertyName("ip")] public string ip { get; set; } = "";
+        public string username { get; set; } = "";
+        public string subscription { get; set; } = "default";
+        public string expiry { get; set; } = "Lifetime";
+        public string hwid { get; set; } = "";
+        public string ip { get; set; } = "";
     }
 
     public class ResponseData
     {
-        [JsonPropertyName("success")] public bool success { get; set; }
-        [JsonPropertyName("message")] public string message { get; set; } = "";
-        [JsonPropertyName("is_maintenance")] public bool is_maintenance { get; set; }
+        public bool success { get; set; } = false;
+        public string message { get; set; } = "";
     }
 
     public class api
     {
-        public string name { get; set; }
-        public string token { get; set; }
-        public string version { get; set; }
-        public string url { get; set; }
-        public string sessionid { get; set; } = "";
-        public string hwid { get; set; } = "";
-        public UserData user_data { get; set; } = new UserData();
-        public ResponseData response { get; set; } = new ResponseData();
+        public string name { get; }
+        public string token { get; }
+        public string version { get; }
+        public string url { get; }
+        public string hwid { get; }
+        public string sessionid { get; private set; } = "";
 
-        private static readonly HttpClient client = new HttpClient();
-        private string lastNotification = "";
+        public UserData user_data { get; } = new UserData();
+        public ResponseData response { get; } = new ResponseData();
 
-        [DllImport("user32.dll", CharSet = CharSet.Auto)]
-        private static extern int MessageBox(IntPtr hWnd, String text, String caption, uint type);
+        private static readonly HttpClient client = new HttpClient { Timeout = TimeSpan.FromSeconds(8) };
 
         public api(string name, string token, string version = "1.0", string url = "https://joystauth.cc")
         {
@@ -52,6 +90,11 @@ namespace JoystAuth
             this.version = version;
             this.url = (url ?? "https://joystauth.cc").TrimEnd('/');
             this.hwid = GetHWID();
+
+            if (SecurityShield.CheckCheatEngineInstalled())
+            {
+                Environment.Exit(0);
+            }
 
             // ⚡ 1. Inbuilt Auto-Init
             this.init(true);
@@ -76,6 +119,8 @@ namespace JoystAuth
         {
             try
             {
+                if (SecurityShield.CheckCheatEngineInstalled()) Environment.Exit(0);
+
                 var payload = new { app_name = this.name, app_token = this.token, version = this.version, hwid = this.hwid };
                 var json = JsonSerializer.Serialize(payload);
                 var content = new StringContent(json, Encoding.UTF8, "application/json");
@@ -98,12 +143,10 @@ namespace JoystAuth
                     this.response.success = false;
                     string msg = root.TryGetProperty("message", out var m) ? m.GetString() : (root.TryGetProperty("detail", out var d) ? d.GetString() : "Connection failed");
                     this.response.message = msg;
-                    bool isMaint = root.TryGetProperty("is_maintenance", out var im) && im.GetBoolean();
-                    this.response.is_maintenance = isMaint;
 
-                    if (autoExitOnMaint)
+                    bool isMaint = (root.TryGetProperty("is_maintenance", out var im) && im.GetBoolean()) || msg.ToLower().Contains("maintenance");
+                    if (autoExitOnMaint && isMaint)
                     {
-                        MessageBox(IntPtr.Zero, msg, isMaint ? "JOYST - APPLICATION MAINTENANCE" : "JOYST - ACCESS BLOCKED", 0x30 | 0x40000);
                         Environment.Exit(0);
                     }
                     return false;
@@ -117,41 +160,57 @@ namespace JoystAuth
             }
         }
 
-        private void StartHeartbeatWatchdog()
+        public bool login(string username, string password)
         {
-            new Thread(() =>
+            try
             {
-                while (true)
-                {
-                    Thread.Sleep(3000);
-                    try
-                    {
-                        var payload = new { app_name = this.name, app_token = this.token, hwid = this.hwid, username = this.user_data.username, sessionid = this.sessionid };
-                        var json = JsonSerializer.Serialize(payload);
-                        var content = new StringContent(json, Encoding.UTF8, "application/json");
-                        var res = client.PostAsync($"{this.url}/api/v1/client/check", content).GetAwaiter().GetResult();
-                        var resStr = res.Content.ReadAsStringAsync().GetAwaiter().GetResult();
-                        using var doc = JsonDocument.Parse(resStr);
-                        var root = doc.RootElement;
+                if (SecurityShield.CheckCheatEngineInstalled()) Environment.Exit(0);
+                if (string.IsNullOrEmpty(this.sessionid)) this.init(false);
 
-                        if (root.TryGetProperty("success", out var s) && !s.GetBoolean())
-                        {
-                            string msg = root.TryGetProperty("message", out var m) ? m.GetString() : "Application placed into maintenance mode.";
-                            MessageBox(IntPtr.Zero, msg, "JOYST - SECURITY ALERT", 0x30 | 0x40000);
-                            Environment.Exit(0);
-                        }
-                    }
-                    catch { }
+                var payload = new { app_name = this.name, app_token = this.token, version = this.version, hwid = this.hwid, username = username.Trim(), password = password.Trim(), sessionid = this.sessionid };
+                var json = JsonSerializer.Serialize(payload);
+                var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+                var res = client.PostAsync($"{this.url}/api/v1/client/login", content).GetAwaiter().GetResult();
+                var resStr = res.Content.ReadAsStringAsync().GetAwaiter().GetResult();
+                using var doc = JsonDocument.Parse(resStr);
+                var root = doc.RootElement;
+
+                bool ok = root.TryGetProperty("success", out var s) && s.GetBoolean();
+                if (ok)
+                {
+                    this.user_data.username = root.TryGetProperty("username", out var u) ? u.GetString() : username;
+                    this.user_data.subscription = root.TryGetProperty("subscription", out var sub) ? sub.GetString() : "VIP Tier";
+                    this.user_data.expiry = root.TryGetProperty("expires_at", out var exp) ? exp.GetString() : "Lifetime";
+                    this.user_data.ip = root.TryGetProperty("ip", out var ip) ? ip.GetString() : "";
+                    this.user_data.hwid = this.hwid;
+                    this.response.success = true;
+                    this.response.message = root.TryGetProperty("message", out var msg) ? msg.GetString() : "Login Successful";
+                    return true;
                 }
-            })
-            { IsBackground = true }.Start();
+                else
+                {
+                    this.response.success = false;
+                    this.response.message = root.TryGetProperty("message", out var msg) ? msg.GetString() : "Login Failed";
+                    return false;
+                }
+            }
+            catch (Exception ex)
+            {
+                this.response.success = false;
+                this.response.message = ex.Message;
+                return false;
+            }
         }
 
         public bool license(string key)
         {
             try
             {
-                var payload = new { app_name = this.name, app_token = this.token, license_key = key.Trim(), hwid = this.hwid, sessionid = this.sessionid };
+                if (SecurityShield.CheckCheatEngineInstalled()) Environment.Exit(0);
+                if (string.IsNullOrEmpty(this.sessionid)) this.init(false);
+
+                var payload = new { app_name = this.name, app_token = this.token, version = this.version, license_key = key.Trim(), key = key.Trim(), hwid = this.hwid, sessionid = this.sessionid };
                 var json = JsonSerializer.Serialize(payload);
                 var content = new StringContent(json, Encoding.UTF8, "application/json");
 
@@ -163,18 +222,18 @@ namespace JoystAuth
                 bool ok = root.TryGetProperty("success", out var s) && s.GetBoolean();
                 if (ok)
                 {
-                    this.user_data.username = root.TryGetProperty("username", out var un) ? un.GetString() : "";
-                    this.user_data.subscription = root.TryGetProperty("subscription", out var sub) ? sub.GetString() : "default";
+                    this.user_data.username = root.TryGetProperty("username", out var u) ? u.GetString() : key;
+                    this.user_data.subscription = root.TryGetProperty("subscription", out var sub) ? sub.GetString() : "VIP Tier";
                     this.user_data.expiry = root.TryGetProperty("expires_at", out var exp) ? exp.GetString() : "Lifetime";
-                    this.user_data.ip = root.TryGetProperty("ip", out var ip) ? ip.GetString() : "";
+                    this.user_data.hwid = this.hwid;
                     this.response.success = true;
-                    this.response.message = root.TryGetProperty("message", out var msg) ? msg.GetString() : "License Verified";
+                    this.response.message = root.TryGetProperty("message", out var msg) ? msg.GetString() : "License Active";
                     return true;
                 }
                 else
                 {
                     this.response.success = false;
-                    this.response.message = root.TryGetProperty("message", out var m) ? m.GetString() : (root.TryGetProperty("detail", out var d) ? d.GetString() : "Invalid license key.");
+                    this.response.message = root.TryGetProperty("message", out var msg) ? msg.GetString() : "Invalid License";
                     return false;
                 }
             }
@@ -184,6 +243,41 @@ namespace JoystAuth
                 this.response.message = ex.Message;
                 return false;
             }
+        }
+
+        private void StartHeartbeatWatchdog()
+        {
+            Task.Run(async () =>
+            {
+                while (true)
+                {
+                    await Task.Delay(25000);
+                    if (string.IsNullOrEmpty(this.sessionid)) continue;
+                    if (SecurityShield.CheckCheatEngineInstalled()) Environment.Exit(0);
+
+                    try
+                    {
+                        var payload = new { app_name = this.name, app_token = this.token, sessionid = this.sessionid, hwid = this.hwid };
+                        var json = JsonSerializer.Serialize(payload);
+                        var content = new StringContent(json, Encoding.UTF8, "application/json");
+                        var res = await client.PostAsync($"{this.url}/api/v1/client/check", content);
+                        var resStr = await res.Content.ReadAsStringAsync();
+                        using var doc = JsonDocument.Parse(resStr);
+                        var root = doc.RootElement;
+
+                        if (root.TryGetProperty("is_maintenance", out var im) && im.GetBoolean())
+                        {
+                            Environment.Exit(0);
+                        }
+
+                        if (root.TryGetProperty("success", out var ok) && !ok.GetBoolean())
+                        {
+                            Environment.Exit(0);
+                        }
+                    }
+                    catch { }
+                }
+            });
         }
     }
 }

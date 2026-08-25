@@ -234,7 +234,7 @@ async def client_init(data: InitRequest, request: Request, db: Session = Depends
     # Encrypt session key with App Secret
     encrypted_session_key = aes_encrypt(session_key, app.secret)
 
-    log_audit(db, app.id, "INIT_SUCCESS", ip_address=ip, hwid=hwid, details="Client initialized session", status="SUCCESS")
+    # Client init session established (Discord message silenced to avoid spam)
 
     return {
         "success": True,

@@ -113,6 +113,9 @@ def log_audit(db: Session, app_id: int = None, action: str = "ACTION", username:
                 if ("BAN" in action or action == "SECURITY_BAN") and not getattr(app, "webhook_on_ban", True):
                     return
 
+        if action in ("INIT_SUCCESS", "INIT", "CLIENT_INIT"):
+            return
+
         if target_webhook:
             import threading
             threading.Thread(
