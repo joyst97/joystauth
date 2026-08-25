@@ -238,17 +238,28 @@ async function loadUserProfile() {
         const avatarEl = document.getElementById("dev-avatar");
         const planBadge = document.getElementById("header-plan-badge");
 
-        const savedAvatar = localStorage.getItem("dev_avatar");
         if (nameEl) nameEl.textContent = devUsername;
         if (ownerEl) ownerEl.innerHTML = `<span class="badge-dot" style="background: #10b981;"></span> Server Online`;
-        if (avatarEl) {
-            if (savedAvatar && savedAvatar.startsWith("http")) {
-                avatarEl.innerHTML = `<img src="${savedAvatar}" alt="DP" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover; box-shadow: 0 0 10px rgba(88, 101, 242, 0.6);">`;
-                avatarEl.style.background = "transparent";
-            } else {
-                avatarEl.textContent = devUsername.charAt(0).toUpperCase();
-            }
-        }
+
+        const activeAvatarUrl = data.avatar_url || "";
+        renderAvatarElement(avatarEl, devUsername, activeAvatarUrl);
+
+        // Update Profile Page Fields if present
+        const pAvatar = document.getElementById("profile-page-avatar-preview");
+        const pUser = document.getElementById("profile-page-username");
+        const pPlan = document.getElementById("profile-page-plan");
+        const pEmail = document.getElementById("profile-page-email");
+        const pOwner = document.getElementById("profile-owner-id-display");
+        const pJoined = document.getElementById("profile-joined-date");
+        const pAvatarInput = document.getElementById("profile-avatar-url-input");
+
+        if (pAvatar) renderAvatarElement(pAvatar, devUsername, activeAvatarUrl, true);
+        if (pUser) pUser.textContent = devUsername;
+        if (pPlan) pPlan.textContent = `${data.plan || 'Free'} Plan`;
+        if (pEmail) pEmail.textContent = data.email || "No email linked";
+        if (pOwner) pOwner.value = data.owner_id || "";
+        if (pJoined && data.created_at) pJoined.textContent = `Joined ${data.created_at.substring(0, 10)}`;
+        if (pAvatarInput && activeAvatarUrl) pAvatarInput.value = activeAvatarUrl;
         const activePlan = data.plan || 'Free';
         window.currentUserPlan = activePlan;
         if (planBadge) planBadge.textContent = `${activePlan} Plan`;
@@ -318,7 +329,7 @@ function setupNavigation() {
     const logoutBtn = document.getElementById("btn-logout");
     if (logoutBtn) {
         logoutBtn.addEventListener("click", () => {
-            localStorage.clear();
+            localStorage.removeItem("dev_avatar"); localStorage.clear();
             window.location.href = "/login";
         });
     }
@@ -3230,7 +3241,7 @@ async function submitDeleteAccount() {
         const data = await res.json();
         if (res.ok && data.success) {
             showToast("Account deleted successfully. Goodbye!", "success");
-            localStorage.clear();
+            localStorage.removeItem("dev_avatar"); localStorage.clear();
             sessionStorage.clear();
             setTimeout(() => {
                 window.location.replace("/login");
@@ -3294,5 +3305,84 @@ async function submitQuickEditApp() {
         renderAllAppsList();
     } else {
         showToast(res?.detail || "Failed to update application", "error");
+    }
+}
+
+
+function renderAvatarElement(el, username, avatarUrl, isLarge = false) {
+    if (!el) return;
+    if (avatarUrl && (avatarUrl.startsWith("http://") || avatarUrl.startsWith("https://"))) {
+        el.innerHTML = `<img src="${avatarUrl}" alt="Avatar" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover; box-shadow: 0 0 15px rgba(255, 42, 95, 0.45);">`;
+        el.style.background = "transparent";
+    } else {
+        const initial = (username || "D").charAt(0).toUpperCase();
+        el.innerHTML = initial;
+        el.style.background = "linear-gradient(135deg, #ff2a5f, #7928ca)";
+        el.style.color = "#ffffff";
+        el.style.display = "flex";
+        el.style.alignItems = "center";
+        el.style.justifyContent = "center";
+        el.style.fontWeight = "900";
+    }
+}
+
+async function submitUpdateAvatar() {
+    const input = document.getElementById("profile-avatar-url-input");
+    const url = input ? input.value.trim() : "";
+    if (url && !url.startsWith("http")) {
+        showToast("Please enter a valid URL starting with https://", "warning");
+        return;
+    }
+
+    const res = await apiFetch("/api/v1/auth/avatar", {
+        method: "POST",
+        body: JSON.stringify({ avatar_url: url })
+    });
+
+    if (res && res.success) {
+        showToast("Profile avatar updated successfully!", "success");
+        loadUserProfile();
+    } else {
+        showToast((res && res.detail) || "Failed to update avatar.", "error");
+    }
+}
+
+async function resetDefaultAvatar() {
+    const res = await apiFetch("/api/v1/auth/avatar", {
+        method: "POST",
+        body: JSON.stringify({ avatar_url: "" })
+    });
+
+    if (res && res.success) {
+        const input = document.getElementById("profile-avatar-url-input");
+        if (input) input.value = "";
+        showToast("Reset to default initial avatar!", "success");
+        loadUserProfile();
+    }
+}
+
+async function submitProfileChangePassword() {
+    const cur = document.getElementById("profile-current-pass").value;
+    const nxt = document.getElementById("profile-new-pass").value;
+    if (!cur || !nxt) {
+        showToast("Please fill in both current and new password.", "warning");
+        return;
+    }
+    if (nxt.length < 6) {
+        showToast("New password must be at least 6 characters.", "warning");
+        return;
+    }
+
+    const res = await apiFetch("/api/v1/auth/change-password", {
+        method: "POST",
+        body: JSON.stringify({ current_password: cur, new_password: nxt })
+    });
+
+    if (res && res.success) {
+        showToast("Password updated successfully!", "success");
+        document.getElementById("profile-current-pass").value = "";
+        document.getElementById("profile-new-pass").value = "";
+    } else {
+        showToast((res && res.detail) || "Failed to update password.", "error");
     }
 }

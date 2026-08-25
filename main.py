@@ -1,7 +1,5 @@
-"""
-JOYST AUTH — Master Discord Bot Engine
-Multi-Server Support + Staff Role Whitelisting + High-Tech Styled Dropdowns + 24/7 Channel Logging + Master Admin Security Locks
-"""
+# JOYST AUTH — Master Discord Bot Engine
+# Multi-Server Support + Staff Role Whitelisting + High-Tech Styled Dropdowns + 24/7 Channel Logging + Master Admin Security Locks
 import os
 import sys
 import time
@@ -437,16 +435,10 @@ class MaintenanceAppSelectView(discord.ui.View):
                 embed = discord.Embed(
                     title=f"{EMOJI['alert']}  MAINTENANCE MODE STATUS CHANGED",
                     description=(
-                        f"### {EMOJI['tick'] if not is_m else EMOJI['alert']} Target Application: `{selected_app}`
-
-"
-                        f"{EMOJI['arrow']} **Status:** `{data.get('status_label', 'Updated')}`
-"
-                        f"{EMOJI['arrow']} **Message:** `{data.get('maintenance_message', 'Under maintenance')}`
-
-"
-                        f"**━━━━━━━━━━━━━━━━━━━━━━━━━━━━━**
-"
+                        f"### {EMOJI['tick'] if not is_m else EMOJI['alert']} Target Application: `{selected_app}`\n\n"
+                        f"{EMOJI['arrow']} **Status:** `{data.get('status_label', 'Updated')}`\n"
+                        f"{EMOJI['arrow']} **Message:** `{data.get('maintenance_message', 'Under maintenance')}`\n\n"
+                        f"**━━━━━━━━━━━━━━━━━━━━━━━━━━━━━**\n"
                         f"{EMOJI['dot']} *{'🚨 ALL RUNNING EXEs ARE CURRENTLY FORCE-TERMINATED.' if is_m else '🟢 EXEs ARE RUNNING NORMALLY.'}*"
                     ),
                     color=COLOR_DANGER if is_m else COLOR_SUCCESS
@@ -514,18 +506,11 @@ class WarningAppSelectView(discord.ui.View):
                 embed = discord.Embed(
                     title=f"{EMOJI['alert']}  LIVE IN-APP NOTICE BROADCASTED",
                     description=(
-                        f"### {EMOJI['tick']} Broadcasted to `{selected_app}` Clients!
-
-"
-                        f"{EMOJI['arrow']} **Notice Title:** `{data['title']}`
-"
-                        f"{EMOJI['arrow']} **Severity Type:** `{data['type'].upper()}`
-"
-                        f"{EMOJI['arrow']} **Message Content:** `{self.message_text}`
-
-"
-                        f"**━━━━━━━━━━━━━━━━━━━━━━━━━━━━━**
-"
+                        f"### {EMOJI['tick']} Broadcasted to `{selected_app}` Clients!\n\n"
+                        f"{EMOJI['arrow']} **Notice Title:** `{data['title']}`\n"
+                        f"{EMOJI['arrow']} **Severity Type:** `{data['type'].upper()}`\n"
+                        f"{EMOJI['arrow']} **Message Content:** `{self.message_text}`\n\n"
+                        f"**━━━━━━━━━━━━━━━━━━━━━━━━━━━━━**\n"
                         f"{EMOJI['dot']} *Active on all client .EXE loaders on next start/heartbeat!*"
                     ),
                     color=COLOR_WARNING if self.warn_type == "warning" else COLOR_DANGER
@@ -1223,19 +1208,33 @@ async def unban(interaction: discord.Interaction, username: str):
 # 16. /ping & /help
 @bot.tree.command(name="ping", description="🏓 Check live Discord bot latency & cloud telemetry")
 async def ping_cmd(interaction: discord.Interaction):
-    start = time.perf_counter()
+    # 1. Measure Discord REST API Latency
+    start_discord = time.perf_counter()
     await interaction.response.defer()
-    end = time.perf_counter()
-    rtt = round((end - start) * 1000, 2)
+    end_discord = time.perf_counter()
+    rtt = round((end_discord - start_discord) * 1000, 2)
     ws = round(bot.latency * 1000, 2) if bot.latency else 1.0
 
+    # 2. Measure Backend Database & Cloud API Latency
+    db_ms = 0.0
+    try:
+        t0 = time.perf_counter()
+        health_res = requests.get(f"{API_URL}/api/v1/client/health", timeout=5)
+        t1 = time.perf_counter()
+        if health_res.status_code == 200:
+            db_ms = round((t1 - t0) * 1000, 2)
+    except Exception:
+        db_ms = 0.0
+
     embed = discord.Embed(
-        title=f"{EMOJI['bolt']}  JOYST AUTH • NODE TELEMETRY {EMOJI['audio']}",
+        title=f"{EMOJI['bolt']}  JOYST AUTH • LIVE TELEMETRY & CLOUD PING {EMOJI['audio']}",
         description=(
-            f"### {EMOJI['tick']} System Status: **OPERATIONAL (0-DELAY)**\n"
-            f"{EMOJI['arrow']} **Gateway Ping:** `{ws} ms` {EMOJI['dot']}\n"
-            f"{EMOJI['arrow']} **REST Round-Trip:** `{rtt} ms` {EMOJI['dot']}\n"
-            f"{EMOJI['arrow']} **Edge Portal:** [joystauth.cc](https://joystauth.cc)"
+            f"### {EMOJI['tick']} System Status: **OPERATIONAL (0-DELAY)**\n\n"
+            f"{EMOJI['arrow']} **Database / Cloud Backend:** `{db_ms} ms` {EMOJI['dot']}\n"
+            f"{EMOJI['arrow']} **Discord WebSocket Gateway:** `{ws} ms` {EMOJI['dot']}\n"
+            f"{EMOJI['arrow']} **Discord HTTP API Latency:** `{rtt} ms` {EMOJI['dot']}\n\n"
+            f"**━━━━━━━━━━━━━━━━━━━━━━━━━━━━━**\n"
+            f"{EMOJI['dot']} **Edge Portal:** [joystauth.cc](https://joystauth.cc) {EMOJI['shield']}"
         ),
         color=COLOR_SUCCESS
     )
@@ -1265,18 +1264,11 @@ async def addreseller_cmd(interaction: discord.Interaction, username: str, passw
             embed = discord.Embed(
                 title=f"{EMOJI['crown']}  RESELLER ACCOUNT PROVISIONED",
                 description=(
-                    f"### {EMOJI['tick']} Reseller **`@{data['reseller_username']}`** Created!
-
-"
-                    f"{EMOJI['arrow']} **Credit Balance:** `{data['balance']} Credits` {EMOJI['bolt']}
-"
-                    f"{EMOJI['arrow']} **Password:** `{password.strip()}`
-"
-                    f"{EMOJI['arrow']} **Portal:** [joystauth.cc/reseller/login](https://joystauth.cc/reseller/login)
-
-"
-                    f"**━━━━━━━━━━━━━━━━━━━━━━━━━━━━━**
-"
+                    f"### {EMOJI['tick']} Reseller **`@{data['reseller_username']}`** Created!\n\n"
+                    f"{EMOJI['arrow']} **Credit Balance:** `{data['balance']} Credits` {EMOJI['bolt']}\n"
+                    f"{EMOJI['arrow']} **Password:** `{password.strip()}`\n"
+                    f"{EMOJI['arrow']} **Portal:** [joystauth.cc/reseller/login](https://joystauth.cc/reseller/login)\n\n"
+                    f"**━━━━━━━━━━━━━━━━━━━━━━━━━━━━━**\n"
                     f"{EMOJI['dot']} *Reseller can generate keys from their web portal using their credits.*"
                 ),
                 color=COLOR_PURPLE
@@ -1317,8 +1309,7 @@ async def addbalance_cmd(interaction: discord.Interaction, username: str, credit
             embed = discord.Embed(
                 title=f"{EMOJI['bolt']}  RESELLER CREDITS TOP-UP",
                 description=(
-                    f"### {EMOJI['tick']} Added `+{data['added_amount']}` Credits to **`@{data['reseller_username']}`**
-"
+                    f"### {EMOJI['tick']} Added `+{data['added_amount']}` Credits to **`@{data['reseller_username']}`**\n"
                     f"{EMOJI['arrow']} **New Total Balance:** `{data['new_balance']} Credits` {EMOJI['crown']}"
                 ),
                 color=COLOR_SUCCESS
@@ -1355,12 +1346,9 @@ async def resellerinfo_cmd(interaction: discord.Interaction, username: str):
             embed = discord.Embed(
                 title=f"{EMOJI['crown']}  RESELLER: @{r['username']}",
                 description=(
-                    f"{EMOJI['arrow']} **Credit Balance:** `{r['balance']} Credits` {EMOJI['bolt']}
-"
-                    f"{EMOJI['arrow']} **Account Status:** `{'ACTIVE' if r['is_active'] else 'DISABLED'}`
-"
-                    f"{EMOJI['arrow']} **Allowed Applications:** `{r['allowed_apps']}`
-"
+                    f"{EMOJI['arrow']} **Credit Balance:** `{r['balance']} Credits` {EMOJI['bolt']}\n"
+                    f"{EMOJI['arrow']} **Account Status:** `{'ACTIVE' if r['is_active'] else 'DISABLED'}`\n"
+                    f"{EMOJI['arrow']} **Allowed Applications:** `{r['allowed_apps']}`\n"
                     f"{EMOJI['arrow']} **Registered Date:** `{r['created_at'][:10]}`"
                 ),
                 color=COLOR_PURPLE
@@ -1390,16 +1378,10 @@ async def maintenance_cmd(interaction: discord.Interaction, custom_message: str 
     embed = discord.Embed(
         title=f"{EMOJI['alert']}  EMERGENCY MAINTENANCE CONTROLLER",
         description=(
-            f"### {EMOJI['gear']} Application Selection Required:
-
-"
-            f"{EMOJI['arrow']} **Action:** `1-Click Toggle Online / Maintenance`
-"
-            f"{EMOJI['arrow']} **Notice String:** `{custom_message.strip() or 'Default Maintenance Notice'}`
-
-"
-            f"**━━━━━━━━━━━━━━━━━━━━━━━━━━━━━**
-"
+            f"### {EMOJI['gear']} Application Selection Required:\n\n"
+            f"{EMOJI['arrow']} **Action:** `1-Click Toggle Online / Maintenance`\n"
+            f"{EMOJI['arrow']} **Notice String:** `{custom_message.strip() or 'Default Maintenance Notice'}`\n\n"
+            f"**━━━━━━━━━━━━━━━━━━━━━━━━━━━━━**\n"
             f"{EMOJI['dot']} *Select target Application from dropdown below:* {EMOJI['audio']}"
         ),
         color=COLOR_DANGER
@@ -1431,18 +1413,11 @@ async def warning_cmd(interaction: discord.Interaction, title: str, message: str
     embed = discord.Embed(
         title=f"{EMOJI['alert']}  LIVE IN-APP BROADCAST CONTROLLER",
         description=(
-            f"### {EMOJI['gear']} Broadcast Notice Parameters:
-
-"
-            f"{EMOJI['arrow']} **Title:** `{title.strip()}`
-"
-            f"{EMOJI['arrow']} **Type:** `{type.upper()}`
-"
-            f"{EMOJI['arrow']} **Message:** `{message.strip()}`
-
-"
-            f"**━━━━━━━━━━━━━━━━━━━━━━━━━━━━━**
-"
+            f"### {EMOJI['gear']} Broadcast Notice Parameters:\n\n"
+            f"{EMOJI['arrow']} **Title:** `{title.strip()}`\n"
+            f"{EMOJI['arrow']} **Type:** `{type.upper()}`\n"
+            f"{EMOJI['arrow']} **Message:** `{message.strip()}`\n\n"
+            f"**━━━━━━━━━━━━━━━━━━━━━━━━━━━━━**\n"
             f"{EMOJI['dot']} *Select target Application from dropdown to broadcast notice:* {EMOJI['audio']}"
         ),
         color=COLOR_WARNING if type == "warning" else COLOR_DANGER
@@ -1467,20 +1442,12 @@ async def redeem_cmd(interaction: discord.Interaction, key: str):
             embed = discord.Embed(
                 title=f"{EMOJI['tick']}  LICENSE KEY REDEEMED SUCCESSFULLY",
                 description=(
-                    f"### {EMOJI['wave']} Welcome **@{interaction.user.name}**!
-
-"
-                    f"{EMOJI['arrow']} **Application:** `{data['app_name']}`
-"
-                    f"{EMOJI['arrow']} **Assigned Rank:** `{data['rank']}` {EMOJI['crown']}
-"
-                    f"{EMOJI['arrow']} **Duration:** `{dur}`
-"
-                    f"{EMOJI['arrow']} **Expires At:** `{data['expires_at']}`
-
-"
-                    f"**━━━━━━━━━━━━━━━━━━━━━━━━━━━━━**
-"
+                    f"### {EMOJI['wave']} Welcome **@{interaction.user.name}**!\n\n"
+                    f"{EMOJI['arrow']} **Application:** `{data['app_name']}`\n"
+                    f"{EMOJI['arrow']} **Assigned Rank:** `{data['rank']}` {EMOJI['crown']}\n"
+                    f"{EMOJI['arrow']} **Duration:** `{dur}`\n"
+                    f"{EMOJI['arrow']} **Expires At:** `{data['expires_at']}`\n\n"
+                    f"**━━━━━━━━━━━━━━━━━━━━━━━━━━━━━**\n"
                     f"{EMOJI['dot']} *You can now open the software .exe and login immediately!* {EMOJI['shield']}"
                 ),
                 color=COLOR_SUCCESS
@@ -1520,26 +1487,15 @@ async def adminstats_cmd(interaction: discord.Interaction):
             embed = discord.Embed(
                 title=f"{EMOJI['crown']}  JOYST AUTH • PLATFORM MASTER TELEMETRY",
                 description=(
-                    f"### {EMOJI['shield']} Complete Global Platform Overview:
-
-"
-                    f"{EMOJI['arrow']} **Total Developers (Website Accounts):** `{data['total_developers']}` {EMOJI['bot']}
-"
-                    f"{EMOJI['arrow']} **Total Applications Created:** `{data['total_applications']}` {EMOJI['bolt']}
-"
-                    f"{EMOJI['arrow']} **Total End-Users / Clients:** `{data['total_clients']}`
-"
-                    f"{EMOJI['arrow']} **Total License Keys Minted:** `{data['total_keys']}` (Unused: `{data['unused_keys']}` | Used: `{data['used_keys']}`)
-"
-                    f"{EMOJI['arrow']} **Total Reseller Sub-Accounts:** `{data['total_resellers']}`
-"
-                    f"{EMOJI['arrow']} **Total Blacklisted Hardware/IPs:** `{data['total_blacklists']}` {EMOJI['alert']}
-
-"
-                    f"**━━━━━━━━ RECENT DEVELOPERS ━━━━━━━━**
-"
-                    f"{recent_formatted}
-"
+                    f"### {EMOJI['shield']} Complete Global Platform Overview:\n\n"
+                    f"{EMOJI['arrow']} **Total Developers (Website Accounts):** `{data['total_developers']}` {EMOJI['bot']}\n"
+                    f"{EMOJI['arrow']} **Total Applications Created:** `{data['total_applications']}` {EMOJI['bolt']}\n"
+                    f"{EMOJI['arrow']} **Total End-Users / Clients:** `{data['total_clients']}`\n"
+                    f"{EMOJI['arrow']} **Total License Keys Minted:** `{data['total_keys']}` (Unused: `{data['unused_keys']}` | Used: `{data['used_keys']}`)\n"
+                    f"{EMOJI['arrow']} **Total Reseller Sub-Accounts:** `{data['total_resellers']}`\n"
+                    f"{EMOJI['arrow']} **Total Blacklisted Hardware/IPs:** `{data['total_blacklists']}` {EMOJI['alert']}\n\n"
+                    f"**━━━━━━━━ RECENT DEVELOPERS ━━━━━━━━**\n"
+                    f"{recent_formatted}\n"
                     f"**━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━**"
                 ),
                 color=COLOR_WARNING

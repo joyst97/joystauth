@@ -277,14 +277,19 @@ async def create_app(data: CreateAppRequest, dev: Developer = Depends(get_curren
     log_audit(db, new_app.id, "APP_CREATED", details=f"New application '{new_app.name}' initialized with Joyst Auth", status="SUCCESS")
     try:
         from ..config import send_platform_master_alert
+        from ..config import EMOJI
         send_platform_master_alert(
-            title="⚡ NEW APPLICATION CREATED",
-            description=f"Developer **@{dev.username}** just created a new application!",
-            fields=[
-                {"name": "📱 Application Name", "value": f"**{new_app.name}**", "inline": True},
-                {"name": "👤 Developer", "value": f"**@{dev.username}**", "inline": True},
-                {"name": "🔢 Version", "value": f"`v{new_app.version}`", "inline": True}
-            ],
+            title=f"{EMOJI['bolt']}  NEW APPLICATION INITIALIZED",
+            description=(
+                f"### {EMOJI['shield']} Protected Application Created!\n\n"
+                f"{EMOJI['arrow']} **Application:** `**{new_app.name}**` {EMOJI['bolt']}\n"
+                f"{EMOJI['arrow']} **Developer Owner:** `@{dev.username}` {EMOJI['bot']}\n"
+                f"{EMOJI['arrow']} **Build Version:** `v{new_app.version}`\n"
+                f"{EMOJI['arrow']} **Hardware Lock:** `{'Strict HWID Lock' if new_app.hwid_lock_enabled else 'Disabled'}`\n\n"
+                f"**━━━━━━━━━━━━━━━━━━━━━━━━━━━━━**\n"
+                f"{EMOJI['dot']} *Ready for AES-256 binary protection and C++/C#/Python SDK integration!*"
+            ),
+            fields=[],
             color=0x8B5CF6
         )
     except Exception:

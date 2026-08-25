@@ -81,6 +81,7 @@ def get_current_developer(authorization: Optional[str] = Header(None), db: Sessi
             username=username,
             email=email,
             password_hash=hash_password(generate_random_token(32)),
+            avatar_url=None,
             owner_id=owner_id,
             plan="Paid",
             max_apps=999999,
@@ -161,15 +162,19 @@ async def developer_register(data: DeveloperRegisterRequest, db: Session = Depen
 
     try:
         from ..config import send_platform_master_alert
+        from ..config import EMOJI
         send_platform_master_alert(
-            title="✨ NEW DEVELOPER REGISTERED",
-            description=f"A new developer account was just created on **joystauth.cc**!",
-            fields=[
-                {"name": "👤 Username", "value": f"**@{new_dev.username}**", "inline": True},
-                {"name": "📧 Email", "value": f"`{new_dev.email or 'None'}`", "inline": True},
-                {"name": "💎 Plan Tier", "value": f"`{new_dev.plan}`", "inline": True},
-                {"name": "🆔 Owner ID", "value": f"`{new_dev.owner_id}`", "inline": False}
-            ],
+            title=f"{EMOJI['bolt']}  NEW DEVELOPER REGISTERED",
+            description=(
+                f"### {EMOJI['wave']} Welcome to Joyst Corporation Auth!\n\n"
+                f"{EMOJI['arrow']} **Developer:** `@{new_dev.username}` {EMOJI['bot']}\n"
+                f"{EMOJI['arrow']} **Email Address:** `{new_dev.email or 'No email linked'}`\n"
+                f"{EMOJI['arrow']} **Assigned Tier:** `{new_dev.plan} Plan` {EMOJI['crown']}\n"
+                f"{EMOJI['arrow']} **Master Owner ID:** `{new_dev.owner_id}`\n\n"
+                f"**━━━━━━━━━━━━━━━━━━━━━━━━━━━━━**\n"
+                f"{EMOJI['dot']} *Account initialized and ready to deploy security tokens!* {EMOJI['shield']}"
+            ),
+            fields=[],
             color=0x10B981
         )
     except Exception:
@@ -586,6 +591,8 @@ async def discord_verify_token(data: DiscordVerifyRequest, db: Session = Depends
         dev = db.query(Developer).filter(Developer.username == discord_username).first()
 
     if dev:
+        if data.avatar:
+            dev.avatar_url = data.avatar
         dev.username = discord_username
         dev.discord_id = discord_id
         if dev.plan == "Free":
@@ -613,6 +620,7 @@ async def discord_verify_token(data: DiscordVerifyRequest, db: Session = Depends
             username=discord_username,
             email=discord_email,
             discord_id=discord_id,
+            avatar_url=data.avatar,
             password_hash=hash_password(random_pass),
             owner_id=owner_id,
             plan="Paid",
@@ -696,11 +704,33 @@ async def get_me(authorization: Optional[str] = Header(None), dev: Developer = D
         "role": role,
         "reseller_balance": reseller_balance,
         "email": dev.email or "",
+        "avatar_url": getattr(dev, "avatar_url", "") or "",
         "owner_id": dev.owner_id,
         "plan": f"Reseller ({reseller_balance} Credits)" if role == "reseller" else dev.plan,
         "max_apps": dev.max_apps,
         "max_users_per_app": dev.max_users_per_app,
         "created_at": dev.created_at.isoformat()
+    }
+
+
+class UpdateAvatarRequest(BaseModel):
+    avatar_url: Optional[str] = ""
+
+@router.post("/avatar")
+async def update_developer_avatar(data: UpdateAvatarRequest, dev: Developer = Depends(get_current_developer), db: Session = Depends(get_db)):
+    """Update custom avatar URL or clear for default initial letter avatar."""
+    new_url = data.avatar_url.strip() if data.avatar_url else ""
+    if new_url and not (new_url.startswith("http://") or new_url.startswith("https://")):
+        raise HTTPException(status_code=400, detail="Avatar URL must start with http:// or https://")
+
+    dev.avatar_url = new_url or None
+    db.commit()
+    db.refresh(dev)
+
+    return {
+        "success": True,
+        "message": "Avatar updated successfully!",
+        "avatar_url": dev.avatar_url or ""
     }
 
 @router.post("/change-password")
@@ -721,27 +751,38 @@ class DeleteAccountRequest(BaseModel):
 @router.delete("/delete-account")
 async def delete_account(data: DeleteAccountRequest, dev: Developer = Depends(get_current_developer), db: Session = Depends(get_db)):
     """Permanently deletes developer account and all associated applications, keys, and users."""
-    if data.confirm_text.strip().lower() != dev.username.strip().lower() and data.confirm_text.strip() != "DELETE":
+    user_confirm = data.confirm_text.strip()
+    if user_confirm.lower() != dev.username.strip().lower() and user_confirm.upper() != "DELETE":
         raise HTTPException(status_code=400, detail=f"Please type '{dev.username}' or 'DELETE' to confirm account deletion.")
 
-    from ..database import Application, User, License, AppVariable, AppFile, Blacklist, Reseller, AuditLog
+    from ..database import Application, User, License, AppVariable, AppFile, Blacklist, Reseller, AuditLog, SubscriptionTier, AppNotification, Session as ClientSession, WebhookLog
     
-    # 1. Find all apps belonging to developer
-    apps = db.query(Application).filter(Application.developer_id == dev.id).all()
-    app_ids = [a.id for a in apps]
+    try:
+        # 1. Delete all Resellers belonging to this developer
+        db.query(Reseller).filter(Reseller.developer_id == dev.id).delete(synchronize_session=False)
 
-    if app_ids:
-        db.query(User).filter(User.app_id.in_(app_ids)).delete(synchronize_session=False)
-        db.query(License).filter(License.app_id.in_(app_ids)).delete(synchronize_session=False)
-        db.query(AppVariable).filter(AppVariable.app_id.in_(app_ids)).delete(synchronize_session=False)
-        db.query(AppFile).filter(AppFile.app_id.in_(app_ids)).delete(synchronize_session=False)
-        db.query(Blacklist).filter(Blacklist.app_id.in_(app_ids)).delete(synchronize_session=False)
-        db.query(Reseller).filter(Reseller.app_id.in_(app_ids)).delete(synchronize_session=False)
-        db.query(AuditLog).filter(AuditLog.app_id.in_(app_ids)).delete(synchronize_session=False)
-        db.query(Application).filter(Application.developer_id == dev.id).delete(synchronize_session=False)
+        # 2. Find all apps belonging to developer
+        apps = db.query(Application).filter(Application.developer_id == dev.id).all()
+        app_ids = [a.id for a in apps]
 
-    # 2. Delete developer account
-    db.delete(dev)
-    db.commit()
+        if app_ids:
+            db.query(User).filter(User.app_id.in_(app_ids)).delete(synchronize_session=False)
+            db.query(License).filter(License.app_id.in_(app_ids)).delete(synchronize_session=False)
+            db.query(SubscriptionTier).filter(SubscriptionTier.app_id.in_(app_ids)).delete(synchronize_session=False)
+            db.query(AppVariable).filter(AppVariable.app_id.in_(app_ids)).delete(synchronize_session=False)
+            db.query(AppFile).filter(AppFile.app_id.in_(app_ids)).delete(synchronize_session=False)
+            db.query(Blacklist).filter(Blacklist.app_id.in_(app_ids)).delete(synchronize_session=False)
+            db.query(AppNotification).filter(AppNotification.app_id.in_(app_ids)).delete(synchronize_session=False)
+            db.query(ClientSession).filter(ClientSession.app_id.in_(app_ids)).delete(synchronize_session=False)
+            db.query(AuditLog).filter(AuditLog.app_id.in_(app_ids)).delete(synchronize_session=False)
+            db.query(WebhookLog).filter(WebhookLog.app_id.in_(app_ids)).delete(synchronize_session=False)
+            db.query(Application).filter(Application.developer_id == dev.id).delete(synchronize_session=False)
+
+        # 3. Delete developer account
+        db.delete(dev)
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Failed to delete account: {str(e)}")
 
     return {"success": True, "message": "Your developer account and all applications have been permanently deleted."}

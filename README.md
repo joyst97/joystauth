@@ -2,17 +2,7 @@
 
 Exact KeyAuth parity authentication & licensing infrastructure with **Name, Owner ID, Secret, and Version** support, strict **HWID locking**, **IP logging**, cyber-dark Web Dashboard, Discord Bot, and multi-language SDKs for **Python, C#, C++, Java, and Rust**.
 
----
-
-## 🌟 KeyAuth Parity Parameters & Logic
-
-Every application created in Joyst Corporation has exact KeyAuth parameters:
-- **`name`**: Application Name (e.g. `JoystApp` or `MySoftware`)
-- **`ownerid`**: Unique Admin Owner ID (e.g. `joyst_owner_...`)
-- **`secret`**: Cryptographically secure Application Secret Key (`sec_...`)
-- **`version`**: Application version (e.g. `1.0`)
-- **`hwid`**: Hardware Identifier (Strictly locked to the user's PC upon 1st login/activation)
-
+--
 ---
 
 ## 🚀 Quick Start (Kaise Use Karein)

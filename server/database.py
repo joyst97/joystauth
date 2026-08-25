@@ -46,6 +46,7 @@ class Developer(Base):
     owner_id = Column(String(32), unique=True, index=True, nullable=False)
     api_key = Column(String(64), unique=True, index=True, nullable=True)
     plan = Column(String(20), default="Free") # Free, Developer, Enterprise
+    avatar_url = Column(String(500), nullable=True)
     discord_id = Column(String(50), unique=True, index=True, nullable=True)
     max_apps = Column(Integer, default=3)
     max_users_per_app = Column(Integer, default=1000)
@@ -312,7 +313,8 @@ def init_db():
         ("app_variables", "is_user_writable", "BOOLEAN DEFAULT FALSE"),
         ("app_files", "file_url", "VARCHAR(500) DEFAULT ''"),
         ("app_files", "auth_required", "BOOLEAN DEFAULT TRUE"),
-        ("subscription_tiers", "description", "VARCHAR(255) DEFAULT ''")
+        ("subscription_tiers", "description", "VARCHAR(255) DEFAULT ''"),
+        ("developers", "avatar_url", "VARCHAR(500) DEFAULT ''")
     ]
 
     for table, col, col_def in columns:

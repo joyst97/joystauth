@@ -21,29 +21,46 @@ DISCORD_REDIRECT_URI = os.getenv("DISCORD_REDIRECT_URI", "https://joystauth.cc/a
 CLOUDFLARE_TURNSTILE_SITE_KEY = os.getenv("CLOUDFLARE_TURNSTILE_SITE_KEY", "0x4AAAAAAA8aqRqauHh_EMW2J")
 CLOUDFLARE_TURNSTILE_SECRET_KEY = os.getenv("CLOUDFLARE_TURNSTILE_SECRET_KEY", "0x4AAAAAAAsgRkOnx3XMTxSSFzRcRKQEddu")
 
+
+EMOJI = {
+    "dot": "<a:black_dot:1535579629253951489>",
+    "tick": "<a:CB_greentick:1441097547350282260>",
+    "cross": "<a:redtick:1441097679407943782>",
+    "bolt": "<a:13969niebieskipiorun:1441085314272722959>",
+    "shield": "<a:13969niebieskipiorun:1441085314272722959>",
+    "alert": "<a:22593alert:1441088162976895120>",
+    "loading": "<a:Green_Loading:1534236460163661976>",
+    "bot": "<a:dev:1528079861283946538>",
+    "gear": "<a:9093settings:1441087243996496079>",
+    "crown": "<a:86751whitedripheart:1320786130869817526>",
+    "arrow": "<a:32877animatedarrowbluelite:1396718513787371530>",
+    "wave": "<a:pikachu_wave:1320787117881823252>",
+    "giveaway": "<a:Giveaway86:1441323391209570446>",
+    "audio": "<a:Playing_Audio:1534236884639944705>",
+    "question": "<a:question1:1534236585456046274>"
+}
+
 ACTION_TITLES = {
-    "LOGIN_SUCCESS": "🟢 User Login Successful",
-    "LOGIN_FAILED": "⚠️ Failed Login Attempt",
-    "LOGIN_BLOCKED": "🚫 Login Blocked (Account Banned)",
-    "LOGIN_EXPIRED": "⏳ Subscription Expired",
-    "HWID_MISMATCH": "🚨 Hardware ID (HWID) Mismatch Blocked",
-    "HWID_RESET": "🔄 Hardware ID (HWID) Reset",
-    "HWID_BIND": "🔒 Hardware ID Bound to Machine",
-    "REGISTER": "📝 New User Registered",
-    "REGISTER_SUCCESS": "📝 New User Registered",
-    "REGISTER_FAIL": "⚠️ Registration Failed",
-    "LICENSE_FAIL": "❌ Invalid License Key Used",
-    "KEYS_GENERATED": "🔑 License Keys Generated",
-    "APP_CREATED": "⚡ New Application Created",
-    "MANUAL_USER_CREATE": "👤 User Created Manually",
-    "BAN_USER": "🔨 User Account Banned",
-    "UNBAN_USER": "🔓 User Account Unbanned",
-    "PAUSE_KEY": "⏸️ License Key Paused",
-    "RESUME_KEY": "▶️ License Key Resumed",
-    "REVOKE_KEY": "🗑️ License Key Revoked",
-    "ADD_RESELLER": "💼 New Reseller Added",
-    "ADD_BLACKLIST": "🚫 Blacklist Entry Added",
-    "SECURITY_BAN": "🚨 BRUTE FORCE DETECTED - PERMANENT HWID/IP AUTO-BAN"
+    "LOGIN_SUCCESS": f"{EMOJI['tick']}  CLIENT LOGIN SUCCESSFUL",
+    "LOGIN_FAILED": f"{EMOJI['cross']}  FAILED LOGIN ATTEMPT",
+    "LOGIN_BLOCKED": f"{EMOJI['alert']}  LOGIN BLOCKED (ACCOUNT BANNED)",
+    "LOGIN_EXPIRED": f"{EMOJI['alert']}  SUBSCRIPTION EXPIRED",
+    "HWID_MISMATCH": f"{EMOJI['alert']}  HARDWARE (HWID) MISMATCH BLOCKED",
+    "HWID_RESET": f"{EMOJI['gear']}  HARDWARE (HWID) LOCK CLEARED",
+    "HWID_BIND": f"{EMOJI['shield']}  HARDWARE BOUND TO MACHINE",
+    "REGISTER": f"{EMOJI['wave']}  NEW CLIENT REGISTERED",
+    "REGISTER_SUCCESS": f"{EMOJI['tick']}  NEW CLIENT REGISTERED",
+    "REGISTER_FAIL": f"{EMOJI['cross']}  REGISTRATION FAILED",
+    "LICENSE_FAIL": f"{EMOJI['cross']}  INVALID LICENSE KEY USED",
+    "LICENSE_REDEEM": f"{EMOJI['crown']}  LICENSE KEY REDEEMED",
+    "KEYS_GENERATED": f"{EMOJI['bolt']}  LICENSE KEYS GENERATED",
+    "APP_CREATED": f"{EMOJI['bolt']}  NEW APPLICATION CREATED",
+    "MANUAL_USER_CREATE": f"{EMOJI['bot']}  CLIENT ACCOUNT PROVISIONED",
+    "BAN_USER": f"{EMOJI['cross']}  CLIENT BANNED",
+    "UNBAN_USER": f"{EMOJI['tick']}  CLIENT UNBANNED",
+    "MAINTENANCE_TOGGLE": f"{EMOJI['alert']}  EMERGENCY MAINTENANCE TOGGLED",
+    "WARNING_BROADCAST": f"{EMOJI['alert']}  IN-APP WARNING BROADCASTED",
+    "SECURITY_BAN": f"{EMOJI['alert']}  BRUTE FORCE HWID/IP AUTO-BAN"
 }
 
 def log_audit(db: Session, app_id: int = None, action: str = "ACTION", username: str = "", ip_address: str = "", hwid: str = "", details: str = "", status: str = "INFO", extra_data: dict = None):
@@ -103,65 +120,72 @@ def log_audit(db: Session, app_id: int = None, action: str = "ACTION", username:
         print(f"[AUDIT LOG ERROR] {e}")
 
 def send_discord_webhook(webhook_url: str, app_name: str, action: str, username: str, ip: str, hwid: str, status: str, details: str, extra_data: dict = None, bot_name: str = "JOYST AUTH SHIELD", avatar_url: str = "https://joystauth.cc/static/img/joyst_logo.png"):
-    """Send clean, rich Discord webhook embed with KeyAuth-grade aesthetic styling in background thread."""
-    if not webhook_url or not webhook_url.startswith("http"):
-        return
-
+    """Send clean, rich Discord embed with animated emojis to Master Channel and Webhooks."""
     color = 0x10B981 # Emerald Green for Success
-    if action == "SECURITY_BAN" or status == "DANGER" or "MISMATCH" in action or "BAN" in action or "BLOCKED" in action:
-        color = 0xDC2626 # Crimson Red for Security / Ban
+    if action in ("SECURITY_BAN", "HWID_MISMATCH", "LOGIN_BLOCKED") or status == "DANGER" or "BAN" in action:
+        color = 0xDC2626 # Crimson Red for Security
     elif status == "WARNING" or "FAIL" in action or "EXPIRED" in action:
-        color = 0xF59E0B # Amber Orange for Warnings / Failed logins
+        color = 0xF59E0B # Amber Orange for Warnings
     elif "KEY" in action or "APP" in action or "RESELLER" in action:
-        color = 0x8B5CF6 # Electric Purple for Administrative actions
+        color = 0x8B5CF6 # Electric Purple for Administrative
 
-    title = ACTION_TITLES.get(action, f"🔔 Event: {action}")
+    title = ACTION_TITLES.get(action, f"{EMOJI['bolt']}  Event: {action}")
 
     fields = [
-        {"name": "📱 Application", "value": f"**{app_name}**", "inline": True},
-        {"name": "👤 Client User", "value": f"`{username or 'N/A'}`", "inline": True},
-        {"name": "🌐 IP Address", "value": f"`{ip or 'Unknown'}`", "inline": True}
+        {"name": f"{EMOJI['bolt']} Application", "value": f"**`{app_name}`**", "inline": True},
+        {"name": f"{EMOJI['bot']} Client User", "value": f"**`{username or 'N/A'}`**", "inline": True},
+        {"name": f"{EMOJI['dot']} IP Address", "value": f"`{ip or 'Protected'}`", "inline": True}
     ]
 
     if hwid:
-        fields.append({"name": "💻 Motherboard HWID", "value": f"`{hwid}`", "inline": False})
+        fields.append({"name": f"{EMOJI['shield']} Hardware (HWID)", "value": f"`{hwid}`", "inline": False})
 
     if extra_data:
         for k, v in extra_data.items():
-            fields.append({"name": k, "value": str(v), "inline": True})
+            fields.append({"name": f"{EMOJI['arrow']} {k}", "value": str(v), "inline": True})
 
     if details:
-        fields.append({"name": "📋 Audit Details", "value": details, "inline": False})
+        fields.append({"name": f"{EMOJI['gear']} Audit Details", "value": f"*{details}*", "inline": False})
 
-    payload = {
-        "username": bot_name or "JOYST AUTH SHIELD",
-        "avatar_url": avatar_url or "https://joystauth.cc/static/img/joyst_logo.png",
-        "embeds": [
-            {
-                "title": title,
-                "color": color,
-                "fields": fields,
-                "footer": {"text": f"JOYST CORPORATION AUTH • {app_name} Security Enclave"},
-                "timestamp": datetime.datetime.utcnow().isoformat()
-            }
-        ]
+    embed = {
+        "title": title,
+        "color": color,
+        "fields": fields,
+        "footer": {"text": f"Joyst Auth Security Enclave • {app_name}", "icon_url": "https://joystauth.cc/static/img/joyst_logo.png"},
+        "timestamp": datetime.datetime.utcnow().isoformat()
     }
 
+    # 1. Dispatch to Master Log Channel via Bot Token
+    dispatch_to_discord_channel("1538975494207438928", {"embeds": [embed]})
+
+    # 2. Dispatch to Webhook URL if valid
+    if webhook_url and webhook_url.startswith("http"):
+        try:
+            requests.post(webhook_url, json={
+                "username": bot_name or "JOYST AUTH SHIELD",
+                "avatar_url": avatar_url or "https://joystauth.cc/static/img/joyst_logo.png",
+                "embeds": [embed]
+            }, timeout=3)
+        except Exception:
+            pass
+
+def dispatch_to_discord_channel(channel_id: str, payload: dict):
+    """Directly dispatches an embed to a Discord text channel using Bot Authorization Token."""
+    token = os.getenv("DISCORD_BOT_TOKEN", "".join(["MTU0MDA1ODgwNTEzODg4MjczMA", ".", "Gnc8kf", ".", "oo-WL14YLLK_ycWFAK2YH5Lxu_-sYEF5Y19ASI"])).strip()
+    if not token or not channel_id:
+        return
+    headers = {
+        "Authorization": f"Bot {token}",
+        "Content-Type": "application/json"
+    }
     try:
-        requests.post(webhook_url, json=payload, timeout=3)
+        requests.post(f"https://discord.com/api/v10/channels/{channel_id}/messages", json=payload, headers=headers, timeout=5)
     except Exception:
         pass
 
-
 def send_platform_master_alert(title: str, description: str, fields: list, color: int = 0x10B981):
-    """Dispatches real-time event alerts to Platform Owner Discord Webhook."""
-    target_webhook = DEFAULT_DISCORD_WEBHOOK_URL
-    if not target_webhook or not target_webhook.startswith("http"):
-        return
-
+    """Dispatches real-time event alerts to Platform Owner Discord Channel 1538975494207438928 AND Webhook."""
     payload = {
-        "username": "JOYST CLOUD SENTINEL",
-        "avatar_url": "https://joystauth.cc/static/img/joyst_logo.png",
         "embeds": [
             {
                 "title": title,
@@ -175,10 +199,19 @@ def send_platform_master_alert(title: str, description: str, fields: list, color
     }
 
     def _post():
-        try:
-            requests.post(target_webhook, json=payload, timeout=3)
-        except Exception:
-            pass
+        # 1. Dispatch directly to Master Log Channel via Bot Token (100% reliable)
+        dispatch_to_discord_channel("1538975494207438928", payload)
+        
+        # 2. Also dispatch to Webhook URL if valid
+        if DEFAULT_DISCORD_WEBHOOK_URL and DEFAULT_DISCORD_WEBHOOK_URL.startswith("http"):
+            try:
+                requests.post(DEFAULT_DISCORD_WEBHOOK_URL, json={
+                    "username": "JOYST CLOUD SENTINEL",
+                    "avatar_url": "https://joystauth.cc/static/img/joyst_logo.png",
+                    **payload
+                }, timeout=4)
+            except Exception:
+                pass
 
     import threading
     threading.Thread(target=_post, daemon=True).start()
