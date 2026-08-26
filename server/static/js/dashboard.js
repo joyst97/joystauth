@@ -4091,29 +4091,40 @@ async function loadCustomClients() {
     const tableBody = document.getElementById("custom-clients-table-body");
     if (!tableBody) return;
 
-    tableBody.innerHTML = `
-        <tr>
-            <td colspan="5">
-                <div class="cyber-loader-wrap">
-                    <div class="cyber-spinner"></div>
-                    <span style="color: #ff4d79; font-size: 13px; font-weight: 700; letter-spacing: 0.5px;">Loading Custom Brand Clients...</span>
-                </div>
-            </td>
-        </tr>
-    `;
+    // Show initial loader only if we don't have cached list
+    if (!customClientsList || customClientsList.length === 0) {
+        tableBody.innerHTML = `
+            <tr>
+                <td colspan="5">
+                    <div class="cyber-loader-wrap">
+                        <div class="cyber-spinner"></div>
+                        <span style="color: #ff4d79; font-size: 13px; font-weight: 700; letter-spacing: 0.5px;">Loading Custom Brand Clients...</span>
+                    </div>
+                </td>
+            </tr>
+        `;
+    }
 
     try {
-        const data = await apiFetch("/api/v1/admin/custom-clients");
+        const fetchPromise = apiFetch("/api/v1/admin/custom-clients");
+        const timeoutPromise = new Promise(resolve => setTimeout(() => resolve(null), 7000));
+        const data = await Promise.race([fetchPromise, timeoutPromise]);
+
         if (data && (data.success || Array.isArray(data.clients))) {
             customClientsList = data.clients || [];
             renderCustomClientsTable();
         } else {
+            if (!customClientsList || customClientsList.length === 0) {
+                customClientsList = [];
+                renderCustomClientsTable();
+            }
+        }
+    } catch (e) {
+        console.error("loadCustomClients error:", e);
+        if (!customClientsList || customClientsList.length === 0) {
             customClientsList = [];
             renderCustomClientsTable();
         }
-    } catch (e) {
-        customClientsList = [];
-        renderCustomClientsTable();
     }
 }
 
