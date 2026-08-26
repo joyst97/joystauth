@@ -4105,14 +4105,13 @@ async function loadCustomClients() {
     const tableBody = document.getElementById("custom-clients-table-body");
     if (!tableBody) return;
 
-    // Show initial loader only if we don't have cached list
     if (!customClientsList || customClientsList.length === 0) {
         tableBody.innerHTML = `
             <tr>
-                <td colspan="5">
-                    <div class="cyber-loader-wrap">
-                        <div class="cyber-spinner"></div>
-                        <span style="color: #ff4d79; font-size: 13px; font-weight: 700; letter-spacing: 0.5px;">Loading Custom Brand Clients...</span>
+                <td colspan="5" style="text-align: center; padding: 40px 20px;">
+                    <div style="display: inline-flex; flex-direction: column; align-items: center; gap: 12px;">
+                        <div style="width: 32px; height: 32px; border: 3px solid rgba(168, 85, 247, 0.2); border-top-color: #a855f7; border-radius: 50%; animation: spin 0.65s linear infinite;"></div>
+                        <span style="color: #a855f7; font-size: 13px; font-weight: 700; letter-spacing: 0.5px;">Loading Custom Brand Clients...</span>
                     </div>
                 </td>
             </tr>
@@ -4120,26 +4119,17 @@ async function loadCustomClients() {
     }
 
     try {
-        const fetchPromise = apiFetch("/api/v1/admin/custom-clients");
-        const timeoutPromise = new Promise(resolve => setTimeout(() => resolve(null), 7000));
-        const data = await Promise.race([fetchPromise, timeoutPromise]);
-
-        if (data && (data.success || Array.isArray(data.clients))) {
-            customClientsList = data.clients || [];
-            renderCustomClientsTable();
+        const data = await apiFetch("/api/v1/admin/custom-clients");
+        if (data && (data.success || Array.isArray(data.clients) || Array.isArray(data))) {
+            customClientsList = Array.isArray(data) ? data : (data.clients || []);
         } else {
-            if (!customClientsList || customClientsList.length === 0) {
-                customClientsList = [];
-                renderCustomClientsTable();
-            }
+            customClientsList = [];
         }
     } catch (e) {
         console.error("loadCustomClients error:", e);
-        if (!customClientsList || customClientsList.length === 0) {
-            customClientsList = [];
-            renderCustomClientsTable();
-        }
+        customClientsList = [];
     }
+    renderCustomClientsTable();
 }
 
 function filterCustomClientsTable() {
@@ -4162,7 +4152,7 @@ function renderCustomClientsTable() {
         );
     }
 
-    if (filtered.length === 0) {
+    if (!filtered || filtered.length === 0) {
         if (query) {
             tableBody.innerHTML = `
                 <tr>
@@ -4181,12 +4171,15 @@ function renderCustomClientsTable() {
             tableBody.innerHTML = `
                 <tr>
                     <td colspan="5" style="text-align: center; padding: 50px 20px;">
-                        <div style="display: flex; flex-direction: column; align-items: center; gap: 10px;">
-                            <span style="font-size: 36px;">👥</span>
+                        <div style="display: flex; flex-direction: column; align-items: center; gap: 12px;">
+                            <span style="font-size: 38px;">👥</span>
                             <strong style="color: #fff; font-size: 16px;">No Custom Brand Clients Added Yet</strong>
                             <span style="color: var(--text-secondary); font-size: 13px; max-width: 500px; line-height: 1.5;">
-                                Click "<strong>➕ Create Custom Client</strong>" above to add a client, or use "<strong>👑 Upgrade to Client</strong>" in the Resellers tab to convert an existing reseller!
+                                Delegate full app management (Keys, Users, HWID, Maintenance) to your partner clients without allowing them to create new apps.
                             </span>
+                            <button type="button" class="btn btn-primary btn-sm" onclick="openCreateCustomClientModal()" style="margin-top: 8px; font-weight: 800; padding: 9px 20px;">
+                                ➕ Create Your First Custom Client
+                            </button>
                         </div>
                     </td>
                 </tr>
@@ -4228,8 +4221,8 @@ function renderCustomClientsTable() {
                 <td style="text-align: right;">
                     <div style="display: flex; gap: 6px; justify-content: flex-end; flex-wrap: wrap;">
                         <button class="btn btn-secondary btn-sm" style="padding: 5px 10px; font-size: 11.5px; font-weight: 700;" onclick="openEditCustomClientModal(${c.id})" title="Add/Remove Apps or Edit Password">📱 Apps & Pass</button>
-                        <button class="btn btn-secondary btn-sm" style="padding: 5px 10px; font-size: 11.5px; font-weight: 700;" onclick="convertCustomClientToReseller(${c.id}, '${escapeHtml(c.username)}')" title="Convert to Reseller">🔄 Convert to Reseller</button>
-                        <button class="btn btn-danger btn-sm" style="padding: 5px 10px; font-size: 11.5px;" onclick="deleteCustomClient(${c.id}, '${escapeHtml(c.username)}')">🗑️</button>
+                        <button class="btn btn-secondary btn-sm" style="padding: 5px 10px; font-size: 11.5px; font-weight: 700;" onclick="convertCustomClientToReseller(${c.id})" title="Convert to Reseller">🔄 Convert to Reseller</button>
+                        <button class="btn btn-danger btn-sm" style="padding: 5px 10px; font-size: 11.5px;" onclick="deleteCustomClient(${c.id})">🗑️</button>
                     </div>
                 </td>
             </tr>
@@ -4246,9 +4239,9 @@ async function openCreateCustomClientModal() {
         if (!appsList || appsList.length === 0) {
             container.innerHTML = `<span style="color: var(--text-muted); font-size: 12px;">No applications available in workspace. Create an app first.</span>`;
         } else {
-            container.innerHTML = appsList.map(a => `
+            container.innerHTML = appsList.map((a, idx) => `
                 <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; color: #fff; font-size: 13px;">
-                    <input type="checkbox" class="cc-create-app-cb" value="${a.id}" style="width: 16px; height: 16px; accent-color: #a855f7;">
+                    <input type="checkbox" class="cc-create-app-cb" value="${a.id}" ${idx === 0 || String(a.id) === String(currentAppId) ? 'checked' : ''} style="width: 16px; height: 16px; accent-color: #a855f7;">
                     <span>📱 <strong>${escapeHtml(a.name)}</strong> (v${a.version || '1.0'})</span>
                 </label>
             `).join("");
@@ -4268,8 +4261,13 @@ async function submitCreateCustomClient() {
     const password = (document.getElementById("cc-create-password")?.value || "").trim();
     const notes = (document.getElementById("cc-create-notes")?.value || "").trim();
 
-    const checkedBoxes = Array.from(document.querySelectorAll(".cc-create-app-cb:checked"));
-    const allowedAppIds = checkedBoxes.map(cb => cb.value).join(",");
+    let checkedBoxes = Array.from(document.querySelectorAll(".cc-create-app-cb:checked"));
+    if (checkedBoxes.length === 0 && appsList && appsList.length > 0) {
+        const defaultAppId = currentAppId || appsList[0].id;
+        allowedAppIds = String(defaultAppId);
+    } else {
+        allowedAppIds = checkedBoxes.map(cb => cb.value).join(",");
+    }
 
     if (!username) {
         showToast("Please enter a client username", "warning");
@@ -4394,14 +4392,16 @@ async function submitEditCustomClient() {
 }
 
 async function deleteCustomClient(clientId, username) {
-    if (!confirm(`Are you sure you want to delete custom client '${username}'?`)) return;
+    const target = customClientsList ? customClientsList.find(x => x.id === clientId) : null;
+    const name = username || (target ? target.username : "client");
+    if (!confirm(`Are you sure you want to delete custom client '${name}'?`)) return;
 
     try {
         const res = await apiFetch(`/api/v1/admin/custom-clients/${clientId}`, {
             method: "DELETE"
         });
         if (res && res.success) {
-            showToast(`Custom client '${username}' deleted.`, "success");
+            showToast(`Custom client '${name}' deleted.`, "success");
             loadCustomClients();
         } else {
             showToast(res?.detail || "Failed to delete client", "error");
@@ -4506,7 +4506,9 @@ async function convertResellerToCustomClient(resellerId, username) {
 }
 
 async function convertCustomClientToReseller(clientId, username) {
-    if (!confirm(`🔄 Convert Custom Client '${username}' back to Reseller?\n\nThey will log in with their same credentials to the Reseller Portal with Key credits.`)) {
+    const target = customClientsList ? customClientsList.find(x => x.id === clientId) : null;
+    const name = username || (target ? target.username : "client");
+    if (!confirm(`🔄 Convert Custom Client '${name}' back to Reseller?\n\nThey will log in with their same credentials to the Reseller Portal with Key credits.`)) {
         return;
     }
 
@@ -4515,7 +4517,7 @@ async function convertCustomClientToReseller(clientId, username) {
             method: "POST"
         });
         if (res && res.success) {
-            showToast(res.message || `Custom Client '${username}' converted to Reseller!`, "success");
+            showToast(res.message || `Custom Client '${name}' converted to Reseller!`, "success");
             loadCustomClients();
             if (typeof loadResellers === 'function') loadResellers();
         } else {

@@ -422,6 +422,7 @@ async def google_callback_redirect():
                             const authData = await authRes.json();
                             if (authData.access_token) {
                                 localStorage.setItem("auth_admin_token", authData.access_token);
+                                localStorage.setItem("auth_login_time", Date.now().toString());
                                 localStorage.setItem("dev_owner_id", authData.owner_id);
                                 localStorage.setItem("dev_username", authData.username);
                                 window.location.href = authData.redirect_url || "/dashboard";
@@ -619,6 +620,7 @@ async def discord_oauth_callback(request: Request):
                 const authData = await authRes.json();
                 if (authData.access_token) {
                     localStorage.setItem("auth_admin_token", authData.access_token);
+                    localStorage.setItem("auth_login_time", Date.now().toString());
                     localStorage.setItem("dev_owner_id", authData.owner_id);
                     localStorage.setItem("dev_username", authData.username);
                     localStorage.setItem("dev_avatar", discordAvatar);

@@ -146,7 +146,7 @@ use joyst_auth::api;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let mut auth = api::new("SuperCheatPro", "joyst_dev_88a91c", "sec_77918750...", "2.5", "http://127.0.0.1:8000");
+    let mut auth = api::new("SuperCheatPro", "joyst_dev_88a91c", "sec_77918750...", "2.5", "https://joystauth.cc");
     auth.init().await?;
 
     if auth.login("gamer123", "password123").await? {
