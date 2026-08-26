@@ -273,13 +273,14 @@
     <div class="docs-grid">
         <div class="docs-sidebar">
             <div class="glass-panel" style="padding: 20px; position: sticky; top: 100px;">
-                <span style="font-size: 11px; font-weight: 800; color: var(--brand-sky); text-transform: uppercase; letter-spacing: 0.6px; display: block; margin-bottom: 12px;">OFFICIAL SDKS</span>
+                <span style="font-size: 11px; font-weight: 800; color: var(--brand-sky); text-transform: uppercase; letter-spacing: 0.6px; display: block; margin-bottom: 12px;">OFFICIAL SDKS (7 LANGUAGES)</span>
                 <a href="#cpp" class="docs-nav-link active">⚡ C++ Native</a>
-                <a href="#python" class="docs-nav-link">🐍 Python SDK</a>
                 <a href="#csharp" class="docs-nav-link">🔷 C# (.NET 8)</a>
+                <a href="#python" class="docs-nav-link">🐍 Python 3</a>
+                <a href="#nodejs" class="docs-nav-link">🟢 Node.js / Electron</a>
+                <a href="#go" class="docs-nav-link">🐹 Go (Golang)</a>
                 <a href="#java" class="docs-nav-link">☕ Java SDK</a>
-                <a href="#rust" class="docs-nav-link">🦀 Rust SDK</a>
-                <a href="#nodejs" class="docs-nav-link">🟢 Node.js SDK</a>
+                <a href="#rust" class="docs-nav-link">🦀 Rust Async</a>
                 <a href="#api" class="docs-nav-link">🌐 Raw REST API</a>
             </div>
         </div>
@@ -484,6 +485,82 @@ async function start() {
 start();</pre>
             </div>
 
+                        <!-- Golang SDK Section -->
+            <div class="glass-panel" style="padding: 36px; margin-bottom: 28px;" id="go">
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; flex-wrap: wrap; gap: 12px;">
+                    <div>
+                        <span style="font-size: 11px; font-weight: 800; color: #00add8; text-transform: uppercase; letter-spacing: 1px;">HIGH CONCURRENCY & CLI TOOLS</span>
+                        <h2 style="font-size: 26px; font-weight: 900; color: #fff; margin-top: 4px;">🐹 Golang Standalone SDK</h2>
+                    </div>
+                    <a href="/static/sdks/go/joystauth.go" download="joystauth.go" class="btn btn-primary btn-sm" style="background: #00add8; border-color: #0093b8; box-shadow: 0 0 20px rgba(0, 173, 216, 0.4);">
+                        📥 Download joystauth.go
+                    </a>
+                </div>
+                <div style="background: rgba(0,0,0,0.4); padding: 14px 18px; border-radius: 10px; border: 1px solid var(--border-glass); margin-bottom: 18px; font-size: 13px; color: #cbd5e1;">
+                    <strong style="color: #fff;">📦 Integration Steps:</strong>
+                    <ol style="margin-left: 20px; margin-top: 6px; display: flex; flex-direction: column; gap: 4px;">
+                        <li>Drop <code>joystauth.go</code> into your Go package folder.</li>
+                        <li>Zero external dependencies (Built with standard <code>net/http</code> and native Windows SID HWID extraction).</li>
+                    </ol>
+                </div>
+                <pre class="mono" style="padding: 20px; background: rgba(2, 6, 23, 0.85); border: 1px solid var(--border-glass); border-radius: 12px; color: #cbd5e1; font-size: 13px; line-height: 1.6; overflow-x: auto;">
+package main
+
+import (
+    "fmt"
+    "./joystauth"
+)
+
+func main() {
+    // 1. Initialize with App Name and Master App Token
+    auth := joystauth.New("MyApp", "YOUR_APP_TOKEN", "1.0")
+
+    // 2. Authenticate with Username & Password or Direct License Key
+    if auth.Login("gamer123", "password123") {
+        fmt.Println("✅ " + auth.Response.Message)
+        fmt.Printf("User: %s | Rank: %s\n", auth.UserData.Username, auth.UserData.Subscription)
+    } else {
+        fmt.Println("❌ " + auth.Response.Message)
+    }
+}</pre>
+            </div>
+
+            <!-- Rust SDK Section -->
+            <div class="glass-panel" style="padding: 36px; margin-bottom: 28px;" id="rust">
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; flex-wrap: wrap; gap: 12px;">
+                    <div>
+                        <span style="font-size: 11px; font-weight: 800; color: #f97316; text-transform: uppercase; letter-spacing: 1px;">MEMORY SAFE & ZERO COST ASYNC</span>
+                        <h2 style="font-size: 26px; font-weight: 900; color: #fff; margin-top: 4px;">🦀 Rust Async Tokio SDK</h2>
+                    </div>
+                    <a href="/static/sdks/rust/src/main.rs" download="main.rs" class="btn btn-primary btn-sm" style="background: #f97316; border-color: #ea580c; box-shadow: 0 0 20px rgba(249, 115, 22, 0.4);">
+                        📥 Download main.rs
+                    </a>
+                </div>
+                <div style="background: rgba(0,0,0,0.4); padding: 14px 18px; border-radius: 10px; border: 1px solid var(--border-glass); margin-bottom: 18px; font-size: 13px; color: #cbd5e1;">
+                    <strong style="color: #fff;">📦 Integration Steps:</strong>
+                    <ol style="margin-left: 20px; margin-top: 6px; display: flex; flex-direction: column; gap: 4px;">
+                        <li>Add <code>tokio</code> and <code>reqwest</code> to your <code>Cargo.toml</code>.</li>
+                        <li>Include the client implementation from <code>src/main.rs</code> in your crate.</li>
+                    </ol>
+                </div>
+                <pre class="mono" style="padding: 20px; background: rgba(2, 6, 23, 0.85); border: 1px solid var(--border-glass); border-radius: 12px; color: #cbd5e1; font-size: 13px; line-height: 1.6; overflow-x: auto;">
+#[tokio::main]
+async fn main() -> Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
+    let mut auth = JoystAuth::new("MyApp", "YOUR_APP_TOKEN", "1.0", "https://joystauth.cc");
+    
+    // Handshake
+    auth.init().await?;
+    
+    // Authenticate
+    if auth.login("gamer123", "password123").await? {
+        println!("✅ Logged in as: {}", auth.user_data.username);
+    } else {
+        println!("❌ Login failed: {}", auth.response.message);
+    }
+    Ok(())
+}</pre>
+            </div>
+
             <!-- Raw REST API Section -->
             <div class="glass-panel" style="padding: 36px; margin-bottom: 28px;" id="api">
                 <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
@@ -506,7 +583,7 @@ Content-Type: application/json
     "app_token": "sec_77918750...",
     "username": "gamer123",
     "pass": "password123",
-    "hwid": "550e8400-e29b-41d4-a716-446655440000"
+    "hwid": "S-1-5-21-3731800324-1696576068-1827139738-1001"
 }</pre>
             </div>
         </div>
