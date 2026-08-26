@@ -1436,7 +1436,13 @@ async def clear_audit_logs(app_id: int, dev: Developer = Depends(get_current_dev
 
 @router.get("/stats")
 async def get_developer_stats(dev: Developer = Depends(get_current_developer), db: Session = Depends(get_db)):
-    dev_apps = db.query(Application).filter(Application.developer_id == dev.id).all()
+    query = db.query(Application).filter(Application.developer_id == dev.id)
+    if getattr(dev, "is_custom_client", False):
+        allowed = getattr(dev, "allowed_apps_list", [])
+        app_ids_allowed = [int(x) for x in allowed if x.isdigit()]
+        app_names_allowed = [x for x in allowed if not x.isdigit()]
+        query = query.filter((Application.id.in_(app_ids_allowed)) | (Application.name.in_(app_names_allowed)))
+    dev_apps = query.all()
     app_ids = [a.id for a in dev_apps]
     
     total_apps = len(dev_apps)
@@ -2552,8 +2558,21 @@ async def list_custom_clients(dev: Developer = Depends(get_current_developer), d
     if getattr(dev, "is_custom_client", False):
         raise HTTPException(status_code=403, detail="Unauthorized")
     
-    clients = db.query(CustomClient).filter(CustomClient.developer_id == dev.id).order_by(CustomClient.id.desc()).all()
-    all_dev_apps = {a.id: a.name for a in db.query(Application).filter(Application.developer_id == dev.id).all()}
+    try:
+        clients = db.query(CustomClient).filter(CustomClient.developer_id == dev.id).order_by(CustomClient.id.desc()).all()
+    except Exception as e:
+        from ..database import init_db
+        try:
+            init_db()
+            clients = db.query(CustomClient).filter(CustomClient.developer_id == dev.id).order_by(CustomClient.id.desc()).all()
+        except Exception:
+            clients = []
+            
+    all_dev_apps = {}
+    try:
+        all_dev_apps = {a.id: a.name for a in db.query(Application).filter(Application.developer_id == dev.id).all()}
+    except Exception:
+        pass
     
     result = []
     for c in clients:
@@ -2572,8 +2591,8 @@ async def list_custom_clients(dev: Developer = Depends(get_current_developer), d
             "username": c.username,
             "allowed_apps": c.allowed_apps or "",
             "assigned_app_names": app_names,
-            "notes": c.notes or "",
-            "created_at": c.created_at.isoformat() if c.created_at else None
+            "notes": getattr(c, "notes", "") or "",
+            "created_at": c.created_at.isoformat() if getattr(c, "created_at", None) else None
         })
     return {"success": True, "clients": result}
 
@@ -2588,13 +2607,30 @@ async def create_custom_client(data: CreateCustomClientRequest, dev: Developer =
     if len(data.password) < 6:
         raise HTTPException(status_code=400, detail="Password must be at least 6 characters")
     
-    # Check duplicate username across Developers, Resellers, and CustomClients
+    # Check duplicate username across Developers and CustomClients
     if db.query(Developer).filter(Developer.username == uname).first():
-        raise HTTPException(status_code=400, detail=f"Username '{uname}' is already taken.")
-    if db.query(Reseller).filter(Reseller.username == uname).first():
+        raise HTTPException(status_code=400, detail=f"Username '{uname}' is already taken by a developer account.")
+    
+    # If this username exists in Resellers under this developer, auto-upgrade/replace reseller!
+    existing_reseller = db.query(Reseller).filter(Reseller.username == uname, Reseller.developer_id == dev.id).first()
+    if existing_reseller:
+        db.delete(existing_reseller)
+        db.commit()
+    elif db.query(Reseller).filter(Reseller.username == uname).first():
         raise HTTPException(status_code=400, detail=f"Username '{uname}' is already taken by a reseller.")
+
+    # If already exists as a CustomClient under this developer, update existing account
+    existing_cc = db.query(CustomClient).filter(CustomClient.username == uname, CustomClient.developer_id == dev.id).first()
+    if existing_cc:
+        existing_cc.password_hash = hash_password(data.password)
+        existing_cc.allowed_apps = data.allowed_apps.strip()
+        existing_cc.notes = data.notes.strip() if data.notes else existing_cc.notes
+        db.commit()
+        log_audit(db, None, "CLIENT_UPDATED", username=uname, details=f"Custom client account '{uname}' updated with apps: {existing_cc.allowed_apps}", status="SUCCESS")
+        return {"success": True, "message": f"Custom client '{uname}' updated successfully!", "client_id": existing_cc.id}
+
     if db.query(CustomClient).filter(CustomClient.username == uname).first():
-        raise HTTPException(status_code=400, detail=f"Username '{uname}' is already registered as a custom client.")
+        raise HTTPException(status_code=400, detail=f"Username '{uname}' is already taken by another client.")
     
     new_client = CustomClient(
         developer_id=dev.id,

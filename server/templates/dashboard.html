@@ -7,7 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/static/css/dashboard.css?v=7.0.0">
+    <link rel="stylesheet" href="/static/css/dashboard.css?v=10.0.0">
     <style>
 /* ==================== CRITICAL INLINE DASHBOARD SIDEBAR STYLES ==================== */
 
@@ -2235,7 +2235,7 @@
 
     <script src="/static/js/particles.js?v=3.0.0"></script>
     <script src="/static/js/reactbits.js?v=3.0.0"></script>
-    <script src="/static/js/dashboard.js?v=7.0.0"></script>
+    <script src="/static/js/dashboard.js?v=10.0.0"></script>
     <script src="/static/js/shield_defense.js?v=3.0.0"></script>
     <script>
         if (typeof initDashboard === "function") {
@@ -2248,7 +2248,7 @@
         <div class="modal-box" style="max-width: 520px;">
             <div class="modal-header">
                 <h3>👥 Create Custom Brand Partner Client</h3>
-                <button class="modal-close" data-close-modal>&times;</button>
+                <button class="modal-close" onclick="closeModal('modal-create-custom-client')">&times;</button>
             </div>
             <div class="modal-body">
                 <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 16px;">
@@ -2276,7 +2276,7 @@
                 </div>
             </div>
             <div class="modal-footer">
-                <button class="btn btn-secondary btn-sm" data-close-modal>Cancel</button>
+                <button class="btn btn-secondary btn-sm" onclick="closeModal('modal-create-custom-client')">Cancel</button>
                 <button class="btn btn-primary btn-sm" onclick="submitCreateCustomClient()">🚀 Create Client Account</button>
             </div>
         </div>

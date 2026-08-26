@@ -771,13 +771,13 @@ async def get_me(authorization: Optional[str] = Header(None), dev: Developer = D
         "can_create_apps": not is_custom_client,
         "allowed_apps": getattr(dev, "allowed_apps_raw", "all"),
         "reseller_balance": reseller_balance,
-        "email": dev.email or "",
-        "avatar_url": getattr(dev, "avatar_url", "") or "",
-        "owner_id": dev.owner_id,
+        "email": "Brand Partner Account" if is_custom_client else (dev.email or ""),
+        "avatar_url": "" if is_custom_client else (getattr(dev, "avatar_url", "") or ""),
+        "owner_id": "Protected" if is_custom_client else dev.owner_id,
         "plan": "Enterprise" if is_custom_client else (f"Reseller ({reseller_balance} Credits)" if role == "reseller" else dev.plan),
         "max_apps": dev.max_apps,
         "max_users_per_app": dev.max_users_per_app,
-        "is_master_admin": is_master_admin_account(dev) if not is_custom_client else False,
+        "is_master_admin": False if is_custom_client else is_master_admin_account(dev),
         "created_at": dev.created_at.isoformat()
     }
 
@@ -804,10 +804,19 @@ async def update_developer_avatar(data: UpdateAvatarRequest, dev: Developer = De
 
 @router.post("/change-password")
 async def change_password(data: ChangePasswordRequest, dev: Developer = Depends(get_current_developer), db: Session = Depends(get_db)):
-    if not verify_password(data.current_password, dev.password_hash):
-        raise HTTPException(status_code=400, detail="Current password is incorrect")
     if len(data.new_password) < 6:
         raise HTTPException(status_code=400, detail="New password must be at least 6 characters")
+
+    if getattr(dev, "is_custom_client", False):
+        cc = db.query(CustomClient).filter(CustomClient.id == dev.custom_client_id).first()
+        if not cc or not verify_password(data.current_password, cc.password_hash):
+            raise HTTPException(status_code=400, detail="Current password is incorrect")
+        cc.password_hash = hash_password(data.new_password)
+        db.commit()
+        return {"success": True, "message": "Password updated successfully"}
+        
+    if not verify_password(data.current_password, dev.password_hash):
+        raise HTTPException(status_code=400, detail="Current password is incorrect")
     
     dev.password_hash = hash_password(data.new_password)
     db.commit()
@@ -819,6 +828,8 @@ class DeleteAccountRequest(BaseModel):
 
 @router.delete("/delete-account")
 async def delete_account(data: DeleteAccountRequest, dev: Developer = Depends(get_current_developer), db: Session = Depends(get_db)):
+    if getattr(dev, "is_custom_client", False):
+        raise HTTPException(status_code=403, detail="Custom clients cannot delete developer workspace.")
     """Permanently deletes developer account and all associated applications, keys, and users."""
     user_confirm = data.confirm_text.strip()
     if user_confirm.lower() != dev.username.strip().lower() and user_confirm.upper() != "DELETE":

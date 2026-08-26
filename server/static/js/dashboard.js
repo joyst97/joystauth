@@ -396,15 +396,35 @@ async function loadUserProfile() {
         if (nameEl) nameEl.textContent = devUsername;
         if (data.is_custom_client || data.role === "custom_client") {
             if (ownerEl) ownerEl.innerHTML = `<span class="badge-dot" style="background: #a855f7;"></span> Brand Partner Portal`;
-            // Hide admin-only tabs for custom clients
-            const ccTab = document.getElementById("sidebar-tab-custom-clients");
-            if (ccTab) ccTab.style.display = "none";
+            
+            // 1. Hide Custom Clients tab for custom clients
+            const ccTab = document.getElementById("sidebar-tab-custom-clients") || document.querySelector('[data-tab="custom-clients"]');
+            if (ccTab) {
+                ccTab.style.setProperty("display", "none", "important");
+            }
+
+            // 2. Reseller tab & Webhooks stay accessible for their assigned apps!
             const resTab = document.querySelector('[data-tab="resellers"]');
-            if (resTab) resTab.style.display = "none";
-            // Hide Create Application button in Directory
-            document.querySelectorAll('[onclick="openModal(\'modal-create-app\')"]').forEach(b => b.style.display = "none");
+            if (resTab) resTab.style.removeProperty("display");
+            const webTab = document.querySelector('[data-tab="webhooks"]');
+            if (webTab) webTab.style.removeProperty("display");
+
+            // 3. Hide Create Application buttons in Directory
+            document.querySelectorAll('[onclick="openModal(\'modal-create-app\')"]').forEach(b => b.style.setProperty("display", "none", "important"));
+
+            // 4. Hide Master Developer Email & Danger Zone in Profile Page
+            const emailRow = document.getElementById("profile-page-email")?.closest(".form-group") || document.getElementById("profile-page-email");
+            if (emailRow) emailRow.style.setProperty("display", "none", "important");
+            const dangerZone = document.querySelector(".danger-zone") || document.querySelector('[onclick="openModal(\'modal-delete-account\')"]')?.closest("div") || document.querySelector("#page-profile .danger-zone");
+            if (dangerZone) dangerZone.style.setProperty("display", "none", "important");
+            const dangerCard = document.querySelector("#page-profile .stat-card:last-child");
+            if (dangerCard && dangerCard.textContent.includes("Delete Account")) {
+                dangerCard.style.setProperty("display", "none", "important");
+            }
         } else {
             if (ownerEl) ownerEl.innerHTML = `<span class="badge-dot" style="background: #10b981;"></span> Server Online`;
+            const ccTab = document.getElementById("sidebar-tab-custom-clients") || document.querySelector('[data-tab="custom-clients"]');
+            if (ccTab) ccTab.style.removeProperty("display");
         }
 
         const activeAvatarUrl = data.avatar_url || "";
@@ -1999,11 +2019,29 @@ async function loadResellers() {
         tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 30px;">No reseller accounts created yet. Click "+ Add Reseller" to create one.</td></tr>`;
         return;
     }
-    tbody.innerHTML = data.resellers.map(r => `
+    tbody.innerHTML = data.resellers.map(r => {
+        const appDisplay = (r.allowed_apps === 'all' || !r.allowed_apps) 
+            ? '<span class="badge badge-cyan" style="font-size: 11px;">🌐 All Apps</span>'
+            : r.allowed_apps.split(',').map(id => {
+                const matched = appsList.find(a => String(a.id) === id.trim() || a.name === id.trim());
+                return `<span class="badge badge-secondary" style="font-size: 11px; margin: 1px;">📱 ${escapeHtml(matched ? matched.name : '#' + id)}</span>`;
+            }).join(' ');
+
+        return `
         <tr>
-            <td><strong style="color: #fff; font-size: 14px;">${r.username}</strong></td>
             <td>
-                <span class="badge badge-success" style="font-size: 12.5px; font-weight: 800; cursor: pointer;" onclick="openManageResellerCreditsModal(${r.id}, '${r.username}', ${r.balance})" title="Click to adjust credits">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <div style="width: 32px; height: 32px; border-radius: 8px; background: linear-gradient(135deg, #ff2a5f, #7928ca); display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 800; color: #fff;">
+                        ${r.username.charAt(0).toUpperCase()}
+                    </div>
+                    <div>
+                        <strong style="color: #fff; font-size: 14px;">${escapeHtml(r.username)}</strong>
+                        <div style="font-size: 11px; color: var(--text-muted);">Reseller Account</div>
+                    </div>
+                </div>
+            </td>
+            <td>
+                <span class="badge badge-success" style="font-size: 12.5px; font-weight: 800; cursor: pointer;" onclick="openManageResellerCreditsModal(${r.id}, '${escapeHtml(r.username)}', ${r.balance})" title="Click to adjust credits">
                     🪙 ${r.balance} Credits ✏️
                 </span>
             </td>
@@ -2011,17 +2049,24 @@ async function loadResellers() {
                 <span style="color: #10b981; font-weight: 700;">${r.unused_keys || 0} Unused</span> / 
                 <span style="color: var(--text-muted);">${r.total_keys || 0} Total</span>
             </td>
-            <td><span class="badge badge-cyan" style="font-size: 11.5px; max-width: 250px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${r.allowed_apps === 'all' ? '🌐 All Apps' : r.allowed_apps}</span></td>
             <td>
-                <div style="display: flex; gap: 6px; align-items: center;">
-                    <button class="btn btn-secondary btn-sm" onclick="openManageResellerCreditsModal(${r.id}, '${r.username}', ${r.balance})" title="Add/Deduct Credits">🪙 Credits</button>
-                    <button class="btn btn-secondary btn-sm" onclick="openViewResellerKeysModal(${r.id}, '${r.username}')" title="Inspect Generated Keys">🔍 Keys</button>
-                    <button class="btn btn-secondary btn-sm" onclick="openResetResellerPassModal(${r.id}, '${r.username}')" title="Reset Password">🔑 Pass</button>
+                <div style="display: flex; flex-wrap: wrap; gap: 3px; max-width: 250px;">
+                    ${appDisplay}
+                </div>
+            </td>
+            <td>
+                <div style="display: flex; gap: 5px; align-items: center; justify-content: flex-end; flex-wrap: wrap;">
+                    <button class="btn btn-secondary btn-sm" style="padding: 4px 8px; font-size: 11px; font-weight: 700;" onclick="openManageResellerAppsModal(${r.id}, '${escapeHtml(r.username)}', '${escapeHtml(r.allowed_apps || '')}')" title="Add / Remove Authorized Apps">📱 Apps</button>
+                    <button class="btn btn-primary btn-sm" style="padding: 4px 8px; font-size: 11px; font-weight: 700; background: linear-gradient(135deg, #a855f7, #6366f1); border-color: #a855f7;" onclick="convertResellerToCustomClient(${r.id}, '${escapeHtml(r.username)}')" title="Convert to Custom Client with full dashboard access">👑 Upgrade to Client</button>
+                    <button class="btn btn-secondary btn-sm" onclick="openManageResellerCreditsModal(${r.id}, '${escapeHtml(r.username)}', ${r.balance})" title="Add/Deduct Credits">🪙 Credits</button>
+                    <button class="btn btn-secondary btn-sm" onclick="openViewResellerKeysModal(${r.id}, '${escapeHtml(r.username)}')" title="Inspect Generated Keys">🔍 Keys</button>
+                    <button class="btn btn-secondary btn-sm" onclick="openResetResellerPassModal(${r.id}, '${escapeHtml(r.username)}')" title="Reset Password">🔑 Pass</button>
                     <button class="btn btn-danger btn-sm" onclick="deleteReseller(${r.id})" title="Delete Reseller">🗑️</button>
                 </div>
             </td>
         </tr>
-    `).join("");
+        `;
+    }).join("");
 }
 
 function openManageResellerCreditsModal(id, username, currentBalance) {
@@ -3618,10 +3663,34 @@ function setupChangePassword() {
 }
 
 function setupModals() {
+    // Close button and data-close-modal listeners
     document.querySelectorAll(".modal-close, [data-close-modal]").forEach(btn => {
-        btn.addEventListener("click", () => {
-            document.querySelectorAll(".modal-overlay").forEach(m => m.classList.remove("active"));
+        btn.addEventListener("click", (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            const parentModal = btn.closest(".modal-overlay");
+            if (parentModal) {
+                parentModal.classList.remove("active");
+            } else {
+                document.querySelectorAll(".modal-overlay").forEach(m => m.classList.remove("active"));
+            }
         });
+    });
+
+    // Backdrop click listener (close when clicking outside modal box)
+    document.querySelectorAll(".modal-overlay").forEach(modal => {
+        modal.addEventListener("click", (e) => {
+            if (e.target === modal) {
+                modal.classList.remove("active");
+            }
+        });
+    });
+
+    // Keyboard ESC key listener
+    window.addEventListener("keydown", (e) => {
+        if (e.key === "Escape") {
+            document.querySelectorAll(".modal-overlay.active").forEach(m => m.classList.remove("active"));
+        }
     });
 }
 
