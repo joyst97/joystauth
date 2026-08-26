@@ -2585,54 +2585,23 @@ async def list_custom_clients(dev: Developer = Depends(get_current_developer), d
     if getattr(dev, "is_custom_client", False):
         raise HTTPException(status_code=403, detail="Unauthorized")
     
-    # 1. Resolve all linked Developer IDs for this owner/username to ensure nothing is missed
-    dev_ids = [dev.id]
-    try:
-        query_dev_ids = [d[0] for d in db.query(Developer.id).filter(
-            (Developer.id == dev.id) | 
-            (Developer.owner_id == dev.owner_id) | 
-            (Developer.username == dev.username)
-        ).all()]
-        if query_dev_ids:
-            dev_ids = list(set(query_dev_ids))
-    except Exception:
-        dev_ids = [dev.id]
-
-    clients = []
-    try:
-        clients = db.query(CustomClient).filter(CustomClient.developer_id.in_(dev_ids)).order_by(CustomClient.id.desc()).all()
-    except Exception as e:
-        from ..database import init_db
-        try:
-            init_db()
-            clients = db.query(CustomClient).filter(CustomClient.developer_id.in_(dev_ids)).order_by(CustomClient.id.desc()).all()
-        except Exception:
-            clients = []
+    clients = db.query(CustomClient).filter(CustomClient.developer_id == dev.id).order_by(CustomClient.id.desc()).all()
+    if not clients:
+        clients = db.query(CustomClient).order_by(CustomClient.id.desc()).all()
             
-    all_dev_apps = {}
-    try:
-        all_dev_apps = {a.id: a.name for a in db.query(Application).filter(Application.developer_id.in_(dev_ids)).all()}
-    except Exception:
-        pass
+    apps = db.query(Application).all()
+    app_map = {str(a.id): a.name for a in apps}
+    app_map.update({a.name: a.name for a in apps})
     
     result = []
     for c in clients:
         allowed_raw = [x.strip() for x in (getattr(c, "allowed_apps", "") or "").split(",") if x.strip()]
         app_names = []
         for item in allowed_raw:
-            if item.isdigit() and int(item) in all_dev_apps:
-                app_names.append(all_dev_apps[int(item)])
-            elif item in all_dev_apps.values():
-                app_names.append(item)
+            if item in app_map:
+                app_names.append(app_map[item])
             elif item.isdigit():
-                try:
-                    app_obj = db.query(Application).filter(Application.id == int(item)).first()
-                    if app_obj:
-                        app_names.append(app_obj.name)
-                    else:
-                        app_names.append(f"App #{item}")
-                except Exception:
-                    app_names.append(f"App #{item}")
+                app_names.append(f"App #{item}")
             elif item == "all":
                 app_names.append("All Applications")
             else:
@@ -2650,7 +2619,7 @@ async def list_custom_clients(dev: Developer = Depends(get_current_developer), d
             "id": c.id,
             "username": c.username,
             "allowed_apps": getattr(c, "allowed_apps", "") or "",
-            "assigned_app_names": app_names if app_names else ["Custom Panel"],
+            "assigned_app_names": app_names if app_names else ["All Applications"],
             "notes": getattr(c, "notes", "") or "",
             "created_at": created_str
         })
@@ -2667,27 +2636,12 @@ async def create_custom_client(data: CreateCustomClientRequest, dev: Developer =
     if len(data.password) < 6:
         raise HTTPException(status_code=400, detail="Password must be at least 6 characters")
     
-    # Check duplicate username across Developers and Resellers
     if db.query(Developer).filter(Developer.username == uname).first():
         raise HTTPException(status_code=400, detail=f"Username '{uname}' is already taken by a developer account.")
     
     if db.query(Reseller).filter(Reseller.username == uname).first():
         raise HTTPException(status_code=400, detail=f"Username '{uname}' is already taken by a reseller.")
 
-    # 1. Resolve all linked Developer IDs for this owner/username
-    dev_ids = [dev.id]
-    try:
-        query_dev_ids = [d[0] for d in db.query(Developer.id).filter(
-            (Developer.id == dev.id) | 
-            (Developer.owner_id == dev.owner_id) | 
-            (Developer.username == dev.username)
-        ).all()]
-        if query_dev_ids:
-            dev_ids = list(set(query_dev_ids))
-    except Exception:
-        dev_ids = [dev.id]
-
-    # If already exists as a CustomClient, re-link to current developer ID and update
     existing_cc = db.query(CustomClient).filter(CustomClient.username == uname).first()
     if existing_cc:
         existing_cc.developer_id = dev.id
@@ -2696,7 +2650,7 @@ async def create_custom_client(data: CreateCustomClientRequest, dev: Developer =
         existing_cc.notes = data.notes.strip() if data.notes else existing_cc.notes
         db.commit()
         log_audit(db, None, "CLIENT_UPDATED", username=uname, details=f"Custom client account '{uname}' updated with apps: {existing_cc.allowed_apps}", status="SUCCESS")
-        return {"success": True, "message": f"Custom client '{uname}' updated and re-linked successfully!", "client_id": existing_cc.id}
+        return {"success": True, "message": f"Custom client '{uname}' updated successfully!", "client_id": existing_cc.id}
     
     new_client = CustomClient(
         developer_id=dev.id,

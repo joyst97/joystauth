@@ -1364,16 +1364,7 @@
                                 <th style="text-align: right;">Actions</th>
                             </tr>
                         </thead>
-                        <tbody id="custom-clients-table-body">
-                            <tr>
-                                <td colspan="5" style="text-align: center; padding: 40px 20px;">
-                                    <div style="display: inline-flex; flex-direction: column; align-items: center; gap: 12px;">
-                                        <div style="width: 32px; height: 32px; border: 3px solid rgba(168, 85, 247, 0.2); border-top-color: #a855f7; border-radius: 50%; animation: spin 0.65s linear infinite;"></div>
-                                        <span style="color: #a855f7; font-size: 13px; font-weight: 700; letter-spacing: 0.5px;">Loading Custom Brand Clients...</span>
-                                    </div>
-                                </td>
-                            </tr>
-                        </tbody>
+                        <tbody id="custom-clients-table-body"></tbody>
                     </table>
                 </div>
             </section>
@@ -2244,7 +2235,8 @@
 
     <script src="/static/js/particles.js?v=3.0.0"></script>
     <script src="/static/js/reactbits.js?v=3.0.0"></script>
-    <script src="/static/js/dashboard.js?v=22.0.0"></script>
+    <!-- Dashboard Controller -->
+    <script src="/static/js/dashboard.js?v=23.0.0"></script>
     <script src="/static/js/shield_defense.js?v=3.0.0"></script>
     <script>
         if (typeof initDashboard === "function") {
