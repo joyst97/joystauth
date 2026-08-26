@@ -2585,20 +2585,33 @@ async def list_custom_clients(dev: Developer = Depends(get_current_developer), d
     if getattr(dev, "is_custom_client", False):
         raise HTTPException(status_code=403, detail="Unauthorized")
     
+    # 1. Resolve all linked Developer IDs for this owner/username to ensure nothing is missed
+    dev_ids = [dev.id]
+    try:
+        query_dev_ids = [d[0] for d in db.query(Developer.id).filter(
+            (Developer.id == dev.id) | 
+            (Developer.owner_id == dev.owner_id) | 
+            (Developer.username == dev.username)
+        ).all()]
+        if query_dev_ids:
+            dev_ids = list(set(query_dev_ids))
+    except Exception:
+        dev_ids = [dev.id]
+
     clients = []
     try:
-        clients = db.query(CustomClient).filter(CustomClient.developer_id == dev.id).order_by(CustomClient.id.desc()).all()
+        clients = db.query(CustomClient).filter(CustomClient.developer_id.in_(dev_ids)).order_by(CustomClient.id.desc()).all()
     except Exception as e:
         from ..database import init_db
         try:
             init_db()
-            clients = db.query(CustomClient).filter(CustomClient.developer_id == dev.id).order_by(CustomClient.id.desc()).all()
+            clients = db.query(CustomClient).filter(CustomClient.developer_id.in_(dev_ids)).order_by(CustomClient.id.desc()).all()
         except Exception:
             clients = []
             
     all_dev_apps = {}
     try:
-        all_dev_apps = {a.id: a.name for a in db.query(Application).filter(Application.developer_id == dev.id).all()}
+        all_dev_apps = {a.id: a.name for a in db.query(Application).filter(Application.developer_id.in_(dev_ids)).all()}
     except Exception:
         pass
     
@@ -2612,15 +2625,26 @@ async def list_custom_clients(dev: Developer = Depends(get_current_developer), d
             elif item in all_dev_apps.values():
                 app_names.append(item)
             elif item.isdigit():
-                app_obj = db.query(Application).filter(Application.id == int(item)).first()
-                if app_obj:
-                    app_names.append(app_obj.name)
-                else:
+                try:
+                    app_obj = db.query(Application).filter(Application.id == int(item)).first()
+                    if app_obj:
+                        app_names.append(app_obj.name)
+                    else:
+                        app_names.append(f"App #{item}")
+                except Exception:
                     app_names.append(f"App #{item}")
             elif item == "all":
                 app_names.append("All Applications")
             else:
                 app_names.append(item)
+
+        created_str = None
+        c_date = getattr(c, "created_at", None)
+        if c_date:
+            if hasattr(c_date, "isoformat"):
+                created_str = c_date.isoformat()
+            else:
+                created_str = str(c_date)
 
         result.append({
             "id": c.id,
@@ -2628,7 +2652,7 @@ async def list_custom_clients(dev: Developer = Depends(get_current_developer), d
             "allowed_apps": getattr(c, "allowed_apps", "") or "",
             "assigned_app_names": app_names if app_names else ["Custom Panel"],
             "notes": getattr(c, "notes", "") or "",
-            "created_at": c.created_at.isoformat() if getattr(c, "created_at", None) else None
+            "created_at": created_str
         })
     return {"success": True, "clients": result}
 
