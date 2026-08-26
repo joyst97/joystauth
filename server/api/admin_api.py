@@ -2667,30 +2667,36 @@ async def create_custom_client(data: CreateCustomClientRequest, dev: Developer =
     if len(data.password) < 6:
         raise HTTPException(status_code=400, detail="Password must be at least 6 characters")
     
-    # Check duplicate username across Developers and CustomClients
+    # Check duplicate username across Developers and Resellers
     if db.query(Developer).filter(Developer.username == uname).first():
         raise HTTPException(status_code=400, detail=f"Username '{uname}' is already taken by a developer account.")
     
-    # If this username exists in Resellers under this developer, auto-upgrade/replace reseller!
-    existing_reseller = db.query(Reseller).filter(Reseller.username == uname, Reseller.developer_id == dev.id).first()
-    if existing_reseller:
-        db.delete(existing_reseller)
-        db.commit()
-    elif db.query(Reseller).filter(Reseller.username == uname).first():
+    if db.query(Reseller).filter(Reseller.username == uname).first():
         raise HTTPException(status_code=400, detail=f"Username '{uname}' is already taken by a reseller.")
 
-    # If already exists as a CustomClient under this developer, update existing account
-    existing_cc = db.query(CustomClient).filter(CustomClient.username == uname, CustomClient.developer_id == dev.id).first()
+    # 1. Resolve all linked Developer IDs for this owner/username
+    dev_ids = [dev.id]
+    try:
+        query_dev_ids = [d[0] for d in db.query(Developer.id).filter(
+            (Developer.id == dev.id) | 
+            (Developer.owner_id == dev.owner_id) | 
+            (Developer.username == dev.username)
+        ).all()]
+        if query_dev_ids:
+            dev_ids = list(set(query_dev_ids))
+    except Exception:
+        dev_ids = [dev.id]
+
+    # If already exists as a CustomClient, re-link to current developer ID and update
+    existing_cc = db.query(CustomClient).filter(CustomClient.username == uname).first()
     if existing_cc:
+        existing_cc.developer_id = dev.id
         existing_cc.password_hash = hash_password(data.password)
         existing_cc.allowed_apps = data.allowed_apps.strip()
         existing_cc.notes = data.notes.strip() if data.notes else existing_cc.notes
         db.commit()
         log_audit(db, None, "CLIENT_UPDATED", username=uname, details=f"Custom client account '{uname}' updated with apps: {existing_cc.allowed_apps}", status="SUCCESS")
-        return {"success": True, "message": f"Custom client '{uname}' updated successfully!", "client_id": existing_cc.id}
-
-    if db.query(CustomClient).filter(CustomClient.username == uname).first():
-        raise HTTPException(status_code=400, detail=f"Username '{uname}' is already taken by another client.")
+        return {"success": True, "message": f"Custom client '{uname}' updated and re-linked successfully!", "client_id": existing_cc.id}
     
     new_client = CustomClient(
         developer_id=dev.id,
@@ -2711,7 +2717,15 @@ async def update_custom_client(client_id: int, data: UpdateCustomClientRequest, 
     if getattr(dev, "is_custom_client", False):
         raise HTTPException(status_code=403, detail="Unauthorized")
     
-    client = db.query(CustomClient).filter(CustomClient.id == client_id, CustomClient.developer_id == dev.id).first()
+    dev_ids = [dev.id]
+    try:
+        query_dev_ids = [d[0] for d in db.query(Developer.id).filter((Developer.id == dev.id) | (Developer.owner_id == dev.owner_id) | (Developer.username == dev.username)).all()]
+        if query_dev_ids:
+            dev_ids = list(set(query_dev_ids))
+    except Exception:
+        dev_ids = [dev.id]
+
+    client = db.query(CustomClient).filter(CustomClient.id == client_id, CustomClient.developer_id.in_(dev_ids)).first()
     if not client:
         raise HTTPException(status_code=404, detail="Custom client account not found")
     
