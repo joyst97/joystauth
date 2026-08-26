@@ -458,11 +458,12 @@ async function loadUserProfile() {
         }
 
         window.currentUserPlan = activePlan;
+        window.isCustomClientRole = Boolean(data.is_custom_client || data.role === "custom_client");
         if (planBadge) planBadge.textContent = `${activePlan} Plan`;
 
         // Highlight active plan card
         document.querySelectorAll(".plan-card").forEach(c => c.classList.remove("active-plan"));
-        const isPaid = activePlan === "Paid" || activePlan === "Developer" || activePlan === "Pro";
+        const isPaid = activePlan === "Paid" || activePlan === "Developer" || activePlan === "Pro" || activePlan === "Enterprise" || window.isCustomClientRole;
         if (isPaid) {
             document.getElementById("plan-card-paid")?.classList.add("active-plan");
         } else {
@@ -597,7 +598,7 @@ function loadActiveTab() {
 }
 
 function loadTabContent(tabId) {
-    const isPaid = (window.currentUserPlan === "Paid" || window.currentUserPlan === "Developer" || window.currentUserPlan === "Pro");
+    const isPaid = (window.currentUserPlan === "Paid" || window.currentUserPlan === "Developer" || window.currentUserPlan === "Pro" || window.currentUserPlan === "Enterprise" || window.isCustomClientRole === true);
 
     // Manage Resellers Locked vs Unlocked visibility
     const resLocked = document.getElementById("resellers-locked-paywall");
@@ -2014,6 +2015,16 @@ async function loadResellers() {
         });
     }
 
+    tbody.innerHTML = `
+        <tr>
+            <td colspan="5">
+                <div class="cyber-loader-wrap">
+                    <div class="cyber-spinner"></div>
+                    <span style="color: #ff4d79; font-size: 13px; font-weight: 700; letter-spacing: 0.5px;">Loading Reseller Accounts...</span>
+                </div>
+            </td>
+        </tr>
+    `;
     const data = await apiFetch("/api/v1/admin/resellers");
     if (!data || !data.resellers || data.resellers.length === 0) {
         tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 30px;">No reseller accounts created yet. Click "+ Add Reseller" to create one.</td></tr>`;
@@ -4061,16 +4072,27 @@ async function loadCustomClients() {
     const tableBody = document.getElementById("custom-clients-table-body");
     if (!tableBody) return;
 
+    tableBody.innerHTML = `
+        <tr>
+            <td colspan="5">
+                <div class="cyber-loader-wrap">
+                    <div class="cyber-spinner"></div>
+                    <span style="color: #ff4d79; font-size: 13px; font-weight: 700; letter-spacing: 0.5px;">Loading Custom Brand Clients...</span>
+                </div>
+            </td>
+        </tr>
+    `;
+
     try {
         const data = await apiFetch("/api/v1/admin/custom-clients");
         if (data && data.success) {
             customClientsList = data.clients || [];
             renderCustomClientsTable();
         } else {
-            tableBody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 30px;">Failed to load custom clients.</td></tr>`;
+            tableBody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 30px;">${escapeHtml(data?.detail || data?.message || "No custom brand clients found.")}</td></tr>`;
         }
     } catch (e) {
-        tableBody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 30px;">Error loading clients.</td></tr>`;
+        tableBody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 30px;">Failed to load clients. Click "Refresh" to retry.</td></tr>`;
     }
 }
 
@@ -4195,6 +4217,25 @@ async function submitCreateCustomClient() {
             showToast(res.message || "Custom client created!", "success");
             closeModal("modal-create-custom-client");
             loadCustomClients();
+
+            const appNames = checkedBoxes.map(cb => {
+                const appId = cb.value;
+                const a = appsList.find(x => String(x.id) === String(appId));
+                return a ? a.name : ('App #' + appId);
+            }).join(", ");
+
+            const nowStr = new Date().toLocaleString();
+            const rawDiscordText = `**JOYST CORPORATION AUTH**\n` +
+                `👑 **CUSTOM BRAND PARTNER CLIENT CREATED**\n\n` +
+                `• **Client Username:** \`${username}\`\n` +
+                `• **Login Password:** \`${password}\`\n` +
+                `• **Assigned Application(s):** \`${appNames || 'Custom Panel'}\`\n` +
+                `• **Access Level:** \`Full Paid Tier (Keys, Users, HWID, Maintenance)\`\n` +
+                `• **Created At:** \`${nowStr}\`\n\n` +
+                `🔗 **Panel Login URL:** https://joystauth.cc/login\n` +
+                `🤖 **Discord Bot Link:** \`/link email_or_username:${username}\``;
+
+            showDiscordOutputModal("Custom Client Account Created!", rawDiscordText);
         } else {
             showToast(res?.detail || res?.message || "Failed to create client", "error");
         }
@@ -4400,3 +4441,19 @@ async function convertCustomClientToReseller(clientId, username) {
         showToast("Error converting client", "error");
     }
 }
+
+
+// Global Window Function Bindings for Custom Clients & Modals
+window.openCreateCustomClientModal = typeof openCreateCustomClientModal !== 'undefined' ? openCreateCustomClientModal : () => {};
+window.submitCreateCustomClient = typeof submitCreateCustomClient !== 'undefined' ? submitCreateCustomClient : () => {};
+window.openEditCustomClientModal = typeof openEditCustomClientModal !== 'undefined' ? openEditCustomClientModal : () => {};
+window.submitEditCustomClient = typeof submitEditCustomClient !== 'undefined' ? submitEditCustomClient : () => {};
+window.deleteCustomClient = typeof deleteCustomClient !== 'undefined' ? deleteCustomClient : () => {};
+window.loadCustomClients = typeof loadCustomClients !== 'undefined' ? loadCustomClients : () => {};
+window.renderCustomClientsTable = typeof renderCustomClientsTable !== 'undefined' ? renderCustomClientsTable : () => {};
+window.convertResellerToCustomClient = typeof convertResellerToCustomClient !== 'undefined' ? convertResellerToCustomClient : () => {};
+window.convertCustomClientToReseller = typeof convertCustomClientToReseller !== 'undefined' ? convertCustomClientToReseller : () => {};
+window.openManageResellerAppsModal = typeof openManageResellerAppsModal !== 'undefined' ? openManageResellerAppsModal : () => {};
+window.submitSaveResellerApps = typeof submitSaveResellerApps !== 'undefined' ? submitSaveResellerApps : () => {};
+window.openModal = typeof openModal !== 'undefined' ? openModal : (id) => { const m = document.getElementById(id); if (m) m.classList.add('active'); };
+window.closeModal = typeof closeModal !== 'undefined' ? closeModal : (id) => { if (!id) { document.querySelectorAll('.modal-overlay.active').forEach(m => m.classList.remove('active')); } else { const m = document.getElementById(id); if (m) m.classList.remove('active'); } };

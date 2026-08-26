@@ -3360,3 +3360,30 @@ select:focus {
     border-top: 1px solid rgba(255, 255, 255, 0.08);
     margin-top: 6px;
 }
+
+/* Standard Joyst Cyber Circular Spinner */
+.cyber-loader-wrap {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 40px 20px !important;
+    gap: 14px !important;
+    width: 100% !important;
+}
+
+.cyber-spinner {
+    width: 38px !important;
+    height: 38px !important;
+    border: 3.5px solid rgba(255, 42, 95, 0.18) !important;
+    border-top: 3.5px solid #ff2a5f !important;
+    border-right: 3.5px solid #ff7597 !important;
+    border-radius: 50% !important;
+    animation: cyberSpin 0.75s cubic-bezier(0.4, 0, 0.2, 1) infinite !important;
+    box-shadow: 0 0 25px rgba(255, 42, 95, 0.4) !important;
+}
+
+@keyframes cyberSpin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
