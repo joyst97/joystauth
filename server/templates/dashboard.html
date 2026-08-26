@@ -7,7 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/static/css/dashboard.css?v=19.0.0">
+    <link rel="stylesheet" href="/static/css/dashboard.css?v=21.0.0">
     <style>
 /* ==================== CRITICAL INLINE DASHBOARD SIDEBAR STYLES ==================== */
 
@@ -1592,7 +1592,7 @@
         <div class="modal-box" style="max-width: 480px; border-color: rgba(239, 68, 68, 0.5);">
             <div class="modal-header">
                 <h3 style="color: #ef4444;">⚠️ Permanent Account Deletion</h3>
-                <button class="modal-close">&times;</button>
+                <button type="button" class="modal-close" data-close-modal>&times;</button>
             </div>
             <div class="modal-body">
                 <p style="font-size: 13.5px; color: #f87171; line-height: 1.6; margin-bottom: 16px; background: rgba(239, 68, 68, 0.1); padding: 12px; border-radius: 8px; border: 1px solid rgba(239, 68, 68, 0.2);">
@@ -1604,7 +1604,7 @@
                 </div>
             </div>
             <div class="modal-footer">
-                <button class="btn btn-secondary btn-sm" data-close-modal>Cancel</button>
+                <button type="button" class="btn btn-secondary btn-sm" data-close-modal>Cancel</button>
                 <button class="btn btn-danger btn-sm" onclick="submitDeleteAccount()">Permanently Delete Account</button>
             </div>
         </div>
@@ -1616,7 +1616,7 @@
         <div class="modal-box" style="max-width: 500px;">
             <div class="modal-header">
                 <h3>✏️ Edit App & Version Control</h3>
-                <button class="modal-close" data-close-modal>&times;</button>
+                <button type="button" class="modal-close" data-close-modal>&times;</button>
             </div>
             <div class="modal-body">
                 <input type="hidden" id="quick-edit-app-id">
@@ -1657,7 +1657,7 @@
                 </div>
             </div>
             <div class="modal-footer">
-                <button class="btn btn-secondary btn-sm" data-close-modal>Cancel</button>
+                <button type="button" class="btn btn-secondary btn-sm" data-close-modal>Cancel</button>
                 <button class="btn btn-primary btn-sm" onclick="submitQuickEditApp()">💾 Save Version & Changes</button>
             </div>
         </div>
@@ -1670,7 +1670,7 @@
         <div class="modal-box">
             <div class="modal-header">
                 <h3>💎 Purchase Plan Upgrade Key</h3>
-                <button class="modal-close">&times;</button>
+                <button type="button" class="modal-close" data-close-modal>&times;</button>
             </div>
             <div class="modal-body">
                 <p style="font-size: 13.5px; color: var(--text-secondary); line-height: 1.6; margin-bottom: 18px;">
@@ -1696,7 +1696,7 @@
         <div class="modal-box">
             <div class="modal-header">
                 <h3>👤 Add User Manually</h3>
-                <button class="modal-close">&times;</button>
+                <button type="button" class="modal-close" data-close-modal>&times;</button>
             </div>
             <div class="modal-body">
                 <div class="form-group">
@@ -1721,7 +1721,7 @@
                 </div>
             </div>
             <div class="modal-footer">
-                <button class="btn btn-secondary btn-sm" data-close-modal>Cancel</button>
+                <button type="button" class="btn btn-secondary btn-sm" data-close-modal>Cancel</button>
                 <button class="btn btn-primary btn-sm" onclick="submitManualUser()">Create User</button>
             </div>
         </div>
@@ -1732,7 +1732,7 @@
         <div class="modal-box">
             <div class="modal-header">
                 <h3>⚡ Generate License Keys</h3>
-                <button class="modal-close">&times;</button>
+                <button type="button" class="modal-close" data-close-modal>&times;</button>
             </div>
             <div class="modal-body">
                 <div class="form-group">
@@ -1757,7 +1757,7 @@
                 </div>
             </div>
             <div class="modal-footer">
-                <button class="btn btn-secondary btn-sm" data-close-modal>Cancel</button>
+                <button type="button" class="btn btn-secondary btn-sm" data-close-modal>Cancel</button>
                 <button class="btn btn-primary btn-sm" onclick="generateKeysSubmit()">Generate Now</button>
             </div>
         </div>
@@ -1768,7 +1768,7 @@
         <div class="modal-box">
             <div class="modal-header">
                 <h3>🔑 Generated Keys</h3>
-                <button class="modal-close">&times;</button>
+                <button type="button" class="modal-close" data-close-modal>&times;</button>
             </div>
             <div class="modal-body">
                 <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 10px;">Copy your keys below:</p>
@@ -1786,7 +1786,7 @@
         <div class="modal-box">
             <div class="modal-header">
                 <h3>📦 Create New Application</h3>
-                <button class="modal-close">&times;</button>
+                <button type="button" class="modal-close" data-close-modal>&times;</button>
             </div>
             <div class="modal-body">
                 <div class="form-group">
@@ -1807,7 +1807,7 @@
                 </div>
             </div>
             <div class="modal-footer">
-                <button class="btn btn-secondary btn-sm" data-close-modal>Cancel</button>
+                <button type="button" class="btn btn-secondary btn-sm" data-close-modal>Cancel</button>
                 <button class="btn btn-primary btn-sm" onclick="createAppSubmit()">Create App</button>
             </div>
         </div>
@@ -1818,7 +1818,7 @@
         <div class="modal-box">
             <div class="modal-header">
                 <h3>☁️ Create Cloud Variable</h3>
-                <button class="modal-close">&times;</button>
+                <button type="button" class="modal-close" data-close-modal>&times;</button>
             </div>
             <div class="modal-body">
                 <div class="form-group">
@@ -1831,7 +1831,7 @@
                 </div>
             </div>
             <div class="modal-footer">
-                <button class="btn btn-secondary btn-sm" data-close-modal>Cancel</button>
+                <button type="button" class="btn btn-secondary btn-sm" data-close-modal>Cancel</button>
                 <button class="btn btn-primary btn-sm" onclick="createVariableSubmit()">Save Variable</button>
             </div>
         </div>
@@ -1842,7 +1842,7 @@
         <div class="modal-box">
             <div class="modal-header">
                 <h3>⭐ Create Subscription Tier</h3>
-                <button class="modal-close">&times;</button>
+                <button type="button" class="modal-close" data-close-modal>&times;</button>
             </div>
             <div class="modal-body">
                 <div class="form-group">
@@ -1859,7 +1859,7 @@
                 </div>
             </div>
             <div class="modal-footer">
-                <button class="btn btn-secondary btn-sm" data-close-modal>Cancel</button>
+                <button type="button" class="btn btn-secondary btn-sm" data-close-modal>Cancel</button>
                 <button class="btn btn-primary btn-sm" onclick="createTierSubmit()">Create Tier</button>
             </div>
         </div>
@@ -1870,7 +1870,7 @@
         <div class="modal-box">
             <div class="modal-header">
                 <h3>📁 Add CDN File</h3>
-                <button class="modal-close">&times;</button>
+                <button type="button" class="modal-close" data-close-modal>&times;</button>
             </div>
             <div class="modal-body">
                 <div class="form-group">
@@ -1887,7 +1887,7 @@
                 </div>
             </div>
             <div class="modal-footer">
-                <button class="btn btn-secondary btn-sm" data-close-modal>Cancel</button>
+                <button type="button" class="btn btn-secondary btn-sm" data-close-modal>Cancel</button>
                 <button class="btn btn-primary btn-sm" onclick="createFileSubmit()">Add File</button>
             </div>
         </div>
@@ -1898,7 +1898,7 @@
         <div class="modal-box">
             <div class="modal-header">
                 <h3>🚫 Add Blacklist Entry</h3>
-                <button class="modal-close">&times;</button>
+                <button type="button" class="modal-close" data-close-modal>&times;</button>
             </div>
             <div class="modal-body">
                 <div class="form-group">
@@ -1918,7 +1918,7 @@
                 </div>
             </div>
             <div class="modal-footer">
-                <button class="btn btn-secondary btn-sm" data-close-modal>Cancel</button>
+                <button type="button" class="btn btn-secondary btn-sm" data-close-modal>Cancel</button>
                 <button class="btn btn-danger btn-sm" onclick="createBlacklistSubmit()">Block Now</button>
             </div>
         </div>
@@ -1929,7 +1929,7 @@
         <div class="modal-box">
             <div class="modal-header">
                 <h3>👥 Create Reseller Account</h3>
-                <button class="modal-close">&times;</button>
+                <button type="button" class="modal-close" data-close-modal>&times;</button>
             </div>
             <div class="modal-body">
                 <div class="form-group">
@@ -1956,7 +1956,7 @@
                 </div>
             </div>
             <div class="modal-footer">
-                <button class="btn btn-secondary btn-sm" data-close-modal>Cancel</button>
+                <button type="button" class="btn btn-secondary btn-sm" data-close-modal>Cancel</button>
                 <button class="btn btn-primary btn-sm" onclick="createResellerSubmit()">Create Reseller</button>
             </div>
         </div>
@@ -1967,7 +1967,7 @@
         <div class="modal-box">
             <div class="modal-header">
                 <h3>⏳ Extend Subscription</h3>
-                <button class="modal-close">&times;</button>
+                <button type="button" class="modal-close" data-close-modal>&times;</button>
             </div>
             <div class="modal-body">
                 <p style="font-size: 13px; margin-bottom: 12px;">Extend subscription for: <strong id="extend-username-label" style="color: #fff;"></strong></p>
@@ -1977,7 +1977,7 @@
                 </div>
             </div>
             <div class="modal-footer">
-                <button class="btn btn-secondary btn-sm" data-close-modal>Cancel</button>
+                <button type="button" class="btn btn-secondary btn-sm" data-close-modal>Cancel</button>
                 <button class="btn btn-primary btn-sm" onclick="submitExtendUser()">Add Days</button>
             </div>
         </div>
@@ -1988,7 +1988,7 @@
         <div class="modal-box">
             <div class="modal-header">
                 <h3>🪙 Adjust Reseller Credits</h3>
-                <button class="modal-close">&times;</button>
+                <button type="button" class="modal-close" data-close-modal>&times;</button>
             </div>
             <div class="modal-body">
                 <p style="font-size: 13px; margin-bottom: 14px;">Reseller: <strong id="credits-reseller-username" style="color: #ff4d79;"></strong> (Current: <span id="credits-reseller-current" style="color: #10b981; font-weight: 800;">0</span> Credits)</p>
@@ -2009,7 +2009,7 @@
                 </div>
             </div>
             <div class="modal-footer">
-                <button class="btn btn-secondary btn-sm" data-close-modal>Cancel</button>
+                <button type="button" class="btn btn-secondary btn-sm" data-close-modal>Cancel</button>
                 <button class="btn btn-primary btn-sm" onclick="submitResellerCreditAdjustment()">Update Balance</button>
             </div>
         </div>
@@ -2020,7 +2020,7 @@
         <div class="modal-box" style="max-width: 680px;">
             <div class="modal-header">
                 <h3>🔍 Reseller Keys Audit</h3>
-                <button class="modal-close">&times;</button>
+                <button type="button" class="modal-close" data-close-modal>&times;</button>
             </div>
             <div class="modal-body">
                 <p style="font-size: 13px; margin-bottom: 14px;">Keys generated by reseller: <strong id="audit-reseller-username" style="color: #ff4d79;"></strong></p>
@@ -2050,7 +2050,7 @@
         <div class="modal-box">
             <div class="modal-header">
                 <h3>🔑 Reset Reseller Password</h3>
-                <button class="modal-close">&times;</button>
+                <button type="button" class="modal-close" data-close-modal>&times;</button>
             </div>
             <div class="modal-body">
                 <p style="font-size: 13px; margin-bottom: 14px;">Change password for: <strong id="reset-reseller-user-label" style="color: #ff4d79;"></strong></p>
@@ -2061,7 +2061,7 @@
                 </div>
             </div>
             <div class="modal-footer">
-                <button class="btn btn-secondary btn-sm" data-close-modal>Cancel</button>
+                <button type="button" class="btn btn-secondary btn-sm" data-close-modal>Cancel</button>
                 <button class="btn btn-primary btn-sm" onclick="submitResellerPasswordReset()">Save Password</button>
             </div>
         </div>
@@ -2071,7 +2071,7 @@
         <div class="modal-box">
             <div class="modal-header">
                 <h3>⏳ Bulk Extend User Subscriptions</h3>
-                <button class="modal-close">&times;</button>
+                <button type="button" class="modal-close" data-close-modal>&times;</button>
             </div>
             <div class="modal-body">
                 <p style="font-size: 13px; margin-bottom: 14px;">Add extra subscription days to users in the active application.</p>
@@ -2088,7 +2088,7 @@
                 </div>
             </div>
             <div class="modal-footer">
-                <button class="btn btn-secondary btn-sm" data-close-modal>Cancel</button>
+                <button type="button" class="btn btn-secondary btn-sm" data-close-modal>Cancel</button>
                 <button class="btn btn-primary btn-sm" onclick="submitBulkExtendUsers()">Apply Extension</button>
             </div>
         </div>
@@ -2098,7 +2098,7 @@
         <div class="modal-box" style="max-width: 540px;">
             <div class="modal-header">
                 <h3>🔔 Create In-App Client Notification</h3>
-                <button class="modal-close">&times;</button>
+                <button type="button" class="modal-close" data-close-modal>&times;</button>
             </div>
             <div class="modal-body">
                 <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 14px;">
@@ -2129,7 +2129,7 @@
                 </div>
             </div>
             <div class="modal-footer">
-                <button class="btn btn-secondary btn-sm" data-close-modal>Cancel</button>
+                <button type="button" class="btn btn-secondary btn-sm" data-close-modal>Cancel</button>
                 <button class="btn btn-primary btn-sm" onclick="createNotificationSubmit()">⚠️ Send Warning</button>
             </div>
         </div>
@@ -2141,7 +2141,7 @@
             <h3 id="confirm-modal-title" style="font-size: 20px; font-weight: 800; color: #fff; margin-bottom: 10px;">Confirm Action</h3>
             <p id="confirm-modal-message" style="font-size: 14px; color: var(--text-secondary); line-height: 1.5; margin-bottom: 24px;"></p>
             <div style="display: flex; gap: 12px; justify-content: center;">
-                <button id="confirm-modal-cancel-btn" class="btn btn-secondary" style="flex: 1; padding: 11px 0; font-weight: 800; font-size: 14px;">Cancel</button>
+                <button type="button" data-close-modal id="confirm-modal-cancel-btn" class="btn btn-secondary" style="flex: 1; padding: 11px 0; font-weight: 800; font-size: 14px;">Cancel</button>
                 <button id="confirm-modal-ok-btn" class="btn btn-danger" style="flex: 1; padding: 11px 0; font-weight: 800; font-size: 14px;">Confirm Action</button>
             </div>
         </div>
@@ -2153,7 +2153,7 @@
         <div class="modal-box spotlight-card" style="max-width: 500px; border: 1.5px solid rgba(245, 158, 11, 0.5); padding: 26px; background: linear-gradient(170deg, rgba(22, 6, 12, 0.98) 0%, rgba(10, 3, 6, 0.99) 100%); border-radius: 16px; box-shadow: 0 20px 60px rgba(0,0,0,0.9);">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 12px;">
                 <h3 style="font-size: 18px; font-weight: 800; color: #fff; margin: 0;">✏️ Edit Warning / Notice</h3>
-                <button class="modal-close" onclick="closeModal('modal-edit-notif')" style="color: #949ba4; font-size: 22px; background: none; border: none; cursor: pointer;">&times;</button>
+                <button type="button" class="modal-close" data-close-modal onclick="closeModal('modal-edit-notif')" style="color: #949ba4; font-size: 22px; background: none; border: none; cursor: pointer;">&times;</button>
             </div>
             <div class="modal-body">
                 <input type="hidden" id="edit-notif-id">
@@ -2180,7 +2180,7 @@
                 </div>
             </div>
             <div class="modal-footer" style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 22px;">
-                <button class="btn btn-secondary" onclick="closeModal('modal-edit-notif')">Cancel</button>
+                <button type="button" data-close-modal class="btn btn-secondary" onclick="closeModal('modal-edit-notif')">Cancel</button>
                 <button class="btn btn-primary" onclick="submitEditNotification()">💾 Save Changes</button>
             </div>
         </div>
@@ -2197,7 +2197,7 @@
                         <span style="display: block; font-size: 10px; color: var(--text-muted); font-weight: 700; text-transform: uppercase;" id="discord-card-title">Credentials Output</span>
                     </div>
                 </div>
-                <button class="modal-close" onclick="closeModal('modal-discord-output')" style="color: #94a3b8; font-size: 18px; width: 26px; height: 26px; border-radius: 50%; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); display: flex; align-items: center; justify-content: center; cursor: pointer;">&times;</button>
+                <button type="button" class="modal-close" data-close-modal onclick="closeModal('modal-discord-output')" style="color: #94a3b8; font-size: 18px; width: 26px; height: 26px; border-radius: 50%; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); display: flex; align-items: center; justify-content: center; cursor: pointer;">&times;</button>
             </div>
 
             <div style="padding: 14px 16px;">
@@ -2235,7 +2235,7 @@
 
     <script src="/static/js/particles.js?v=3.0.0"></script>
     <script src="/static/js/reactbits.js?v=3.0.0"></script>
-    <script src="/static/js/dashboard.js?v=19.0.0"></script>
+    <script src="/static/js/dashboard.js?v=21.0.0"></script>
     <script src="/static/js/shield_defense.js?v=3.0.0"></script>
     <script>
         if (typeof initDashboard === "function") {
@@ -2248,7 +2248,7 @@
         <div class="modal-box" style="max-width: 520px;">
             <div class="modal-header">
                 <h3>👥 Create Custom Brand Partner Client</h3>
-                <button type="button" class="modal-close" onclick="closeModal('modal-create-custom-client')">&times;</button>
+                <button type="button" class="modal-close" data-close-modal onclick="closeModal('modal-create-custom-client')">&times;</button>
             </div>
             <div class="modal-body">
                 <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 16px;">
@@ -2276,7 +2276,7 @@
                 </div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary btn-sm" onclick="closeModal('modal-create-custom-client')">Cancel</button>
+                <button type="button" data-close-modal type="button" class="btn btn-secondary btn-sm" onclick="closeModal('modal-create-custom-client')">Cancel</button>
                 <button type="button" class="btn btn-primary btn-sm" onclick="submitCreateCustomClient()">🚀 Create Client Account</button>
             </div>
         </div>
@@ -2287,7 +2287,7 @@
         <div class="modal-box" style="max-width: 520px;">
             <div class="modal-header">
                 <h3>✏️ Edit Custom Client: <span id="cc-edit-username-title" style="color: #38bdf8;"></span></h3>
-                <button type="button" class="modal-close" onclick="closeModal('modal-edit-custom-client')">&times;</button>
+                <button type="button" class="modal-close" data-close-modal onclick="closeModal('modal-edit-custom-client')">&times;</button>
             </div>
             <div class="modal-body">
                 <input type="hidden" id="cc-edit-client-id">
@@ -2308,7 +2308,7 @@
                 </div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary btn-sm" onclick="closeModal('modal-edit-custom-client')">Cancel</button>
+                <button type="button" data-close-modal type="button" class="btn btn-secondary btn-sm" onclick="closeModal('modal-edit-custom-client')">Cancel</button>
                 <button type="button" class="btn btn-primary btn-sm" onclick="submitEditCustomClient()">💾 Save Changes</button>
             </div>
         </div>
@@ -2320,7 +2320,7 @@
         <div class="modal-box" style="max-width: 520px;">
             <div class="modal-header">
                 <h3>📱 Manage Assigned Apps: <span id="reseller-apps-title" style="color: #38bdf8;"></span></h3>
-                <button type="button" class="modal-close" onclick="closeModal('modal-manage-reseller-apps')">&times;</button>
+                <button type="button" class="modal-close" data-close-modal onclick="closeModal('modal-manage-reseller-apps')">&times;</button>
             </div>
             <div class="modal-body">
                 <input type="hidden" id="reseller-apps-id">
@@ -2330,7 +2330,7 @@
                 <div id="reseller-apps-checkbox-container" style="display: flex; flex-direction: column; gap: 8px; max-height: 220px; overflow-y: auto; background: rgba(0,0,0,0.4); padding: 12px; border-radius: 8px; border: 1px solid var(--border-glass);"></div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary btn-sm" onclick="closeModal('modal-manage-reseller-apps')">Cancel</button>
+                <button type="button" data-close-modal type="button" class="btn btn-secondary btn-sm" onclick="closeModal('modal-manage-reseller-apps')">Cancel</button>
                 <button type="button" class="btn btn-primary btn-sm" onclick="submitSaveResellerApps()">💾 Save Assigned Apps</button>
             </div>
         </div>

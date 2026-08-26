@@ -3674,64 +3674,78 @@ function setupChangePassword() {
 }
 
 function setupModals() {
-    // Close button and data-close-modal listeners
-    document.querySelectorAll(".modal-close, [data-close-modal]").forEach(btn => {
-        btn.addEventListener("click", (e) => {
+    // Universal Click Delegator for all modal close / cancel triggers across entire document
+    document.addEventListener("click", (e) => {
+        const closeBtn = e.target.closest(".modal-close, [data-close-modal], .btn-modal-close");
+        if (closeBtn) {
             e.preventDefault();
             e.stopPropagation();
-            const parentModal = btn.closest(".modal-overlay");
+            const parentModal = closeBtn.closest(".modal-overlay");
             if (parentModal) {
-                parentModal.classList.remove("active");
+                closeModal(parentModal.id || parentModal);
             } else {
-                document.querySelectorAll(".modal-overlay").forEach(m => m.classList.remove("active"));
+                closeModal();
             }
-        });
-    });
+            return;
+        }
 
-    // Backdrop click listener (close when clicking outside modal box)
-    document.querySelectorAll(".modal-overlay").forEach(modal => {
-        modal.addEventListener("click", (e) => {
-            if (e.target === modal) {
-                modal.classList.remove("active");
+        // Also catch Cancel buttons inside modal footer
+        if (e.target.tagName === "BUTTON" && (e.target.textContent.trim() === "Cancel" || e.target.innerText.trim() === "Cancel")) {
+            const parentModal = e.target.closest(".modal-overlay");
+            if (parentModal) {
+                e.preventDefault();
+                e.stopPropagation();
+                closeModal(parentModal.id || parentModal);
+                return;
             }
-        });
-    });
+        }
 
-    // Keyboard ESC key listener
+        // Backdrop click listener
+        if (e.target.classList && e.target.classList.contains("modal-overlay")) {
+            closeModal(e.target.id || e.target);
+        }
+    }, true);
+
+    // Universal ESC Key listener
     window.addEventListener("keydown", (e) => {
         if (e.key === "Escape") {
-            document.querySelectorAll(".modal-overlay.active").forEach(m => m.classList.remove("active"));
+            closeModal();
         }
     });
 }
 
 function openModal(id) {
     if (!id) return;
-    const modal = document.getElementById(id);
+    const modal = (typeof id === "string") ? document.getElementById(id) : id;
     if (modal) {
+        // Ensure all other modals are closed
+        document.querySelectorAll(".modal-overlay").forEach(m => {
+            if (m !== modal) {
+                m.classList.remove("active");
+                m.style.setProperty("display", "none", "important");
+            }
+        });
         modal.classList.add("active");
         modal.style.setProperty("display", "flex", "important");
     }
 }
 
 function closeModal(id) {
-    if (!id) {
-        document.querySelectorAll(".modal-overlay").forEach(m => {
+    if (id) {
+        const modal = (typeof id === "string") ? document.getElementById(id) : id;
+        if (modal) {
+            modal.classList.remove("active");
+            modal.style.setProperty("display", "none", "important");
+            modal.style.removeProperty("display");
+        }
+    }
+    document.querySelectorAll(".modal-overlay").forEach(m => {
+        if (!id || m.id === id || m === id) {
             m.classList.remove("active");
             m.style.setProperty("display", "none", "important");
-        });
-        return;
-    }
-    const modal = document.getElementById(id);
-    if (modal) {
-        modal.classList.remove("active");
-        modal.style.setProperty("display", "none", "important");
-    } else {
-        document.querySelectorAll(".modal-overlay.active").forEach(m => {
-            m.classList.remove("active");
-            m.style.setProperty("display", "none", "important");
-        });
-    }
+            m.style.removeProperty("display");
+        }
+    });
 }
 
 function copyToClipboard(text) {
@@ -4136,30 +4150,48 @@ function renderCustomClientsTable() {
     const tableBody = document.getElementById("custom-clients-table-body");
     if (!tableBody) return;
 
-    const query = (document.getElementById("custom-clients-search")?.value || "").toLowerCase().trim();
+    const searchInput = document.getElementById("custom-clients-search");
+    const query = (searchInput ? searchInput.value : "").toLowerCase().trim();
     let filtered = customClientsList || [];
     if (query) {
         filtered = filtered.filter(c => 
             (c.username && c.username.toLowerCase().includes(query)) ||
             (c.notes && c.notes.toLowerCase().includes(query)) ||
-            (c.assigned_app_names && c.assigned_app_names.some(name => String(name).toLowerCase().includes(query)))
+            (c.assigned_app_names && c.assigned_app_names.some(name => String(name).toLowerCase().includes(query))) ||
+            (c.allowed_apps && c.allowed_apps.toLowerCase().includes(query))
         );
     }
 
     if (filtered.length === 0) {
-        tableBody.innerHTML = `
-            <tr>
-                <td colspan="5" style="text-align: center; padding: 45px 20px;">
-                    <div style="display: flex; flex-direction: column; align-items: center; gap: 10px;">
-                        <span style="font-size: 34px;">👥</span>
-                        <strong style="color: #fff; font-size: 16px;">No Custom Brand Clients Added Yet</strong>
-                        <span style="color: var(--text-secondary); font-size: 13px; max-width: 500px; line-height: 1.5;">
-                            Click "<strong>➕ Create Custom Client</strong>" above to create a client, or use "<strong>👑 Upgrade to Client</strong>" in the Resellers tab to convert an existing reseller!
-                        </span>
-                    </div>
-                </td>
-            </tr>
-        `;
+        if (query) {
+            tableBody.innerHTML = `
+                <tr>
+                    <td colspan="5" style="text-align: center; padding: 50px 20px;">
+                        <div style="display: flex; flex-direction: column; align-items: center; gap: 10px;">
+                            <span style="font-size: 32px;">🔍</span>
+                            <strong style="color: #fff; font-size: 15px;">No client matching search: "${escapeHtml(query)}"</strong>
+                            <span style="color: var(--text-muted); font-size: 13px;">
+                                <button type="button" onclick="const si=document.getElementById('custom-clients-search'); if(si) si.value=''; renderCustomClientsTable();" class="btn btn-secondary btn-sm" style="margin-top: 6px; padding: 6px 14px; font-weight: 700;">Clear Search Filter</button>
+                            </span>
+                        </div>
+                    </td>
+                </tr>
+            `;
+        } else {
+            tableBody.innerHTML = `
+                <tr>
+                    <td colspan="5" style="text-align: center; padding: 50px 20px;">
+                        <div style="display: flex; flex-direction: column; align-items: center; gap: 10px;">
+                            <span style="font-size: 36px;">👥</span>
+                            <strong style="color: #fff; font-size: 16px;">No Custom Brand Clients Added Yet</strong>
+                            <span style="color: var(--text-secondary); font-size: 13px; max-width: 500px; line-height: 1.5;">
+                                Click "<strong>➕ Create Custom Client</strong>" above to add a client, or use "<strong>👑 Upgrade to Client</strong>" in the Resellers tab to convert an existing reseller!
+                            </span>
+                        </div>
+                    </td>
+                </tr>
+            `;
+        }
         return;
     }
 
@@ -4266,6 +4298,8 @@ async function submitCreateCustomClient() {
         if (res && res.success) {
             showToast(res.message || "Custom client created!", "success");
             closeModal("modal-create-custom-client");
+            const searchInput = document.getElementById("custom-clients-search");
+            if (searchInput) searchInput.value = "";
             loadCustomClients();
 
             const appNames = checkedBoxes.map(cb => {
