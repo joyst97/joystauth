@@ -2068,7 +2068,7 @@ async function loadResellers() {
             <td>
                 <div style="display: flex; gap: 5px; align-items: center; justify-content: flex-end; flex-wrap: wrap;">
                     <button class="btn btn-secondary btn-sm" style="padding: 4px 8px; font-size: 11px; font-weight: 700;" onclick="openManageResellerAppsModal(${r.id}, '${escapeHtml(r.username)}', '${escapeHtml(r.allowed_apps || '')}')" title="Add / Remove Authorized Apps">📱 Apps</button>
-                    <button class="btn btn-primary btn-sm" style="padding: 4px 8px; font-size: 11px; font-weight: 700; background: linear-gradient(135deg, #a855f7, #6366f1); border-color: #a855f7;" onclick="convertResellerToCustomClient(${r.id}, '${escapeHtml(r.username)}')" title="Convert to Custom Client with full dashboard access">👑 Upgrade to Client</button>
+                    ${window.isCustomClientRole ? '' : `<button class="btn btn-primary btn-sm" style="padding: 4px 8px; font-size: 11px; font-weight: 700; background: linear-gradient(135deg, #a855f7, #6366f1); border-color: #a855f7;" onclick="convertResellerToCustomClient(${r.id}, '${escapeHtml(r.username)}')" title="Convert to Custom Client with full dashboard access">👑 Upgrade to Client</button>`}
                     <button class="btn btn-secondary btn-sm" onclick="openManageResellerCreditsModal(${r.id}, '${escapeHtml(r.username)}', ${r.balance})" title="Add/Deduct Credits">🪙 Credits</button>
                     <button class="btn btn-secondary btn-sm" onclick="openViewResellerKeysModal(${r.id}, '${escapeHtml(r.username)}')" title="Inspect Generated Keys">🔍 Keys</button>
                     <button class="btn btn-secondary btn-sm" onclick="openResetResellerPassModal(${r.id}, '${escapeHtml(r.username)}')" title="Reset Password">🔑 Pass</button>
@@ -3706,13 +3706,32 @@ function setupModals() {
 }
 
 function openModal(id) {
+    if (!id) return;
     const modal = document.getElementById(id);
-    if (modal) modal.classList.add("active");
+    if (modal) {
+        modal.classList.add("active");
+        modal.style.setProperty("display", "flex", "important");
+    }
 }
 
 function closeModal(id) {
+    if (!id) {
+        document.querySelectorAll(".modal-overlay").forEach(m => {
+            m.classList.remove("active");
+            m.style.setProperty("display", "none", "important");
+        });
+        return;
+    }
     const modal = document.getElementById(id);
-    if (modal) modal.classList.remove("active");
+    if (modal) {
+        modal.classList.remove("active");
+        modal.style.setProperty("display", "none", "important");
+    } else {
+        document.querySelectorAll(".modal-overlay.active").forEach(m => {
+            m.classList.remove("active");
+            m.style.setProperty("display", "none", "important");
+        });
+    }
 }
 
 function copyToClipboard(text) {
@@ -4085,14 +4104,16 @@ async function loadCustomClients() {
 
     try {
         const data = await apiFetch("/api/v1/admin/custom-clients");
-        if (data && data.success) {
+        if (data && (data.success || Array.isArray(data.clients))) {
             customClientsList = data.clients || [];
             renderCustomClientsTable();
         } else {
-            tableBody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 30px;">${escapeHtml(data?.detail || data?.message || "No custom brand clients found.")}</td></tr>`;
+            customClientsList = [];
+            renderCustomClientsTable();
         }
     } catch (e) {
-        tableBody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 30px;">Failed to load clients. Click "Refresh" to retry.</td></tr>`;
+        customClientsList = [];
+        renderCustomClientsTable();
     }
 }
 
@@ -4105,37 +4126,52 @@ function renderCustomClientsTable() {
     if (!tableBody) return;
 
     const query = (document.getElementById("custom-clients-search")?.value || "").toLowerCase().trim();
-    let filtered = customClientsList;
+    let filtered = customClientsList || [];
     if (query) {
-        filtered = customClientsList.filter(c => 
-            c.username.toLowerCase().includes(query) ||
+        filtered = filtered.filter(c => 
+            (c.username && c.username.toLowerCase().includes(query)) ||
             (c.notes && c.notes.toLowerCase().includes(query)) ||
-            (c.assigned_app_names && c.assigned_app_names.some(name => name.toLowerCase().includes(query)))
+            (c.assigned_app_names && c.assigned_app_names.some(name => String(name).toLowerCase().includes(query)))
         );
     }
 
     if (filtered.length === 0) {
-        tableBody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 36px;">No custom clients found. Click "➕ Create Custom Client" to add one.</td></tr>`;
+        tableBody.innerHTML = `
+            <tr>
+                <td colspan="5" style="text-align: center; padding: 45px 20px;">
+                    <div style="display: flex; flex-direction: column; align-items: center; gap: 10px;">
+                        <span style="font-size: 34px;">👥</span>
+                        <strong style="color: #fff; font-size: 16px;">No Custom Brand Clients Added Yet</strong>
+                        <span style="color: var(--text-secondary); font-size: 13px; max-width: 500px; line-height: 1.5;">
+                            Click "<strong>➕ Create Custom Client</strong>" above to create a client, or use "<strong>👑 Upgrade to Client</strong>" in the Resellers tab to convert an existing reseller!
+                        </span>
+                    </div>
+                </td>
+            </tr>
+        `;
         return;
     }
 
     tableBody.innerHTML = filtered.map(c => {
-        const appBadges = (c.assigned_app_names && c.assigned_app_names.length > 0)
-            ? c.assigned_app_names.map(name => `<span class="badge badge-cyan" style="font-size: 11px; margin: 2px;">📱 ${escapeHtml(name)}</span>`).join(" ")
-            : `<span style="color: var(--text-muted); font-size: 12px;">No apps assigned</span>`;
+        let appBadges = '<span style="color: var(--text-muted); font-size: 12px;">No apps assigned</span>';
+        if (c.assigned_app_names && c.assigned_app_names.length > 0) {
+            appBadges = c.assigned_app_names.map(name => `<span class="badge badge-cyan" style="font-size: 11px; margin: 2px;">📱 ${escapeHtml(name)}</span>`).join(" ");
+        } else if (c.allowed_apps) {
+            appBadges = c.allowed_apps.split(",").map(a => `<span class="badge badge-cyan" style="font-size: 11px; margin: 2px;">📱 ${escapeHtml(a.trim())}</span>`).join(" ");
+        }
 
-        const dateStr = c.created_at ? new Date(c.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : "-";
+        const dateStr = c.created_at ? new Date(c.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : "Active";
 
         return `
             <tr>
                 <td>
                     <div style="display: flex; align-items: center; gap: 10px;">
-                        <div style="width: 32px; height: 32px; border-radius: 8px; background: linear-gradient(135deg, #a855f7, #6366f1); display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 800; color: #fff;">
-                            ${c.username.charAt(0).toUpperCase()}
+                        <div style="width: 34px; height: 34px; border-radius: 9px; background: linear-gradient(135deg, #a855f7, #6366f1); display: flex; align-items: center; justify-content: center; font-size: 15px; font-weight: 800; color: #fff; box-shadow: 0 0 15px rgba(168, 85, 247, 0.4);">
+                            ${(c.username || 'C').charAt(0).toUpperCase()}
                         </div>
                         <div>
-                            <strong style="color: #fff; font-size: 14px;">${escapeHtml(c.username)}</strong>
-                            <div style="font-size: 11px; color: #a855f7; font-weight: 700;">Brand Partner / Client</div>
+                            <strong style="color: #fff; font-size: 14.5px;">${escapeHtml(c.username)}</strong>
+                            <div style="font-size: 11px; color: #a855f7; font-weight: 700;">👑 Brand Partner Client</div>
                         </div>
                     </div>
                 </td>
@@ -4147,10 +4183,10 @@ function renderCustomClientsTable() {
                 <td style="font-size: 12.5px; color: var(--text-secondary);">${escapeHtml(c.notes || '-')}</td>
                 <td style="font-size: 12px; color: var(--text-muted);">${dateStr}</td>
                 <td style="text-align: right;">
-                    <div style="display: flex; gap: 5px; justify-content: flex-end; flex-wrap: wrap;">
-                        <button class="btn btn-secondary btn-sm" style="padding: 4px 8px; font-size: 11px; font-weight: 700;" onclick="openEditCustomClientModal(${c.id})" title="Add/Remove Apps or Edit Password">📱 Apps & Pass</button>
-                        <button class="btn btn-secondary btn-sm" style="padding: 4px 8px; font-size: 11px; font-weight: 700;" onclick="convertCustomClientToReseller(${c.id}, '${escapeHtml(c.username)}')" title="Convert to Reseller">🔄 Convert to Reseller</button>
-                        <button class="btn btn-danger btn-sm" style="padding: 4px 8px; font-size: 11px;" onclick="deleteCustomClient(${c.id}, '${escapeHtml(c.username)}')">🗑️</button>
+                    <div style="display: flex; gap: 6px; justify-content: flex-end; flex-wrap: wrap;">
+                        <button class="btn btn-secondary btn-sm" style="padding: 5px 10px; font-size: 11.5px; font-weight: 700;" onclick="openEditCustomClientModal(${c.id})" title="Add/Remove Apps or Edit Password">📱 Apps & Pass</button>
+                        <button class="btn btn-secondary btn-sm" style="padding: 5px 10px; font-size: 11.5px; font-weight: 700;" onclick="convertCustomClientToReseller(${c.id}, '${escapeHtml(c.username)}')" title="Convert to Reseller">🔄 Convert to Reseller</button>
+                        <button class="btn btn-danger btn-sm" style="padding: 5px 10px; font-size: 11.5px;" onclick="deleteCustomClient(${c.id}, '${escapeHtml(c.username)}')">🗑️</button>
                     </div>
                 </td>
             </tr>
@@ -4158,7 +4194,10 @@ function renderCustomClientsTable() {
     }).join("");
 }
 
-function openCreateCustomClientModal() {
+async function openCreateCustomClientModal() {
+    if (!appsList || appsList.length === 0) {
+        await loadApps();
+    }
     const container = document.getElementById("cc-create-apps-container");
     if (container) {
         if (!appsList || appsList.length === 0) {

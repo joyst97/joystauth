@@ -1139,7 +1139,30 @@ async def delete_blacklist(bl_id: int, dev: Developer = Depends(get_current_deve
 # ==================== 8. RESELLERS ====================
 @router.get("/resellers")
 async def list_resellers(dev: Developer = Depends(get_current_developer), db: Session = Depends(get_db)):
-    resellers = db.query(Reseller).filter(Reseller.developer_id == dev.id).all()
+    query = db.query(Reseller).filter(Reseller.developer_id == dev.id)
+    is_cc = getattr(dev, "is_custom_client", False)
+    
+    if is_cc:
+        allowed_raw = getattr(dev, "allowed_apps_list", [])
+        all_apps = db.query(Application).filter(Application.developer_id == dev.id).all()
+        allowed_app_ids = [str(a.id) for a in all_apps if str(a.id) in allowed_raw or a.name in allowed_raw]
+        allowed_app_names = [a.name.lower() for a in all_apps if str(a.id) in allowed_raw or a.name in allowed_raw]
+        
+        all_resellers = query.all()
+        scoped_resellers = []
+        for r in all_resellers:
+            r_allowed = [x.strip() for x in (r.allowed_apps or "").split(",") if x.strip()]
+            # Only include reseller if their apps intersect with this Custom Client's assigned apps
+            intersects = any(
+                (item in allowed_app_ids or item.lower() in allowed_app_names or item in allowed_raw)
+                for item in r_allowed
+            )
+            if intersects:
+                scoped_resellers.append(r)
+        resellers = scoped_resellers
+    else:
+        resellers = query.all()
+
     results = []
     for r in resellers:
         total_keys = db.query(License).filter(License.created_by_reseller == r.username).count()
@@ -1150,7 +1173,7 @@ async def list_resellers(dev: Developer = Depends(get_current_developer), db: Se
             "username": r.username,
             "balance": r.balance,
             "allowed_apps": r.allowed_apps,
-            "created_at": r.created_at.isoformat(),
+            "created_at": r.created_at.isoformat() if r.created_at else None,
             "total_keys": total_keys,
             "used_keys": used_keys,
             "unused_keys": unused_keys
@@ -1464,12 +1487,16 @@ async def get_developer_stats(dev: Developer = Depends(get_current_developer), d
 
     recent_logs = db.query(AuditLog).filter(AuditLog.app_id.in_(app_ids)).order_by(desc(AuditLog.timestamp)).limit(10).all() if app_ids else []
 
+    is_cc = getattr(dev, "is_custom_client", False)
+    username_display = getattr(dev, "custom_client_username", dev.username) if is_cc else dev.username
+    plan_display = "Enterprise" if is_cc else dev.plan
+
     return {
         "success": True,
-        "owner_id": dev.owner_id,
-        "username": dev.username,
-        "plan": dev.plan,
-        "max_apps": dev.max_apps,
+        "owner_id": "Protected" if is_cc else dev.owner_id,
+        "username": username_display,
+        "plan": plan_display,
+        "max_apps": len(dev_apps) if is_cc else dev.max_apps,
         "stats": {
             "total_apps": total_apps,
             "total_users": total_users,
@@ -2558,6 +2585,7 @@ async def list_custom_clients(dev: Developer = Depends(get_current_developer), d
     if getattr(dev, "is_custom_client", False):
         raise HTTPException(status_code=403, detail="Unauthorized")
     
+    clients = []
     try:
         clients = db.query(CustomClient).filter(CustomClient.developer_id == dev.id).order_by(CustomClient.id.desc()).all()
     except Exception as e:
@@ -2576,21 +2604,29 @@ async def list_custom_clients(dev: Developer = Depends(get_current_developer), d
     
     result = []
     for c in clients:
-        allowed_raw = [x.strip() for x in (c.allowed_apps or "").split(",") if x.strip()]
+        allowed_raw = [x.strip() for x in (getattr(c, "allowed_apps", "") or "").split(",") if x.strip()]
         app_names = []
         for item in allowed_raw:
             if item.isdigit() and int(item) in all_dev_apps:
                 app_names.append(all_dev_apps[int(item)])
             elif item in all_dev_apps.values():
                 app_names.append(item)
+            elif item.isdigit():
+                app_obj = db.query(Application).filter(Application.id == int(item)).first()
+                if app_obj:
+                    app_names.append(app_obj.name)
+                else:
+                    app_names.append(f"App #{item}")
             elif item == "all":
                 app_names.append("All Applications")
+            else:
+                app_names.append(item)
 
         result.append({
             "id": c.id,
             "username": c.username,
-            "allowed_apps": c.allowed_apps or "",
-            "assigned_app_names": app_names,
+            "allowed_apps": getattr(c, "allowed_apps", "") or "",
+            "assigned_app_names": app_names if app_names else ["Custom Panel"],
             "notes": getattr(c, "notes", "") or "",
             "created_at": c.created_at.isoformat() if getattr(c, "created_at", None) else None
         })
