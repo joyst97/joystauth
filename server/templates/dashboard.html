@@ -7,7 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/static/css/dashboard.css?v=4.0.0">
+    <link rel="stylesheet" href="/static/css/dashboard.css?v=7.0.0">
     <style>
 /* ==================== CRITICAL INLINE DASHBOARD SIDEBAR STYLES ==================== */
 
@@ -457,6 +457,10 @@
                 <li class="nav-item" data-tab="resellers" data-tooltip="Resellers" onclick="switchTab('resellers')">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="8.5" cy="7" r="4"></circle><line x1="20" y1="8" x2="20" y2="14"></line><line x1="23" y1="11" x2="17" y2="11"></line></svg>
                     <span>Resellers</span>
+                </li>
+                <li class="nav-item" data-tab="custom-clients" id="sidebar-tab-custom-clients" data-tooltip="Custom Clients" onclick="switchTab('custom-clients')">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+                    <span>Custom Clients</span>
                 </li>
                 <li class="nav-item" data-tab="webhooks" data-tooltip="Discord Bot & Logs" onclick="switchTab('webhooks')">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M22 17H2a3 3 0 0 0 3-3V9a7 7 0 0 1 14 0v5a3 3 0 0 0 3 3zm-8.27 4a2 2 0 0 1-3.46 0"></path></svg>
@@ -1328,6 +1332,43 @@
                 </div>
             </section>
 
+            
+            <!-- 14. TAB: CUSTOM CLIENTS / SUB-DEVELOPERS -->
+            <section id="page-custom-clients" class="page-container">
+                <div class="page-header">
+                    <div class="page-title">
+                        <h2>Custom Brand Partners & Clients</h2>
+                        <p>Delegate full application management (Maintenance, Keys, Users, Settings) to branded client owners without allowing them to create new apps.</p>
+                    </div>
+                    <button class="btn btn-primary btn-sm" onclick="openCreateCustomClientModal()">
+                        <span>➕ Create Custom Client</span>
+                    </button>
+                </div>
+
+                <div class="table-card spotlight-card">
+                    <div class="table-toolbar" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+                        <div class="search-input-wrap" style="width: 320px;">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                            <input type="text" id="custom-clients-search" class="search-input" placeholder="Search custom clients..." oninput="filterCustomClientsTable()">
+                        </div>
+                        <button class="btn btn-secondary btn-sm" onclick="loadCustomClients()">🔄 Refresh</button>
+                    </div>
+
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Client Username</th>
+                                <th>Assigned Applications</th>
+                                <th>Notes</th>
+                                <th>Created Date</th>
+                                <th style="text-align: right;">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="custom-clients-table-body"></tbody>
+                    </table>
+                </div>
+            </section>
+
             <!-- 12. TAB: SDK CODE STUDIO -->
             <section id="page-sdk" class="page-container">
                 <div class="page-header">
@@ -1391,6 +1432,7 @@
                         <button class="code-tab-btn" data-lang="nodejs" onclick="setSnippetLang('nodejs')">🟢 Node.js / Electron</button>
                         <button class="code-tab-btn" data-lang="java" onclick="setSnippetLang('java')">☕ Java</button>
                         <button class="code-tab-btn" data-lang="rust" onclick="setSnippetLang('rust')">🦀 Rust</button>
+                        <button class="code-tab-btn" data-lang="go" onclick="setSnippetLang('go')">🐹 Go (Golang)</button>
                     </div>
                     <pre class="code-block" id="sdk-code-display"></pre>
                 </div>
@@ -2193,12 +2235,106 @@
 
     <script src="/static/js/particles.js?v=3.0.0"></script>
     <script src="/static/js/reactbits.js?v=3.0.0"></script>
-    <script src="/static/js/dashboard.js?v=4.0.0"></script>
+    <script src="/static/js/dashboard.js?v=7.0.0"></script>
     <script src="/static/js/shield_defense.js?v=3.0.0"></script>
     <script>
         if (typeof initDashboard === "function") {
             try { initDashboard(); } catch (e) { console.error("InitDashboard auto-run error:", e); }
         }
     </script>
+
+    <!-- Create Custom Client Modal -->
+    <div id="modal-create-custom-client" class="modal-overlay">
+        <div class="modal-box" style="max-width: 520px;">
+            <div class="modal-header">
+                <h3>👥 Create Custom Brand Partner Client</h3>
+                <button class="modal-close" data-close-modal>&times;</button>
+            </div>
+            <div class="modal-body">
+                <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 16px;">
+                    Client will be able to log in to the Dashboard with full Paid features for their assigned apps (Maintenance mode, Keys, Users, Settings), but <strong>cannot create new applications</strong>.
+                </p>
+
+                <div class="form-group">
+                    <label>Client Username</label>
+                    <input type="text" id="cc-create-username" class="form-control" placeholder="e.g. snow_owner" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Login Password</label>
+                    <input type="text" id="cc-create-password" class="form-control mono" placeholder="Enter secure password" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Assign Applications (Select which apps this client can manage):</label>
+                    <div id="cc-create-apps-container" style="display: flex; flex-direction: column; gap: 8px; max-height: 180px; overflow-y: auto; background: rgba(0,0,0,0.4); padding: 12px; border-radius: 8px; border: 1px solid var(--border-glass);"></div>
+                </div>
+
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label>Internal Notes (Optional)</label>
+                    <input type="text" id="cc-create-notes" class="form-control" placeholder="e.g. Snow Cheats Owner - Discord @snow">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary btn-sm" data-close-modal>Cancel</button>
+                <button class="btn btn-primary btn-sm" onclick="submitCreateCustomClient()">🚀 Create Client Account</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Custom Client Modal -->
+    <div id="modal-edit-custom-client" class="modal-overlay">
+        <div class="modal-box" style="max-width: 520px;">
+            <div class="modal-header">
+                <h3>✏️ Edit Custom Client: <span id="cc-edit-username-title" style="color: #38bdf8;"></span></h3>
+                <button class="modal-close" data-close-modal>&times;</button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="cc-edit-client-id">
+
+                <div class="form-group">
+                    <label>New Password (Leave blank to keep current password)</label>
+                    <input type="text" id="cc-edit-password" class="form-control mono" placeholder="Enter new password (optional)">
+                </div>
+
+                <div class="form-group">
+                    <label>Assigned Applications:</label>
+                    <div id="cc-edit-apps-container" style="display: flex; flex-direction: column; gap: 8px; max-height: 180px; overflow-y: auto; background: rgba(0,0,0,0.4); padding: 12px; border-radius: 8px; border: 1px solid var(--border-glass);"></div>
+                </div>
+
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label>Internal Notes</label>
+                    <input type="text" id="cc-edit-notes" class="form-control" placeholder="Client notes">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary btn-sm" data-close-modal>Cancel</button>
+                <button class="btn btn-primary btn-sm" onclick="submitEditCustomClient()">💾 Save Changes</button>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- Manage Reseller Apps Modal -->
+    <div id="modal-manage-reseller-apps" class="modal-overlay">
+        <div class="modal-box" style="max-width: 520px;">
+            <div class="modal-header">
+                <h3>📱 Manage Assigned Apps: <span id="reseller-apps-title" style="color: #38bdf8;"></span></h3>
+                <button class="modal-close" data-close-modal>&times;</button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="reseller-apps-id">
+                <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 14px;">
+                    Select which applications this reseller is authorized to sell and generate license keys for:
+                </p>
+                <div id="reseller-apps-checkbox-container" style="display: flex; flex-direction: column; gap: 8px; max-height: 220px; overflow-y: auto; background: rgba(0,0,0,0.4); padding: 12px; border-radius: 8px; border: 1px solid var(--border-glass);"></div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary btn-sm" data-close-modal>Cancel</button>
+                <button class="btn btn-primary btn-sm" onclick="submitSaveResellerApps()">💾 Save Assigned Apps</button>
+            </div>
+        </div>
+    </div>
+
 </body>
 </html>

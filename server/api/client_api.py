@@ -339,7 +339,16 @@ async def client_gateway(req_data: EncryptedPayloadRequest, request: Request, db
                     db.commit()
                     log_audit(db, app.id, "HWID_BIND", username=username, ip_address=ip, hwid=hwid, details="Hardware bound on first login", status="SUCCESS")
 
-                if is_hwid_locked and user.hwid and user.hwid != hwid:
+                hwid_matched = (user.hwid.strip().lower() == hwid.strip().lower()) if (user.hwid and hwid) else True
+                if not hwid_matched and user.hwid and hwid:
+                    import hashlib
+                    hashed_hwid = hashlib.sha256(hwid.strip().upper().encode("utf-8")).hexdigest()
+                    if user.hwid.strip().lower() == hashed_hwid.lower():
+                        hwid_matched = True
+                        user.hwid = hwid
+                        db.commit()
+
+                if is_hwid_locked and user.hwid and not hwid_matched:
                     log_audit(db, app.id, "HWID_MISMATCH", username=username, ip_address=ip, hwid=hwid, details="Hardware ID mismatch", status="DANGER")
                     mismatch_msg = getattr(app, "hwid_mismatch_message", "") or "HWID Mismatch! Your account is locked to another computer. Contact administrator to reset HWID."
                     response_data = {
@@ -824,7 +833,16 @@ async def client_direct_login(data: ClientLoginRequest, request: Request, db: Se
         user.hwid = hwid
         db.commit()
 
-    if is_hwid_locked and user.hwid and hwid and user.hwid != hwid:
+    hwid_matched = (user.hwid.strip().lower() == hwid.strip().lower()) if (user.hwid and hwid) else True
+    if not hwid_matched and user.hwid and hwid:
+        import hashlib
+        hashed_hwid = hashlib.sha256(hwid.strip().upper().encode("utf-8")).hexdigest()
+        if user.hwid.strip().lower() == hashed_hwid.lower():
+            hwid_matched = True
+            user.hwid = hwid
+            db.commit()
+
+    if is_hwid_locked and user.hwid and not hwid_matched:
         log_audit(db, app.id, "HWID_MISMATCH", username=username, ip_address=ip, hwid=hwid, details="Hardware ID mismatch", status="DANGER")
         return {"success": False, "message": getattr(app, "hwid_mismatch_message", "") or "HWID Mismatch! Your account is locked to another computer."}
 
@@ -947,7 +965,16 @@ async def client_direct_license(data: ClientLicenseRequest, request: Request, db
             if not direct_user.hwid and hwid:
                 direct_user.hwid = hwid
                 db.commit()
-            if is_hwid_locked and direct_user.hwid and hwid and direct_user.hwid != hwid:
+            hwid_matched = (direct_user.hwid.strip().lower() == hwid.strip().lower()) if (direct_user.hwid and hwid) else True
+            if not hwid_matched and direct_user.hwid and hwid:
+                import hashlib
+                hashed_hwid = hashlib.sha256(hwid.strip().upper().encode("utf-8")).hexdigest()
+                if direct_user.hwid.strip().lower() == hashed_hwid.lower():
+                    hwid_matched = True
+                    direct_user.hwid = hwid
+                    db.commit()
+
+            if is_hwid_locked and direct_user.hwid and not hwid_matched:
                 log_audit(db, app.id, "HWID_MISMATCH", username=direct_user.username, ip_address=ip, hwid=hwid, details="Hardware ID mismatch", status="DANGER")
                 return {"success": False, "message": getattr(app, "hwid_mismatch_message", "") or "HWID Mismatch! This account is bound to another PC."}
             
@@ -994,7 +1021,16 @@ async def client_direct_license(data: ClientLicenseRequest, request: Request, db
             user.hwid = hwid
             db.commit()
 
-        if is_hwid_locked and user.hwid and hwid and user.hwid != hwid:
+        hwid_matched = (user.hwid.strip().lower() == hwid.strip().lower()) if (user.hwid and hwid) else True
+        if not hwid_matched and user.hwid and hwid:
+            import hashlib
+            hashed_hwid = hashlib.sha256(hwid.strip().upper().encode("utf-8")).hexdigest()
+            if user.hwid.strip().lower() == hashed_hwid.lower():
+                hwid_matched = True
+                user.hwid = hwid
+                db.commit()
+
+        if is_hwid_locked and user.hwid and not hwid_matched:
             log_audit(db, app.id, "HWID_MISMATCH", username=user.username, ip_address=ip, hwid=hwid, details="License HWID mismatch", status="DANGER")
             return {"success": False, "message": getattr(app, "hwid_mismatch_message", "") or "HWID Mismatch! This key is bound to another PC."}
 

@@ -4,7 +4,7 @@ from fastapi.responses import HTMLResponse
 from sqlalchemy.orm import Session
 from pydantic import BaseModel, EmailStr
 from typing import Optional
-from ..database import get_db, Developer
+from ..database import get_db, Developer, CustomClient
 from ..security import verify_password, hash_password, create_access_token, decode_access_token, generate_random_token
 
 router = APIRouter(prefix="/api/v1/auth", tags=["Developer Auth"])
@@ -39,7 +39,7 @@ class ChangePasswordRequest(BaseModel):
     current_password: str
     new_password: str
 
-from ..database import get_db, Developer, Reseller
+from ..database import get_db, Developer, Reseller, CustomClient
 from ..security import verify_password, hash_password, create_access_token, decode_access_token, generate_random_token
 
 # Helper to get current authenticated developer or reseller from Bearer token
@@ -52,6 +52,28 @@ def get_current_developer(authorization: Optional[str] = Header(None), db: Sessi
     if not payload:
         raise HTTPException(status_code=401, detail="Invalid or expired token")
     
+    # 0. Check if Custom Client Token
+    if payload.get("role") == "custom_client":
+        client_id = payload.get("client_id")
+        client = None
+        if client_id:
+            try:
+                client = db.query(CustomClient).filter(CustomClient.id == int(client_id)).first()
+            except Exception:
+                pass
+        if not client and payload.get("sub"):
+            client = db.query(CustomClient).filter(CustomClient.username == payload.get("sub")).first()
+        
+        if client:
+            dev = db.query(Developer).filter(Developer.id == client.developer_id).first()
+            if dev:
+                dev.is_custom_client = True
+                dev.custom_client_id = client.id
+                dev.custom_client_username = client.username
+                dev.allowed_apps_raw = client.allowed_apps or ""
+                dev.allowed_apps_list = [x.strip() for x in (client.allowed_apps or "").split(",") if x.strip()]
+                return dev
+
     dev = None
     # 1. Try finding by numeric/string id
     dev_id = payload.get("id")
@@ -233,6 +255,28 @@ async def developer_login(data: DeveloperLoginRequest, db: Session = Depends(get
             "token_type": "bearer",
             "username": reseller.username,
             "balance": reseller.balance
+        }
+
+    # 3. Check Custom Client Account (Branded Partner / Scoped Manager)
+    client = db.query(CustomClient).filter(CustomClient.username == username).first()
+    if client and verify_password(data.password, client.password_hash):
+        dev = db.query(Developer).filter(Developer.id == client.developer_id).first()
+        token = create_access_token({
+            "sub": client.username,
+            "client_id": client.id,
+            "id": dev.id if dev else client.developer_id,
+            "owner_id": dev.owner_id if dev else "",
+            "role": "custom_client",
+            "allowed_apps": client.allowed_apps or ""
+        })
+        return {
+            "success": True,
+            "role": "custom_client",
+            "redirect_url": "/dashboard",
+            "access_token": token,
+            "token_type": "bearer",
+            "username": client.username,
+            "plan": "Enterprise"
         }
 
     raise HTTPException(
@@ -707,8 +751,12 @@ async def get_me(authorization: Optional[str] = Header(None), dev: Developer = D
 
     reseller_balance = None
     username_display = dev.username
+    is_custom_client = getattr(dev, "is_custom_client", False)
 
-    if role == "reseller" and reseller_id:
+    if is_custom_client:
+        username_display = getattr(dev, "custom_client_username", dev.username)
+        role = "custom_client"
+    elif role == "reseller" and reseller_id:
         reseller = db.query(Reseller).filter(Reseller.id == reseller_id).first()
         if reseller:
             username_display = reseller.username
@@ -719,14 +767,17 @@ async def get_me(authorization: Optional[str] = Header(None), dev: Developer = D
         "id": dev.id,
         "username": username_display,
         "role": role,
+        "is_custom_client": is_custom_client,
+        "can_create_apps": not is_custom_client,
+        "allowed_apps": getattr(dev, "allowed_apps_raw", "all"),
         "reseller_balance": reseller_balance,
         "email": dev.email or "",
         "avatar_url": getattr(dev, "avatar_url", "") or "",
         "owner_id": dev.owner_id,
-        "plan": f"Reseller ({reseller_balance} Credits)" if role == "reseller" else dev.plan,
+        "plan": "Enterprise" if is_custom_client else (f"Reseller ({reseller_balance} Credits)" if role == "reseller" else dev.plan),
         "max_apps": dev.max_apps,
         "max_users_per_app": dev.max_users_per_app,
-        "is_master_admin": is_master_admin_account(dev),
+        "is_master_admin": is_master_admin_account(dev) if not is_custom_client else False,
         "created_at": dev.created_at.isoformat()
     }
 

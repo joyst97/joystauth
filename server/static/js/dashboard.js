@@ -394,7 +394,18 @@ async function loadUserProfile() {
         const planBadge = document.getElementById("header-plan-badge");
 
         if (nameEl) nameEl.textContent = devUsername;
-        if (ownerEl) ownerEl.innerHTML = `<span class="badge-dot" style="background: #10b981;"></span> Server Online`;
+        if (data.is_custom_client || data.role === "custom_client") {
+            if (ownerEl) ownerEl.innerHTML = `<span class="badge-dot" style="background: #a855f7;"></span> Brand Partner Portal`;
+            // Hide admin-only tabs for custom clients
+            const ccTab = document.getElementById("sidebar-tab-custom-clients");
+            if (ccTab) ccTab.style.display = "none";
+            const resTab = document.querySelector('[data-tab="resellers"]');
+            if (resTab) resTab.style.display = "none";
+            // Hide Create Application button in Directory
+            document.querySelectorAll('[onclick="openModal(\'modal-create-app\')"]').forEach(b => b.style.display = "none");
+        } else {
+            if (ownerEl) ownerEl.innerHTML = `<span class="badge-dot" style="background: #10b981;"></span> Server Online`;
+        }
 
         const activeAvatarUrl = data.avatar_url || "";
         renderAvatarElement(avatarEl, devUsername, activeAvatarUrl);
@@ -623,6 +634,8 @@ function loadTabContent(tabId) {
         loadAuditLogs();
     } else if (tabId === "sdk") {
         updateSdkSnippets();
+    } else if (tabId === "custom-clients") {
+        loadCustomClients();
     }
 }
 
@@ -2820,14 +2833,24 @@ function setAppsViewMode(mode) {
     if (mode === "table") {
         if (btnTable) { btnTable.className = "btn btn-primary btn-sm"; }
         if (btnCards) { btnCards.className = "btn btn-secondary btn-sm"; }
-        if (tableWrap) tableWrap.style.display = "block";
-        if (gridWrap) gridWrap.style.display = "none";
+        if (tableWrap) {
+            tableWrap.style.display = "block";
+            tableWrap.classList.remove("hidden");
+        }
+        if (gridWrap) {
+            gridWrap.style.display = "none";
+            gridWrap.classList.add("hidden");
+        }
     } else {
         if (btnTable) { btnTable.className = "btn btn-secondary btn-sm"; }
         if (btnCards) { btnCards.className = "btn btn-primary btn-sm"; }
-        if (tableWrap) tableWrap.style.display = "none";
+        if (tableWrap) {
+            tableWrap.style.display = "none";
+            tableWrap.classList.add("hidden");
+        }
         if (gridWrap) {
             gridWrap.style.display = "grid";
+            gridWrap.classList.remove("hidden");
         }
     }
     renderAllAppsList();
@@ -2976,13 +2999,25 @@ function setAppsViewModeStateOnly(mode) {
     if (mode === "table") {
         if (btnTable) { btnTable.className = "btn btn-primary btn-sm"; }
         if (btnCards) { btnCards.className = "btn btn-secondary btn-sm"; }
-        if (tableWrap) tableWrap.style.display = "block";
-        if (gridWrap) gridWrap.style.display = "none";
+        if (tableWrap) {
+            tableWrap.style.display = "block";
+            tableWrap.classList.remove("hidden");
+        }
+        if (gridWrap) {
+            gridWrap.style.display = "none";
+            gridWrap.classList.add("hidden");
+        }
     } else {
         if (btnTable) { btnTable.className = "btn btn-secondary btn-sm"; }
         if (btnCards) { btnCards.className = "btn btn-primary btn-sm"; }
-        if (tableWrap) tableWrap.style.display = "none";
-        if (gridWrap) gridWrap.style.display = "grid";
+        if (tableWrap) {
+            tableWrap.style.display = "none";
+            tableWrap.classList.add("hidden");
+        }
+        if (gridWrap) {
+            gridWrap.style.display = "grid";
+            gridWrap.classList.remove("hidden");
+        }
     }
 }
 
@@ -3419,13 +3454,41 @@ async function main() {
 
 main();`;
 
+    const goCode = `// ================== JOYST CORPORATION GOLANG SDK ==================
+package main
+
+import (
+    "fmt"
+    "./joystauth"
+)
+
+func main() {
+    // 1. Initialize JoystAuth (App Name + Master App Token)
+    auth := joystauth.New("${appName}", "${appToken}", "${version}")
+
+    // 2. Authenticate (Choose ONE method):
+    // --- Method A: Login with Username & Password ---
+    if auth.Login("testuser", "password123") {
+        fmt.Println("✅ " + auth.Response.Message)
+        fmt.Printf("User: %s | Rank: %s\n", auth.UserData.Username, auth.UserData.Subscription)
+    } else {
+        fmt.Println("❌ " + auth.Response.Message)
+    }
+
+    // --- Method B: Direct License Key Login ---
+    // if auth.License("JOYST-XXXX-XXXX") {
+    //     fmt.Println("✅ Valid Key! Logged in as: " + auth.UserData.Username)
+    // }
+}`;
+
     const codeBlocks = {
         cpp: cppCode,
         python: pythonCode,
         csharp: csharpCode,
         nodejs: nodejsCode,
         java: javaCode,
-        rust: rustCode
+        rust: rustCode,
+        go: goCode
     };
 
     window.currentSnippets = codeBlocks;
@@ -3481,6 +3544,14 @@ const sdkLangMeta = {
         desc: "File: <code class='mono' style='color:#38bdf8;'>src/main.rs</code> (Include in Cargo workspace)",
         downloadUrl: "/static/sdks/rust/src/main.rs",
         downloadName: "main.rs"
+    },
+    go: {
+        icon: "🐹",
+        title: "Golang Standalone SDK",
+        badge: "Go 1.18+",
+        desc: "File: <code class='mono' style='color:#38bdf8;'>joystauth.go</code> (Drop in package folder)",
+        downloadUrl: "/static/sdks/go/joystauth.go",
+        downloadName: "joystauth.go"
     }
 };
 
@@ -3912,3 +3983,351 @@ if (document.readyState === "loading") {
 }
 
 window.initDashboard = initDashboard;
+
+
+// ==================== 16. CUSTOM CLIENTS / SUB-DEVELOPERS SYSTEM ====================
+let customClientsList = [];
+
+async function loadCustomClients() {
+    const tableBody = document.getElementById("custom-clients-table-body");
+    if (!tableBody) return;
+
+    try {
+        const data = await apiFetch("/api/v1/admin/custom-clients");
+        if (data && data.success) {
+            customClientsList = data.clients || [];
+            renderCustomClientsTable();
+        } else {
+            tableBody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 30px;">Failed to load custom clients.</td></tr>`;
+        }
+    } catch (e) {
+        tableBody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 30px;">Error loading clients.</td></tr>`;
+    }
+}
+
+function filterCustomClientsTable() {
+    renderCustomClientsTable();
+}
+
+function renderCustomClientsTable() {
+    const tableBody = document.getElementById("custom-clients-table-body");
+    if (!tableBody) return;
+
+    const query = (document.getElementById("custom-clients-search")?.value || "").toLowerCase().trim();
+    let filtered = customClientsList;
+    if (query) {
+        filtered = customClientsList.filter(c => 
+            c.username.toLowerCase().includes(query) ||
+            (c.notes && c.notes.toLowerCase().includes(query)) ||
+            (c.assigned_app_names && c.assigned_app_names.some(name => name.toLowerCase().includes(query)))
+        );
+    }
+
+    if (filtered.length === 0) {
+        tableBody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 36px;">No custom clients found. Click "➕ Create Custom Client" to add one.</td></tr>`;
+        return;
+    }
+
+    tableBody.innerHTML = filtered.map(c => {
+        const appBadges = (c.assigned_app_names && c.assigned_app_names.length > 0)
+            ? c.assigned_app_names.map(name => `<span class="badge badge-cyan" style="font-size: 11px; margin: 2px;">📱 ${escapeHtml(name)}</span>`).join(" ")
+            : `<span style="color: var(--text-muted); font-size: 12px;">No apps assigned</span>`;
+
+        const dateStr = c.created_at ? new Date(c.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : "-";
+
+        return `
+            <tr>
+                <td>
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <div style="width: 32px; height: 32px; border-radius: 8px; background: linear-gradient(135deg, #a855f7, #6366f1); display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 800; color: #fff;">
+                            ${c.username.charAt(0).toUpperCase()}
+                        </div>
+                        <div>
+                            <strong style="color: #fff; font-size: 14px;">${escapeHtml(c.username)}</strong>
+                            <div style="font-size: 11px; color: #a855f7; font-weight: 700;">Brand Partner / Client</div>
+                        </div>
+                    </div>
+                </td>
+                <td>
+                    <div style="display: flex; flex-wrap: wrap; gap: 4px; max-width: 350px;">
+                        ${appBadges}
+                    </div>
+                </td>
+                <td style="font-size: 12.5px; color: var(--text-secondary);">${escapeHtml(c.notes || '-')}</td>
+                <td style="font-size: 12px; color: var(--text-muted);">${dateStr}</td>
+                <td style="text-align: right;">
+                    <div style="display: flex; gap: 5px; justify-content: flex-end; flex-wrap: wrap;">
+                        <button class="btn btn-secondary btn-sm" style="padding: 4px 8px; font-size: 11px; font-weight: 700;" onclick="openEditCustomClientModal(${c.id})" title="Add/Remove Apps or Edit Password">📱 Apps & Pass</button>
+                        <button class="btn btn-secondary btn-sm" style="padding: 4px 8px; font-size: 11px; font-weight: 700;" onclick="convertCustomClientToReseller(${c.id}, '${escapeHtml(c.username)}')" title="Convert to Reseller">🔄 Convert to Reseller</button>
+                        <button class="btn btn-danger btn-sm" style="padding: 4px 8px; font-size: 11px;" onclick="deleteCustomClient(${c.id}, '${escapeHtml(c.username)}')">🗑️</button>
+                    </div>
+                </td>
+            </tr>
+        `;
+    }).join("");
+}
+
+function openCreateCustomClientModal() {
+    const container = document.getElementById("cc-create-apps-container");
+    if (container) {
+        if (!appsList || appsList.length === 0) {
+            container.innerHTML = `<span style="color: var(--text-muted); font-size: 12px;">No applications available in workspace. Create an app first.</span>`;
+        } else {
+            container.innerHTML = appsList.map(a => `
+                <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; color: #fff; font-size: 13px;">
+                    <input type="checkbox" class="cc-create-app-cb" value="${a.id}" style="width: 16px; height: 16px; accent-color: #a855f7;">
+                    <span>📱 <strong>${escapeHtml(a.name)}</strong> (v${a.version || '1.0'})</span>
+                </label>
+            `).join("");
+        }
+    }
+    const userIn = document.getElementById("cc-create-username");
+    const passIn = document.getElementById("cc-create-password");
+    const notesIn = document.getElementById("cc-create-notes");
+    if (userIn) userIn.value = "";
+    if (passIn) passIn.value = "";
+    if (notesIn) notesIn.value = "";
+    openModal("modal-create-custom-client");
+}
+
+async function submitCreateCustomClient() {
+    const username = (document.getElementById("cc-create-username")?.value || "").trim();
+    const password = (document.getElementById("cc-create-password")?.value || "").trim();
+    const notes = (document.getElementById("cc-create-notes")?.value || "").trim();
+
+    const checkedBoxes = Array.from(document.querySelectorAll(".cc-create-app-cb:checked"));
+    const allowedAppIds = checkedBoxes.map(cb => cb.value).join(",");
+
+    if (!username) {
+        showToast("Please enter a client username", "warning");
+        return;
+    }
+    if (!password || password.length < 6) {
+        showToast("Password must be at least 6 characters", "warning");
+        return;
+    }
+    if (!allowedAppIds) {
+        showToast("Please select at least one application to assign", "warning");
+        return;
+    }
+
+    try {
+        const res = await apiFetch("/api/v1/admin/custom-clients", {
+            method: "POST",
+            body: JSON.stringify({
+                username: username,
+                password: password,
+                allowed_apps: allowedAppIds,
+                notes: notes
+            })
+        });
+
+        if (res && res.success) {
+            showToast(res.message || "Custom client created!", "success");
+            closeModal("modal-create-custom-client");
+            loadCustomClients();
+        } else {
+            showToast(res?.detail || res?.message || "Failed to create client", "error");
+        }
+    } catch (e) {
+        showToast("Error creating client", "error");
+    }
+}
+
+function openEditCustomClientModal(clientId) {
+    const client = customClientsList.find(c => c.id === clientId);
+    if (!client) return;
+
+    document.getElementById("cc-edit-client-id").value = client.id;
+    document.getElementById("cc-edit-username-title").textContent = client.username;
+    document.getElementById("cc-edit-password").value = "";
+    document.getElementById("cc-edit-notes").value = client.notes || "";
+
+    const assignedIds = (client.allowed_apps || "").split(",").map(x => x.trim());
+    const container = document.getElementById("cc-edit-apps-container");
+    if (container) {
+        container.innerHTML = appsList.map(a => {
+            const isChecked = assignedIds.includes(String(a.id)) || assignedIds.includes(a.name);
+            return `
+                <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; color: #fff; font-size: 13px;">
+                    <input type="checkbox" class="cc-edit-app-cb" value="${a.id}" ${isChecked ? 'checked' : ''} style="width: 16px; height: 16px; accent-color: #a855f7;">
+                    <span>📱 <strong>${escapeHtml(a.name)}</strong> (v${a.version || '1.0'})</span>
+                </label>
+            `;
+        }).join("");
+    }
+    openModal("modal-edit-custom-client");
+}
+
+async function submitEditCustomClient() {
+    const clientId = document.getElementById("cc-edit-client-id")?.value;
+    const password = (document.getElementById("cc-edit-password")?.value || "").trim();
+    const notes = (document.getElementById("cc-edit-notes")?.value || "").trim();
+
+    const checkedBoxes = Array.from(document.querySelectorAll(".cc-edit-app-cb:checked"));
+    const allowedAppIds = checkedBoxes.map(cb => cb.value).join(",");
+
+    if (!clientId) return;
+    if (!allowedAppIds) {
+        showToast("Please assign at least one application", "warning");
+        return;
+    }
+
+    const payload = {
+        allowed_apps: allowedAppIds,
+        notes: notes
+    };
+    if (password && password.length >= 6) {
+        payload.password = password;
+    }
+
+    try {
+        const res = await apiFetch(`/api/v1/admin/custom-clients/${clientId}`, {
+            method: "PUT",
+            body: JSON.stringify(payload)
+        });
+
+        if (res && res.success) {
+            showToast("Custom client updated successfully!", "success");
+            closeModal("modal-edit-custom-client");
+            loadCustomClients();
+        } else {
+            showToast(res?.detail || "Failed to update client", "error");
+        }
+    } catch (e) {
+        showToast("Error updating client", "error");
+    }
+}
+
+async function deleteCustomClient(clientId, username) {
+    if (!confirm(`Are you sure you want to delete custom client '${username}'?`)) return;
+
+    try {
+        const res = await apiFetch(`/api/v1/admin/custom-clients/${clientId}`, {
+            method: "DELETE"
+        });
+        if (res && res.success) {
+            showToast(`Custom client '${username}' deleted.`, "success");
+            loadCustomClients();
+        } else {
+            showToast(res?.detail || "Failed to delete client", "error");
+        }
+    } catch (e) {
+        showToast("Error deleting client", "error");
+    }
+}
+
+
+// ==================== RESELLER & CUSTOM CLIENT CONVERSION & APP MANAGEMENT ====================
+
+function openManageResellerAppsModal(resellerId, username, allowedApps) {
+    document.getElementById("reseller-apps-id").value = resellerId;
+    document.getElementById("reseller-apps-title").textContent = username;
+
+    const assignedIds = (allowedApps || "").split(",").map(x => x.trim());
+    const isAll = (allowedApps === "all" || !allowedApps);
+    const container = document.getElementById("reseller-apps-checkbox-container");
+
+    if (container) {
+        if (!appsList || appsList.length === 0) {
+            container.innerHTML = `<span style="color: var(--text-muted); font-size: 12px;">No applications found in workspace.</span>`;
+        } else {
+            container.innerHTML = `
+                <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; color: #38bdf8; font-size: 13px; font-weight: 700; border-bottom: 1px solid var(--border-subtle); padding-bottom: 8px; margin-bottom: 4px;">
+                    <input type="checkbox" id="reseller-app-cb-all" value="all" ${isAll ? 'checked' : ''} onchange="toggleAllResellerAppsCb(this)" style="width: 16px; height: 16px; accent-color: #38bdf8;">
+                    <span>🌟 All Applications (Full Access)</span>
+                </label>
+            ` + appsList.map(a => {
+                const isChecked = isAll || assignedIds.includes(String(a.id)) || assignedIds.includes(a.name);
+                return `
+                    <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; color: #fff; font-size: 13px;">
+                        <input type="checkbox" class="reseller-app-cb-single" value="${a.id}" ${isChecked ? 'checked' : ''} style="width: 16px; height: 16px; accent-color: #ff2a5f;">
+                        <span>📱 <strong>${escapeHtml(a.name)}</strong> (v${a.version || '1.0'})</span>
+                    </label>
+                `;
+            }).join("");
+        }
+    }
+    openModal("modal-manage-reseller-apps");
+}
+
+function toggleAllResellerAppsCb(masterCb) {
+    document.querySelectorAll(".reseller-app-cb-single").forEach(cb => {
+        cb.checked = masterCb.checked;
+    });
+}
+
+async function submitSaveResellerApps() {
+    const resellerId = document.getElementById("reseller-apps-id")?.value;
+    if (!resellerId) return;
+
+    const isAllChecked = document.getElementById("reseller-app-cb-all")?.checked;
+    let allowedVal = "all";
+
+    if (!isAllChecked) {
+        const checkedSingles = Array.from(document.querySelectorAll(".reseller-app-cb-single:checked"));
+        if (checkedSingles.length === 0) {
+            showToast("Please select at least one application", "warning");
+            return;
+        }
+        allowedVal = checkedSingles.map(cb => cb.value).join(",");
+    }
+
+    try {
+        const res = await apiFetch(`/api/v1/admin/resellers/${resellerId}/apps`, {
+            method: "PATCH",
+            body: JSON.stringify({ allowed_apps: allowedVal })
+        });
+        if (res && res.success) {
+            showToast("Assigned applications updated successfully!", "success");
+            closeModal("modal-manage-reseller-apps");
+            loadResellers();
+        } else {
+            showToast(res?.detail || "Failed to update apps", "error");
+        }
+    } catch (e) {
+        showToast("Error updating reseller apps", "error");
+    }
+}
+
+async function convertResellerToCustomClient(resellerId, username) {
+    if (!confirm(`👑 Convert Reseller '${username}' to Custom Client?\n\nThey will be able to log in with their EXACT SAME username & password and get full panel controls (Maintenance Mode, Keys, Users, Settings) for their assigned applications without re-setup.`)) {
+        return;
+    }
+
+    try {
+        const res = await apiFetch(`/api/v1/admin/resellers/${resellerId}/convert-to-client`, {
+            method: "POST"
+        });
+        if (res && res.success) {
+            showToast(res.message || `Reseller '${username}' converted to Custom Client!`, "success");
+            loadResellers();
+            if (typeof loadCustomClients === 'function') loadCustomClients();
+        } else {
+            showToast(res?.detail || res?.message || "Conversion failed", "error");
+        }
+    } catch (e) {
+        showToast("Error converting reseller", "error");
+    }
+}
+
+async function convertCustomClientToReseller(clientId, username) {
+    if (!confirm(`🔄 Convert Custom Client '${username}' back to Reseller?\n\nThey will log in with their same credentials to the Reseller Portal with Key credits.`)) {
+        return;
+    }
+
+    try {
+        const res = await apiFetch(`/api/v1/admin/custom-clients/${clientId}/convert-to-reseller`, {
+            method: "POST"
+        });
+        if (res && res.success) {
+            showToast(res.message || `Custom Client '${username}' converted to Reseller!`, "success");
+            loadCustomClients();
+            if (typeof loadResellers === 'function') loadResellers();
+        } else {
+            showToast(res?.detail || res?.message || "Conversion failed", "error");
+        }
+    } catch (e) {
+        showToast("Error converting client", "error");
+    }
+}

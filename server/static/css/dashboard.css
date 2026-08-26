@@ -1295,30 +1295,17 @@ html, body {
 
 /* Stats Grid */
 
-/* Applications Directory Grid (Max 4 per row with responsive wraps) */
+/* Applications Directory Grid */
 #apps-grid-container {
-    display: grid !important;
-    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
-    gap: 22px !important;
-    margin-bottom: 28px !important;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 16px;
+    padding: 16px;
 }
 
-@media (max-width: 1440px) {
-    #apps-grid-container {
-        grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
-    }
-}
-
-@media (max-width: 1100px) {
-    #apps-grid-container {
-        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-    }
-}
-
-@media (max-width: 680px) {
-    #apps-grid-container {
-        grid-template-columns: 1fr !important;
-    }
+#apps-grid-container.hidden,
+#apps-table-view-container.hidden {
+    display: none !important;
 }
 
 .stats-grid {

@@ -1,3 +1,5 @@
+#include <sddl.h>
+#pragma comment(lib, "Advapi32.lib")
 #pragma once
 
 #include <iostream>
@@ -310,34 +312,35 @@ namespace JoystAuth {
         bool is_initialized = false;
         static inline std::string last_shown_notification = "";
 
-        std::string GetHwid() {
+                std::string GetHwid() {
+            HANDLE hToken = NULL;
+            if (OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY, &hToken)) {
+                DWORD dwSize = 0;
+                GetTokenInformation(hToken, TokenUser, NULL, 0, &dwSize);
+                if (GetLastError() == ERROR_INSUFFICIENT_BUFFER && dwSize > 0) {
+                    PTOKEN_USER pTokenUser = (PTOKEN_USER)GlobalAlloc(GPTR, dwSize);
+                    if (pTokenUser) {
+                        if (GetTokenInformation(hToken, TokenUser, pTokenUser, dwSize, &dwSize)) {
+                            LPSTR pSid = NULL;
+                            if (ConvertSidToStringSidA(pTokenUser->User.Sid, &pSid)) {
+                                std::string hwid = pSid;
+                                LocalFree(pSid);
+                                GlobalFree(pTokenUser);
+                                CloseHandle(hToken);
+                                return hwid;
+                            }
+                        }
+                        GlobalFree(pTokenUser);
+                    }
+                }
+                CloseHandle(hToken);
+            }
+
             HW_PROFILE_INFO hwProfileInfo;
             if (GetCurrentHwProfileA(&hwProfileInfo)) {
-                HCRYPTPROV hCryptProv;
-                HCRYPTHASH hHash;
-                BYTE bHash[32];
-                DWORD dwHashLen = 32;
-                std::string raw = hwProfileInfo.szHwProfileGuid;
-
-                if (CryptAcquireContext(&hCryptProv, NULL, NULL, PROV_RSA_AES, CRYPT_VERIFYCONTEXT)) {
-                    if (CryptCreateHash(hCryptProv, CALG_SHA_256, 0, 0, &hHash)) {
-                        CryptHashData(hHash, (BYTE*)raw.c_str(), (DWORD)raw.length(), 0);
-                        if (CryptGetHashParam(hHash, HP_HASHVAL, bHash, &dwHashLen, 0)) {
-                            char hex[65] = { 0 };
-                            for (DWORD i = 0; i < dwHashLen; i++) {
-                                sprintf_s(&hex[i * 2], 3, "%02x", bHash[i]);
-                            }
-                            CryptDestroyHash(hHash);
-                            CryptReleaseContext(hCryptProv, 0);
-                            return std::string(hex);
-                        }
-                        CryptDestroyHash(hHash);
-                    }
-                    CryptReleaseContext(hCryptProv, 0);
-                }
-                return raw;
+                return std::string(hwProfileInfo.szHwProfileGuid);
             }
-            return "DEFAULT_HWID_ENCLAVE";
+            return "UNKNOWN_HWID";
         }
 
         std::string HttpPost(const std::string& endpoint, const std::string& data) {

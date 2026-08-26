@@ -60,6 +60,7 @@ class Developer(Base):
 
     applications = relationship("Application", back_populates="developer", cascade="all, delete-orphan")
     resellers = relationship("Reseller", back_populates="developer", cascade="all, delete-orphan")
+    custom_clients = relationship("CustomClient", back_populates="developer", cascade="all, delete-orphan")
 
 class Application(Base):
     __tablename__ = "applications"
@@ -234,6 +235,19 @@ class Reseller(Base):
 
     developer = relationship("Developer", back_populates="resellers")
 
+class CustomClient(Base):
+    __tablename__ = "custom_clients"
+    id = Column(Integer, primary_key=True, index=True)
+    developer_id = Column(Integer, ForeignKey("developers.id"), nullable=False)
+    username = Column(String(100), unique=True, index=True, nullable=False)
+    password_hash = Column(String(255), nullable=False)
+    discord_id = Column(String(50), unique=True, index=True, nullable=True)
+    allowed_apps = Column(String(255), default="") # Comma-separated app IDs
+    notes = Column(String(255), default="")
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+
+    developer = relationship("Developer", back_populates="custom_clients")
+
 class PlanKey(Base):
     __tablename__ = "plan_keys"
     id = Column(Integer, primary_key=True, index=True)
@@ -364,6 +378,9 @@ def init_db():
         ("applications", "webhook_on_register", "BOOLEAN DEFAULT TRUE"),
         ("applications", "webhook_on_hwid_reset", "BOOLEAN DEFAULT TRUE"),
         ("applications", "webhook_on_failed", "BOOLEAN DEFAULT TRUE"),
+        ("custom_clients", "discord_id", "VARCHAR(50)"),
+        ("custom_clients", "allowed_apps", "VARCHAR(255) DEFAULT ''"),
+        ("custom_clients", "notes", "VARCHAR(255) DEFAULT ''"),
         ("applications", "webhook_on_key_gen", "BOOLEAN DEFAULT TRUE"),
         ("applications", "webhook_on_ban", "BOOLEAN DEFAULT TRUE"),
         ("users", "level", "INTEGER DEFAULT 1"),

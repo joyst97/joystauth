@@ -109,8 +109,7 @@ def verify_hmac_signature(data: str, signature: str, secret: str) -> bool:
     return hmac.compare_digest(expected_sig, signature)
 
 def normalize_hwid(hwid: str) -> str:
-    """Standardize HWID string by hashing with SHA-256 for uniform storage."""
+    """Standardize HWID string (clean whitespace and uppercase for exact Windows SID matching)."""
     if not hwid:
         return ""
-    clean_hwid = hwid.strip().upper()
-    return hashlib.sha256(clean_hwid.encode("utf-8")).hexdigest()
+    return str(hwid).strip()

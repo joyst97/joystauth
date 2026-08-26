@@ -1,8 +1,7 @@
 import os
 import sys
 import json
-import base64
-import hashlib
+import re
 import subprocess
 import threading
 import time
@@ -24,9 +23,9 @@ class ResponseData:
         self.is_maintenance = is_maintenance
         self.active_notification = active_notification
 
-class api:
+class JoystAuth:
     """
-    Joyst Corporation Auth Python SDK (100% Inbuilt Zero-Boilerplate Autopilot)
+    Joyst Corporation Auth Python SDK (100% Zero-Boilerplate Autopilot)
     """
     def __init__(self, name: str, token: str, version: str = "1.0", url: str = "https://joystauth.cc"):
         self.name = name
@@ -51,16 +50,22 @@ class api:
         hwid_str = ""
         try:
             if sys.platform == "win32":
+                # Get Windows User Account SID (KeyAuth format S-1-5-21-...)
+                out = subprocess.check_output("whoami /user", shell=True, stderr=subprocess.DEVNULL).decode().strip()
+                m = re.search(r'S-1-5-21-\d+-\d+-\d+-\d+', out)
+                if m:
+                    return m.group(0)
+                # Fallback: wmic csproduct get uuid
                 output = subprocess.check_output("wmic csproduct get uuid", shell=True, stderr=subprocess.DEVNULL).decode().strip()
                 lines = [l.strip() for l in output.split("\n") if l.strip() and "UUID" not in l]
-                if lines: hwid_str = lines[0]
+                if lines: return lines[0]
             if not hwid_str:
                 import uuid
                 hwid_str = str(uuid.getnode())
         except Exception:
             import uuid
             hwid_str = str(uuid.getnode())
-        return hashlib.sha256(hwid_str.strip().upper().encode("utf-8")).hexdigest()
+        return hwid_str
 
     def init(self, auto_exit_on_maint: bool = True) -> bool:
         try:
@@ -98,7 +103,8 @@ class api:
     def _start_heartbeat_watchdog(self):
         def _loop():
             while True:
-                time.sleep(3)
+                time.sleep(15)
+                if not self.sessionid: continue
                 try:
                     payload = {
                         "app_name": self.name,
@@ -114,80 +120,92 @@ class api:
                             msg = d.get("message", "Application placed into maintenance mode.")
                             print(f"\n🚨 [JOYST SECURITY ALERT] {msg}\n")
                             os._exit(1)
-                        
-                        notifs = d.get("notifications", [])
-                        if notifs:
-                            n = notifs[0]
-                            content = f"{n.get('title')}:{n.get('message')}"
-                            if content != self._last_notification:
-                                self._last_notification = content
-                                print(f"\n📢 [JOYST NOTIFICATION] {n.get('title')}: {n.get('message')}\n")
                 except Exception:
                     pass
-        threading.Thread(target=_loop, daemon=True).start()
-
-    def license(self, key: str) -> bool:
-        try:
-            payload = {"app_name": self.name, "app_token": self.token, "license_key": key.strip(), "hwid": self.hwid, "sessionid": self.sessionid}
-            res = requests.post(f"{self.url}/api/v1/client/license", json=payload, timeout=8)
-            d = res.json()
-
-            if d.get("success"):
-                self.user_data.username = d.get("username", "")
-                self.user_data.subscription = d.get("subscription", "default")
-                self.user_data.expiry = d.get("expires_at", "Lifetime")
-                self.user_data.ip = d.get("ip", "")
-                self.response.success = True
-                self.response.message = d.get("message", "License verified successfully")
-                return True
-            else:
-                self.response.success = False
-                self.response.message = d.get("message") or d.get("detail") or "Invalid license key."
-                return False
-        except Exception as e:
-            self.response.success = False
-            self.response.message = str(e)
-            return False
+        t = threading.Thread(target=_loop, daemon=True)
+        t.start()
 
     def login(self, username: str, password: str) -> bool:
         try:
-            payload = {"app_name": self.name, "app_token": self.token, "username": username.strip(), "password": password, "hwid": self.hwid, "sessionid": self.sessionid}
+            payload = {
+                "app_name": self.name,
+                "app_token": self.token,
+                "username": username.strip(),
+                "password": password,
+                "hwid": self.hwid,
+                "sessionid": self.sessionid
+            }
             res = requests.post(f"{self.url}/api/v1/client/login", json=payload, timeout=8)
-            d = res.json()
+            data = res.json()
 
-            if d.get("success"):
-                self.user_data.username = d.get("username", "")
-                self.user_data.subscription = d.get("subscription", "default")
-                self.user_data.expiry = d.get("expires_at", "Lifetime")
-                self.user_data.ip = d.get("ip", "")
+            if data.get("success"):
+                self.user_data.username = username
+                self.user_data.subscription = data.get("subscription", "default")
+                self.user_data.expiry = data.get("expires_at", "Lifetime")
+                self.user_data.hwid = self.hwid
                 self.response.success = True
-                self.response.message = d.get("message", "Login successful")
+                self.response.message = data.get("message", "Logged in successfully")
                 return True
             else:
                 self.response.success = False
-                self.response.message = d.get("message") or d.get("detail") or "Invalid credentials."
+                self.response.message = data.get("message", "Login failed")
                 return False
         except Exception as e:
             self.response.success = False
             self.response.message = str(e)
             return False
 
-    def register(self, username: str, password: str, key: str) -> bool:
+    def license(self, key: str) -> bool:
         try:
-            payload = {"app_name": self.name, "app_token": self.token, "username": username.strip(), "password": password, "license_key": key.strip(), "hwid": self.hwid, "sessionid": self.sessionid}
-            res = requests.post(f"{self.url}/api/v1/client/register", json=payload, timeout=8)
-            d = res.json()
+            payload = {
+                "app_name": self.name,
+                "app_token": self.token,
+                "license_key": key.strip(),
+                "hwid": self.hwid,
+                "sessionid": self.sessionid
+            }
+            res = requests.post(f"{self.url}/api/v1/client/license", json=payload, timeout=8)
+            data = res.json()
 
-            if d.get("success"):
-                self.user_data.username = d.get("username", "")
-                self.user_data.subscription = d.get("subscription", "default")
-                self.user_data.expiry = d.get("expires_at", "Lifetime")
+            if data.get("success"):
+                self.user_data.username = data.get("username", key)
+                self.user_data.subscription = data.get("subscription", "VIP Tier")
+                self.user_data.expiry = data.get("expires_at", "Lifetime")
+                self.user_data.hwid = self.hwid
                 self.response.success = True
-                self.response.message = d.get("message", "Registered successfully")
+                self.response.message = data.get("message", "License verified successfully")
                 return True
             else:
                 self.response.success = False
-                self.response.message = d.get("message") or d.get("detail") or "Registration failed."
+                self.response.message = data.get("message", "Invalid license key")
+                return False
+        except Exception as e:
+            self.response.success = False
+            self.response.message = str(e)
+            return False
+
+    def register(self, username: str, password: str, license_key: str) -> bool:
+        try:
+            payload = {
+                "app_name": self.name,
+                "app_token": self.token,
+                "username": username.strip(),
+                "password": password,
+                "license_key": license_key.strip(),
+                "hwid": self.hwid,
+                "sessionid": self.sessionid
+            }
+            res = requests.post(f"{self.url}/api/v1/client/register", json=payload, timeout=8)
+            data = res.json()
+
+            if data.get("success"):
+                self.user_data.username = username
+                self.response.success = True
+                self.response.message = data.get("message", "Registered successfully")
+                return True
+            else:
+                self.response.success = False
+                self.response.message = data.get("message", "Registration failed")
                 return False
         except Exception as e:
             self.response.success = False
@@ -196,9 +214,14 @@ class api:
 
     def var(self, var_name: str) -> str:
         try:
-            payload = {"app_name": self.name, "app_token": self.token, "var_name": var_name.strip(), "sessionid": self.sessionid}
+            payload = {
+                "app_name": self.name,
+                "app_token": self.token,
+                "var_name": var_name,
+                "sessionid": self.sessionid
+            }
             res = requests.post(f"{self.url}/api/v1/client/var", json=payload, timeout=8)
-            d = res.json()
-            return d.get("value", "") if d.get("success") else ""
+            data = res.json()
+            return data.get("value", "")
         except Exception:
             return ""

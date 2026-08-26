@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using System.Net.Http;
 using System.Security.Cryptography;
+using System.Security.Principal;
 using System.Text;
 using System.Text.Json;
 using System.Threading;
@@ -103,16 +104,24 @@ namespace JoystAuth
             this.StartHeartbeatWatchdog();
         }
 
+        // Exact Windows User Account SID (KeyAuth format S-1-5-21-...)
         private string GetHWID()
         {
             try
             {
-                string mName = Environment.MachineName + Environment.UserName;
-                using var sha = SHA256.Create();
-                byte[] hash = sha.ComputeHash(Encoding.UTF8.GetBytes(mName));
-                return Convert.ToHexString(hash);
+                var identity = WindowsIdentity.GetCurrent();
+                if (identity?.User != null)
+                {
+                    return identity.User.Value;
+                }
             }
-            catch { return "HWID_UNKNOWN"; }
+            catch { }
+
+            try
+            {
+                return Environment.MachineName + "_" + Environment.UserName;
+            }
+            catch { return "UNKNOWN_HWID"; }
         }
 
         public bool init(bool autoExitOnMaint = true)
@@ -165,9 +174,8 @@ namespace JoystAuth
             try
             {
                 if (SecurityShield.CheckCheatEngineInstalled()) Environment.Exit(0);
-                if (string.IsNullOrEmpty(this.sessionid)) this.init(false);
 
-                var payload = new { app_name = this.name, app_token = this.token, version = this.version, hwid = this.hwid, username = username.Trim(), password = password.Trim(), sessionid = this.sessionid };
+                var payload = new { app_name = this.name, app_token = this.token, username = username.Trim(), password = password, hwid = this.hwid, sessionid = this.sessionid };
                 var json = JsonSerializer.Serialize(payload);
                 var content = new StringContent(json, Encoding.UTF8, "application/json");
 
@@ -179,19 +187,18 @@ namespace JoystAuth
                 bool ok = root.TryGetProperty("success", out var s) && s.GetBoolean();
                 if (ok)
                 {
-                    this.user_data.username = root.TryGetProperty("username", out var u) ? u.GetString() : username;
-                    this.user_data.subscription = root.TryGetProperty("subscription", out var sub) ? sub.GetString() : "VIP Tier";
+                    this.user_data.username = username;
+                    this.user_data.subscription = root.TryGetProperty("subscription", out var sub) ? sub.GetString() : "default";
                     this.user_data.expiry = root.TryGetProperty("expires_at", out var exp) ? exp.GetString() : "Lifetime";
-                    this.user_data.ip = root.TryGetProperty("ip", out var ip) ? ip.GetString() : "";
                     this.user_data.hwid = this.hwid;
                     this.response.success = true;
-                    this.response.message = root.TryGetProperty("message", out var msg) ? msg.GetString() : "Login Successful";
+                    this.response.message = root.TryGetProperty("message", out var msg) ? msg.GetString() : "Logged in";
                     return true;
                 }
                 else
                 {
                     this.response.success = false;
-                    this.response.message = root.TryGetProperty("message", out var msg) ? msg.GetString() : "Login Failed";
+                    this.response.message = root.TryGetProperty("message", out var msg) ? msg.GetString() : "Login failed";
                     return false;
                 }
             }
@@ -208,9 +215,8 @@ namespace JoystAuth
             try
             {
                 if (SecurityShield.CheckCheatEngineInstalled()) Environment.Exit(0);
-                if (string.IsNullOrEmpty(this.sessionid)) this.init(false);
 
-                var payload = new { app_name = this.name, app_token = this.token, version = this.version, license_key = key.Trim(), key = key.Trim(), hwid = this.hwid, sessionid = this.sessionid };
+                var payload = new { app_name = this.name, app_token = this.token, license_key = key.Trim(), hwid = this.hwid, sessionid = this.sessionid };
                 var json = JsonSerializer.Serialize(payload);
                 var content = new StringContent(json, Encoding.UTF8, "application/json");
 
@@ -234,6 +240,44 @@ namespace JoystAuth
                 {
                     this.response.success = false;
                     this.response.message = root.TryGetProperty("message", out var msg) ? msg.GetString() : "Invalid License";
+                    return false;
+                }
+            }
+            catch (Exception ex)
+            {
+                this.response.success = false;
+                this.response.message = ex.Message;
+                return false;
+            }
+        }
+
+        public bool register(string username, string password, string licenseKey)
+        {
+            try
+            {
+                if (SecurityShield.CheckCheatEngineInstalled()) Environment.Exit(0);
+
+                var payload = new { app_name = this.name, app_token = this.token, username = username.Trim(), password = password, license_key = licenseKey.Trim(), hwid = this.hwid, sessionid = this.sessionid };
+                var json = JsonSerializer.Serialize(payload);
+                var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+                var res = client.PostAsync($"{this.url}/api/v1/client/register", content).GetAwaiter().GetResult();
+                var resStr = res.Content.ReadAsStringAsync().GetAwaiter().GetResult();
+                using var doc = JsonDocument.Parse(resStr);
+                var root = doc.RootElement;
+
+                bool ok = root.TryGetProperty("success", out var s) && s.GetBoolean();
+                if (ok)
+                {
+                    this.user_data.username = username;
+                    this.response.success = true;
+                    this.response.message = root.TryGetProperty("message", out var msg) ? msg.GetString() : "Registered successfully";
+                    return true;
+                }
+                else
+                {
+                    this.response.success = false;
+                    this.response.message = root.TryGetProperty("message", out var msg) ? msg.GetString() : "Registration failed";
                     return false;
                 }
             }

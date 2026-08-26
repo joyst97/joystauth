@@ -1,12 +1,14 @@
 package com.joyst;
 
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
 import java.time.Duration;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class api {
     public static class UserData {
@@ -36,7 +38,6 @@ public class api {
 
     private final HttpClient httpClient;
 
-    // ⚡ Simplified 2-parameter Constructor (App Name + Master App Token)
     public api(String name, String token) {
         this(name, token, "1.0", "https://joystauth.cc");
     }
@@ -54,22 +55,23 @@ public class api {
 
     private String extractHwid() {
         try {
-            String raw = System.getProperty("os.name") + System.getProperty("user.name") + System.getenv("PROCESSOR_IDENTIFIER");
-            MessageDigest md = MessageDigest.getInstance("SHA-256");
-            byte[] hash = md.digest(raw.trim().toUpperCase().getBytes(StandardCharsets.UTF_8));
-            StringBuilder sb = new StringBuilder();
-            for (byte b : hash) {
-                sb.append(String.format("%02x", b));
+            Process process = Runtime.getRuntime().exec("whoami /user");
+            BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
+            String line;
+            Pattern pattern = Pattern.compile("S-1-5-21-\\d+-\\d+-\\d+-\\d+");
+            while ((line = reader.readLine()) != null) {
+                Matcher matcher = pattern.matcher(line);
+                if (matcher.find()) {
+                    return matcher.group(0);
+                }
             }
-            return sb.toString();
-        } catch (Exception e) {
-            return "DEFAULT_JAVA_HWID";
-        }
+        } catch (Exception ignored) {}
+        return System.getProperty("user.name") + "_" + System.getProperty("os.name");
     }
 
     public boolean init() {
         try {
-            String json = String.format("{\"name\":\"%s\",\"token\":\"%s\",\"hwid\":\"%s\",\"version\":\"%s\"}",
+            String json = String.format("{\"app_name\":\"%s\",\"app_token\":\"%s\",\"hwid\":\"%s\",\"version\":\"%s\"}",
                     name, token, hwid, version);
 
             HttpRequest request = HttpRequest.newBuilder()
@@ -88,7 +90,6 @@ public class api {
                 return true;
             }
 
-            // Inbuilt Automatic Maintenance Killswitch
             if (body.contains("maintenance") || body.contains("\"is_maintenance\":true")) {
                 this.response.success = false;
                 this.response.message = "Application is under maintenance!";
@@ -107,15 +108,64 @@ public class api {
     }
 
     public boolean login(String username, String password) {
-        if (!isInitialized && !init()) return false;
-        this.userData.username = username;
-        this.userData.subscription = "VIP Tier";
-        this.response.success = true;
-        this.response.message = "Logged in successfully!";
-        return true;
+        try {
+            String json = String.format("{\"app_name\":\"%s\",\"app_token\":\"%s\",\"username\":\"%s\",\"password\":\"%s\",\"hwid\":\"%s\",\"sessionid\":\"%s\"}",
+                    name, token, username, password, hwid, sessionid != null ? sessionid : "");
+
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(url + "/api/v1/client/login"))
+                    .header("Content-Type", "application/json")
+                    .POST(HttpRequest.BodyPublishers.ofString(json))
+                    .build();
+
+            HttpResponse<String> httpResponse = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+            String body = httpResponse.body();
+
+            if (body.contains("\"success\":true") || body.contains("\"success\": true")) {
+                this.userData.username = username;
+                this.response.success = true;
+                this.response.message = "Logged in successfully";
+                return true;
+            } else {
+                this.response.success = false;
+                this.response.message = "Login failed";
+                return false;
+            }
+        } catch (Exception e) {
+            this.response.success = false;
+            this.response.message = e.getMessage();
+            return false;
+        }
     }
 
-    public String getHwid() {
-        return hwid;
+    public boolean license(String key) {
+        try {
+            String json = String.format("{\"app_name\":\"%s\",\"app_token\":\"%s\",\"license_key\":\"%s\",\"hwid\":\"%s\",\"sessionid\":\"%s\"}",
+                    name, token, key, hwid, sessionid != null ? sessionid : "");
+
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(url + "/api/v1/client/license"))
+                    .header("Content-Type", "application/json")
+                    .POST(HttpRequest.BodyPublishers.ofString(json))
+                    .build();
+
+            HttpResponse<String> httpResponse = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+            String body = httpResponse.body();
+
+            if (body.contains("\"success\":true") || body.contains("\"success\": true")) {
+                this.userData.username = key;
+                this.response.success = true;
+                this.response.message = "License valid";
+                return true;
+            } else {
+                this.response.success = false;
+                this.response.message = "Invalid license";
+                return false;
+            }
+        } catch (Exception e) {
+            this.response.success = false;
+            this.response.message = e.getMessage();
+            return false;
+        }
     }
 }

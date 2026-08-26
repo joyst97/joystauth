@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import desc
 from pydantic import BaseModel
 
-from ..database import get_db, Application, User, License, AppVariable, AppFile, AuditLog, Developer, SubscriptionTier, Blacklist, Reseller, PlanKey, AppNotification
+from ..database import get_db, Application, User, License, AppVariable, AppFile, AuditLog, Developer, SubscriptionTier, Blacklist, Reseller, PlanKey, AppNotification, CustomClient
 from ..security import decode_access_token, generate_random_token, generate_license_key, hash_password
 from ..config import log_audit, send_discord_webhook
 from .auth_api import get_current_developer
@@ -150,6 +150,17 @@ class CreateBlacklistRequest(BaseModel):
     data: str
     reason: Optional[str] = "Blacklisted by Admin"
 
+class CreateCustomClientRequest(BaseModel):
+    username: str
+    password: str
+    allowed_apps: str = "" # Comma-separated app IDs or names
+    notes: Optional[str] = ""
+
+class UpdateCustomClientRequest(BaseModel):
+    password: Optional[str] = None
+    allowed_apps: Optional[str] = None
+    notes: Optional[str] = None
+
 class CreateResellerRequest(BaseModel):
     username: str
     password: str
@@ -179,7 +190,13 @@ class TestWebhookRequest(BaseModel):
 # ==================== 1. APPLICATIONS ====================
 @router.get("/apps")
 async def list_apps(dev: Developer = Depends(get_current_developer), db: Session = Depends(get_db)):
-    apps = db.query(Application).filter(Application.developer_id == dev.id).all()
+    query = db.query(Application).filter(Application.developer_id == dev.id)
+    if getattr(dev, "is_custom_client", False):
+        allowed = getattr(dev, "allowed_apps_list", [])
+        app_ids = [int(x) for x in allowed if x.isdigit()]
+        app_names = [x for x in allowed if not x.isdigit()]
+        query = query.filter((Application.id.in_(app_ids)) | (Application.name.in_(app_names)))
+    apps = query.all()
     result = []
     for app in apps:
         result.append({
@@ -238,6 +255,8 @@ async def list_apps(dev: Developer = Depends(get_current_developer), db: Session
 
 @router.post("/apps")
 async def create_app(data: CreateAppRequest, dev: Developer = Depends(get_current_developer), db: Session = Depends(get_db)):
+    if getattr(dev, "is_custom_client", False):
+        raise HTTPException(status_code=403, detail="Custom client accounts cannot create new applications. Please contact your master administrator.")
     app_name = data.name.strip()
     if not app_name:
         raise HTTPException(status_code=400, detail="Application name is required")
@@ -1219,6 +1238,77 @@ async def delete_reseller(reseller_id: int, dev: Developer = Depends(get_current
     db.commit()
     return {"success": True, "message": "Reseller deleted"}
 
+@router.patch("/resellers/{reseller_id}/apps")
+async def update_reseller_apps(reseller_id: int, data: UpdateResellerAppsRequest, dev: Developer = Depends(get_current_developer), db: Session = Depends(get_db)):
+    if getattr(dev, "is_custom_client", False):
+        raise HTTPException(status_code=403, detail="Unauthorized")
+    
+    reseller = db.query(Reseller).filter(Reseller.id == reseller_id, Reseller.developer_id == dev.id).first()
+    if not reseller:
+        raise HTTPException(status_code=404, detail="Reseller not found")
+    
+    reseller.allowed_apps = data.allowed_apps.strip() if data.allowed_apps else "all"
+    db.commit()
+    return {"success": True, "message": f"Updated assigned applications for reseller '{reseller.username}'", "allowed_apps": reseller.allowed_apps}
+
+@router.post("/resellers/{reseller_id}/convert-to-client")
+async def convert_reseller_to_client(reseller_id: int, dev: Developer = Depends(get_current_developer), db: Session = Depends(get_db)):
+    if getattr(dev, "is_custom_client", False):
+        raise HTTPException(status_code=403, detail="Unauthorized")
+    
+    reseller = db.query(Reseller).filter(Reseller.id == reseller_id, Reseller.developer_id == dev.id).first()
+    if not reseller:
+        raise HTTPException(status_code=404, detail="Reseller not found")
+    
+    uname = reseller.username
+    existing_cc = db.query(CustomClient).filter(CustomClient.username == uname).first()
+    if existing_cc:
+        raise HTTPException(status_code=400, detail=f"A Custom Client account with username '{uname}' already exists.")
+    
+    new_cc = CustomClient(
+        developer_id=dev.id,
+        username=uname,
+        password_hash=reseller.password_hash,
+        allowed_apps=reseller.allowed_apps or "",
+        notes=f"Converted from Reseller account (had {reseller.balance} credits)"
+    )
+    db.add(new_cc)
+    db.delete(reseller)
+    db.commit()
+    db.refresh(new_cc)
+    
+    log_audit(db, None, "ROLE_CONVERT", username=uname, details=f"Reseller '{uname}' converted to Custom Client with full dashboard access", status="SUCCESS")
+    return {"success": True, "message": f"Reseller '{uname}' successfully converted to Custom Client with full dashboard access!", "client_id": new_cc.id}
+
+@router.post("/custom-clients/{client_id}/convert-to-reseller")
+async def convert_client_to_reseller(client_id: int, dev: Developer = Depends(get_current_developer), db: Session = Depends(get_db)):
+    if getattr(dev, "is_custom_client", False):
+        raise HTTPException(status_code=403, detail="Unauthorized")
+    
+    cc = db.query(CustomClient).filter(CustomClient.id == client_id, CustomClient.developer_id == dev.id).first()
+    if not cc:
+        raise HTTPException(status_code=404, detail="Custom Client account not found")
+    
+    uname = cc.username
+    existing_reseller = db.query(Reseller).filter(Reseller.username == uname).first()
+    if existing_reseller:
+        raise HTTPException(status_code=400, detail=f"A Reseller account with username '{uname}' already exists.")
+    
+    new_reseller = Reseller(
+        developer_id=dev.id,
+        username=uname,
+        password_hash=cc.password_hash,
+        balance=100,
+        allowed_apps=cc.allowed_apps or "all"
+    )
+    db.add(new_reseller)
+    db.delete(cc)
+    db.commit()
+    db.refresh(new_reseller)
+    
+    log_audit(db, None, "ROLE_CONVERT", username=uname, details=f"Custom Client '{uname}' converted to Reseller with 100 credits", status="SUCCESS")
+    return {"success": True, "message": f"Custom Client '{uname}' successfully converted to Reseller with 100 key credits!", "reseller_id": new_reseller.id}
+
 # ==================== 9. WEBHOOKS & TEST ====================
 @router.post("/webhooks/test")
 async def test_webhook(data: TestWebhookRequest, dev: Developer = Depends(get_current_developer), db: Session = Depends(get_db)):
@@ -1409,12 +1499,28 @@ def resolve_bot_developer(
     guild_owner_id: Optional[str] = None,
     is_staff: Optional[bool] = False
 ) -> Optional[Developer]:
-    """Resolves developer workspace by direct link, staff role inheritance, guild owner, or master admin."""
+    """Resolves developer workspace by direct link, staff role inheritance, guild owner, custom client, or master admin."""
     d_id = str(discord_id).strip() if discord_id else ""
     d_user = str(discord_username).strip() if discord_username else ""
     g_owner = str(guild_owner_id).strip() if guild_owner_id else ""
 
     dev = None
+    # 0. Check if this is a Custom Client (Brand Partner)
+    client = None
+    if d_id:
+        client = db.query(CustomClient).filter(CustomClient.discord_id == d_id).first()
+    if not client and d_user:
+        client = db.query(CustomClient).filter(CustomClient.username.ilike(d_user)).first()
+    if client:
+        dev = db.query(Developer).filter(Developer.id == client.developer_id).first()
+        if dev:
+            dev.is_custom_client = True
+            dev.custom_client_id = client.id
+            dev.custom_client_username = client.username
+            dev.allowed_apps_raw = client.allowed_apps or ""
+            dev.allowed_apps_list = [x.strip() for x in (client.allowed_apps or "").split(",") if x.strip()]
+            return dev
+
     # 1. Direct personal Discord ID link
     if d_id:
         dev = db.query(Developer).filter(Developer.discord_id == d_id).first()
@@ -1549,27 +1655,42 @@ class BotLinkRequest(BaseModel):
 
 @router.post("/bot/link")
 async def bot_link_account(data: BotLinkRequest, db: Session = Depends(get_db)):
-    """Allows Google or Username developers to link their Discord ID to their account in 1-click."""
+    """Allows Google, Username developers, or Custom Clients to link their Discord ID to their account in 1-click."""
     ident = data.email_or_username.strip()
+    discord_id_clean = str(data.discord_id).strip()
+
+    # 1. Try finding Developer
     dev = db.query(Developer).filter(
         (Developer.email.ilike(ident)) |
         (Developer.username.ilike(ident)) |
         (Developer.owner_id == ident)
     ).first()
 
-    if not dev:
-        raise HTTPException(status_code=404, detail=f"No account found matching '{ident}'. Make sure you registered on joystauth.cc")
+    if dev:
+        dev.discord_id = discord_id_clean
+        db.commit()
+        return {
+            "success": True,
+            "message": f"Successfully linked Discord @{data.discord_username or data.discord_id} to Developer Account @{dev.username}!",
+            "developer": dev.username,
+            "email": dev.email or "Google Auth",
+            "plan": dev.plan
+        }
 
-    dev.discord_id = str(data.discord_id).strip()
-    db.commit()
+    # 2. Try finding Custom Client (Brand Partner)
+    client = db.query(CustomClient).filter(CustomClient.username.ilike(ident)).first()
+    if client:
+        client.discord_id = discord_id_clean
+        db.commit()
+        return {
+            "success": True,
+            "message": f"Successfully linked Discord @{data.discord_username or data.discord_id} to Brand Partner Account @{client.username}!",
+            "developer": client.username,
+            "email": "Brand Partner",
+            "plan": "Enterprise"
+        }
 
-    return {
-        "success": True,
-        "message": f"Successfully linked Discord @{data.discord_username or data.discord_id} to Developer Account @{dev.username}!",
-        "developer": dev.username,
-        "email": dev.email or "Google Auth",
-        "plan": dev.plan
-    }
+    raise HTTPException(status_code=404, detail=f"No account found matching '{ident}'. Make sure you entered your correct Dashboard username.")
 
 class BotCreateUserRequest(BaseModel):
     discord_id: str
@@ -1671,7 +1792,8 @@ class BotUserActionRequest(BaseModel):
     discord_id: str
     discord_username: Optional[str] = ""
     app_name: Optional[str] = None
-    target_username: str
+    target_username: Optional[str] = None
+    username: Optional[str] = None
     reason: Optional[str] = "Admin action via Discord Bot"
     guild_id: Optional[str] = None
     guild_owner_id: Optional[str] = None
@@ -1686,7 +1808,7 @@ async def bot_reset_hwid(data: BotUserActionRequest, db: Session = Depends(get_d
     if dev.plan != "Paid" and dev.plan != "Developer" and dev.plan != "Enterprise":
         raise HTTPException(status_code=403, detail="💎 Discord Bot integration is an exclusive PAID Plan feature. Please upgrade your plan on joystauth.cc to unlock Discord Bot access!")
 
-    target = data.target_username.strip()
+    target = (data.target_username or data.username or "").strip()
     user = db.query(User).join(Application).filter(
         Application.developer_id == dev.id,
         User.username.ilike(target)
@@ -1710,7 +1832,7 @@ async def bot_ban_user(data: BotUserActionRequest, db: Session = Depends(get_db)
     if dev.plan != "Paid" and dev.plan != "Developer" and dev.plan != "Enterprise":
         raise HTTPException(status_code=403, detail="💎 Discord Bot integration is an exclusive PAID Plan feature. Please upgrade your plan on joystauth.cc to unlock Discord Bot access!")
 
-    target = data.target_username.strip()
+    target = (data.target_username or data.username or "").strip()
     user = db.query(User).join(Application).filter(
         Application.developer_id == dev.id,
         User.username.ilike(target)
@@ -1735,7 +1857,7 @@ async def bot_unban_user(data: BotUserActionRequest, db: Session = Depends(get_d
     if dev.plan != "Paid" and dev.plan != "Developer" and dev.plan != "Enterprise":
         raise HTTPException(status_code=403, detail="💎 Discord Bot integration is an exclusive PAID Plan feature. Please upgrade your plan on joystauth.cc to unlock Discord Bot access!")
 
-    target = data.target_username.strip()
+    target = (data.target_username or data.username or "").strip()
     user = db.query(User).join(Application).filter(
         Application.developer_id == dev.id,
         User.username.ilike(target)
@@ -1760,7 +1882,7 @@ async def bot_user_info(data: BotUserActionRequest, db: Session = Depends(get_db
     if dev.plan != "Paid" and dev.plan != "Developer" and dev.plan != "Enterprise":
         raise HTTPException(status_code=403, detail="💎 Discord Bot integration is an exclusive PAID Plan feature. Please upgrade your plan on joystauth.cc to unlock Discord Bot access!")
 
-    target = data.target_username.strip()
+    target = (data.target_username or data.username or "").strip()
     user = db.query(User).join(Application).filter(
         Application.developer_id == dev.id,
         User.username.ilike(target)
@@ -2422,3 +2544,105 @@ def delete_changelog_entry(entry_id: int, dev: Developer = Depends(get_current_d
     db.delete(entry)
     db.commit()
     return {"success": True, "message": "Changelog entry deleted successfully"}
+
+# ==================== 15. CUSTOM CLIENTS / SUB-DEVELOPER MANAGEMENT ====================
+
+@router.get("/custom-clients")
+async def list_custom_clients(dev: Developer = Depends(get_current_developer), db: Session = Depends(get_db)):
+    if getattr(dev, "is_custom_client", False):
+        raise HTTPException(status_code=403, detail="Unauthorized")
+    
+    clients = db.query(CustomClient).filter(CustomClient.developer_id == dev.id).order_by(CustomClient.id.desc()).all()
+    all_dev_apps = {a.id: a.name for a in db.query(Application).filter(Application.developer_id == dev.id).all()}
+    
+    result = []
+    for c in clients:
+        allowed_raw = [x.strip() for x in (c.allowed_apps or "").split(",") if x.strip()]
+        app_names = []
+        for item in allowed_raw:
+            if item.isdigit() and int(item) in all_dev_apps:
+                app_names.append(all_dev_apps[int(item)])
+            elif item in all_dev_apps.values():
+                app_names.append(item)
+            elif item == "all":
+                app_names.append("All Applications")
+
+        result.append({
+            "id": c.id,
+            "username": c.username,
+            "allowed_apps": c.allowed_apps or "",
+            "assigned_app_names": app_names,
+            "notes": c.notes or "",
+            "created_at": c.created_at.isoformat() if c.created_at else None
+        })
+    return {"success": True, "clients": result}
+
+@router.post("/custom-clients")
+async def create_custom_client(data: CreateCustomClientRequest, dev: Developer = Depends(get_current_developer), db: Session = Depends(get_db)):
+    if getattr(dev, "is_custom_client", False):
+        raise HTTPException(status_code=403, detail="Unauthorized")
+    
+    uname = data.username.strip()
+    if not uname:
+        raise HTTPException(status_code=400, detail="Username is required")
+    if len(data.password) < 6:
+        raise HTTPException(status_code=400, detail="Password must be at least 6 characters")
+    
+    # Check duplicate username across Developers, Resellers, and CustomClients
+    if db.query(Developer).filter(Developer.username == uname).first():
+        raise HTTPException(status_code=400, detail=f"Username '{uname}' is already taken.")
+    if db.query(Reseller).filter(Reseller.username == uname).first():
+        raise HTTPException(status_code=400, detail=f"Username '{uname}' is already taken by a reseller.")
+    if db.query(CustomClient).filter(CustomClient.username == uname).first():
+        raise HTTPException(status_code=400, detail=f"Username '{uname}' is already registered as a custom client.")
+    
+    new_client = CustomClient(
+        developer_id=dev.id,
+        username=uname,
+        password_hash=hash_password(data.password),
+        allowed_apps=data.allowed_apps.strip(),
+        notes=data.notes.strip() if data.notes else ""
+    )
+    db.add(new_client)
+    db.commit()
+    db.refresh(new_client)
+    
+    log_audit(db, None, "CLIENT_CREATED", username=uname, details=f"Custom client account created for apps: {new_client.allowed_apps}", status="SUCCESS")
+    return {"success": True, "message": f"Custom client '{uname}' created successfully!", "client_id": new_client.id}
+
+@router.put("/custom-clients/{client_id}")
+async def update_custom_client(client_id: int, data: UpdateCustomClientRequest, dev: Developer = Depends(get_current_developer), db: Session = Depends(get_db)):
+    if getattr(dev, "is_custom_client", False):
+        raise HTTPException(status_code=403, detail="Unauthorized")
+    
+    client = db.query(CustomClient).filter(CustomClient.id == client_id, CustomClient.developer_id == dev.id).first()
+    if not client:
+        raise HTTPException(status_code=404, detail="Custom client account not found")
+    
+    if data.password is not None and len(data.password.strip()) >= 6:
+        client.password_hash = hash_password(data.password.strip())
+    
+    if data.allowed_apps is not None:
+        client.allowed_apps = data.allowed_apps.strip()
+        
+    if data.notes is not None:
+        client.notes = data.notes.strip()
+        
+    db.commit()
+    return {"success": True, "message": f"Custom client '{client.username}' updated successfully!"}
+
+@router.delete("/custom-clients/{client_id}")
+async def delete_custom_client(client_id: int, dev: Developer = Depends(get_current_developer), db: Session = Depends(get_db)):
+    if getattr(dev, "is_custom_client", False):
+        raise HTTPException(status_code=403, detail="Unauthorized")
+    
+    client = db.query(CustomClient).filter(CustomClient.id == client_id, CustomClient.developer_id == dev.id).first()
+    if not client:
+        raise HTTPException(status_code=404, detail="Custom client account not found")
+    
+    uname = client.username
+    db.delete(client)
+    db.commit()
+    
+    log_audit(db, None, "CLIENT_DELETED", username=uname, details=f"Custom client account '{uname}' deleted", status="WARNING")
+    return {"success": True, "message": f"Custom client '{uname}' deleted permanently."}
