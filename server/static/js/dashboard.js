@@ -4539,5 +4539,7 @@ window.convertResellerToCustomClient = typeof convertResellerToCustomClient !== 
 window.convertCustomClientToReseller = typeof convertCustomClientToReseller !== 'undefined' ? convertCustomClientToReseller : () => {};
 window.openManageResellerAppsModal = typeof openManageResellerAppsModal !== 'undefined' ? openManageResellerAppsModal : () => {};
 window.submitSaveResellerApps = typeof submitSaveResellerApps !== 'undefined' ? submitSaveResellerApps : () => {};
+window.batchExtendSelected = typeof openBulkExtendUsersModal !== 'undefined' ? openBulkExtendUsersModal : () => {};
+window.submitResellerPasswordReset = typeof submitResellerPassReset !== 'undefined' ? submitResellerPassReset : () => {};
 window.openModal = typeof openModal !== 'undefined' ? openModal : (id) => { const m = document.getElementById(id); if (m) m.classList.add('active'); };
 window.closeModal = typeof closeModal !== 'undefined' ? closeModal : (id) => { if (!id) { document.querySelectorAll('.modal-overlay.active').forEach(m => m.classList.remove('active')); } else { const m = document.getElementById(id); if (m) m.classList.remove('active'); } };

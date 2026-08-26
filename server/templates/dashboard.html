@@ -827,7 +827,7 @@
                     </div>
                     <div style="display: flex; gap: 8px; flex-wrap: wrap;">
                         <button class="btn btn-secondary btn-sm" onclick="batchResetHwidSelected()">🔒 Reset HWID Selected</button>
-                        <button class="btn btn-secondary btn-sm" onclick="batchExtendSelected()">⏳ Extend Selected</button>
+                        <button class="btn btn-secondary btn-sm" onclick="openBulkExtendUsersModal()">⏳ Extend Selected</button>
                         <button class="btn btn-danger btn-sm" onclick="batchBanSelected()">🚫 Ban Selected</button>
                         <button class="btn btn-danger btn-sm" onclick="batchDeleteSelected()">🗑️ Delete Selected</button>
                     </div>
@@ -2062,7 +2062,7 @@
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary btn-sm" data-close-modal>Cancel</button>
-                <button class="btn btn-primary btn-sm" onclick="submitResellerPasswordReset()">Save Password</button>
+                <button class="btn btn-primary btn-sm" onclick="submitResellerPassReset()">Save Password</button>
             </div>
         </div>
     </div>

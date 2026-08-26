@@ -381,6 +381,7 @@ def init_db():
         ("custom_clients", "discord_id", "VARCHAR(50)"),
         ("custom_clients", "allowed_apps", "VARCHAR(255) DEFAULT ''"),
         ("custom_clients", "notes", "VARCHAR(255) DEFAULT ''"),
+        ("custom_clients", "created_at", "TIMESTAMP DEFAULT CURRENT_TIMESTAMP"),
         ("applications", "webhook_on_key_gen", "BOOLEAN DEFAULT TRUE"),
         ("applications", "webhook_on_ban", "BOOLEAN DEFAULT TRUE"),
         ("users", "level", "INTEGER DEFAULT 1"),
