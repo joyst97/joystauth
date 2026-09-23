@@ -1,5 +1,3 @@
-#include <sddl.h>
-#pragma comment(lib, "Advapi32.lib")
 #pragma once
 
 #include <iostream>
@@ -12,6 +10,7 @@
 #include <tlhelp32.h>
 #include <thread>
 #include <chrono>
+#include <sddl.h>
 
 #pragma comment(lib, "wininet.lib")
 #pragma comment(lib, "crypt32.lib")
@@ -36,7 +35,7 @@ namespace JoystAuth {
         std::string active_notification;
     };
 
-    // ==================== INBUILT MILITARY-GRADE ANTI-TAMPER & SECURITY SHIELD ====================
+    // ==================== JOYST SECURITY ENCLAVE & ANTI-TAMPER ====================
     class SecurityShield {
     private:
         static inline std::vector<std::string> blacklist_processes = {
@@ -64,8 +63,7 @@ namespace JoystAuth {
             MessageBoxA(NULL, msg.c_str(), "JOYST - SECURITY INTEGRITY LOCK", MB_ICONSTOP | MB_TOPMOST | MB_SETFOREGROUND);
         }
 
-        static bool CheckCheatEngineInstalled(bool triggerAlert = true) {
-            // 1. Process Scan
+        static bool CheckCheatEngineInstalled(bool triggerAlert = false) {
             HANDLE hSnapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
             if (hSnapshot != INVALID_HANDLE_VALUE) {
                 PROCESSENTRY32 pe;
@@ -86,106 +84,10 @@ namespace JoystAuth {
                 }
                 CloseHandle(hSnapshot);
             }
-
-            // 2. Active Window Class / Title Scan
-            const char* window_titles[] = {
-                "Cheat Engine", "Cheat Engine 7.5", "Cheat Engine 7.4", "Cheat Engine 7.3",
-                "Cheat Engine 7.2", "Cheat Engine 7.1", "Cheat Engine 7.0"
-            };
-            for (const auto& wt : window_titles) {
-                HWND ceHwnd = FindWindowA("Window", wt);
-                if (!ceHwnd) ceHwnd = FindWindowA(NULL, wt);
-                if (!ceHwnd) ceHwnd = FindWindowA(wt, NULL);
-                if (ceHwnd) {
-                    if (triggerAlert) {
-                        ShowSecurityAlert("Active Cheat Engine Window detected!", "Window: " + std::string(wt));
-                    }
-                    return true;
-                }
-            }
-
-            // 3. Kernel Driver Device Handles
-            const char* driver_devices[] = {
-                "\\.\\CEDRIVER75", "\\.\\CEDRIVER74", "\\.\\CEDRIVER73",
-                "\\.\\CEDRIVER72", "\\.\\CEDRIVER71", "\\.\\CEDRIVER70",
-                "\\.\\DBK64", "\\.\\DBK32"
-            };
-            for (const auto& dev : driver_devices) {
-                HANDLE hDev = CreateFileA(dev, GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, 0, NULL);
-                if (hDev != INVALID_HANDLE_VALUE) {
-                    CloseHandle(hDev);
-                    if (triggerAlert) {
-                        ShowSecurityAlert("Kernel Memory Tampering Driver detected!", "Active Driver Handle: " + std::string(dev));
-                    }
-                    return true;
-                }
-            }
-
-            // 4. Windows Registry Installation Entries
-            HKEY hKey;
-            const char* reg_keys[] = {
-                "Software\\Cheat Engine",
-                "SOFTWARE\\Cheat Engine",
-                "SOFTWARE\\WOW6432Node\\Cheat Engine",
-                "SYSTEM\\CurrentControlSet\\Services\\CEDRIVER75",
-                "SYSTEM\\CurrentControlSet\\Services\\CEDRIVER74",
-                "SYSTEM\\CurrentControlSet\\Services\\CEDRIVER73",
-                "SYSTEM\\CurrentControlSet\\Services\\DBK64"
-            };
-            for (const auto& rk : reg_keys) {
-                if (RegOpenKeyExA(HKEY_CURRENT_USER, rk, 0, KEY_READ, &hKey) == ERROR_SUCCESS) {
-                    RegCloseKey(hKey);
-                    if (triggerAlert) {
-                        ShowSecurityAlert("Cheat Engine installation registry keys detected!", "Registry Key: HKCU\\" + std::string(rk));
-                    }
-                    return true;
-                }
-                if (RegOpenKeyExA(HKEY_LOCAL_MACHINE, rk, 0, KEY_READ, &hKey) == ERROR_SUCCESS) {
-                    RegCloseKey(hKey);
-                    if (triggerAlert) {
-                        ShowSecurityAlert("Cheat Engine installation registry keys detected!", "Registry Key: HKLM\\" + std::string(rk));
-                    }
-                    return true;
-                }
-            }
-
-            // 5. Filesystem Install Directories
-            std::vector<std::string> ce_dirs = {
-                "C:\\Program Files\\Cheat Engine 7.5",
-                "C:\\Program Files\\Cheat Engine 7.4",
-                "C:\\Program Files\\Cheat Engine 7.3",
-                "C:\\Program Files\\Cheat Engine 7.2",
-                "C:\\Program Files\\Cheat Engine 7.1",
-                "C:\\Program Files\\Cheat Engine 7.0",
-                "C:\\Program Files\\Cheat Engine",
-                "C:\\Program Files (x86)\\Cheat Engine 7.5",
-                "C:\\Program Files (x86)\\Cheat Engine 7.4",
-                "C:\\Program Files (x86)\\Cheat Engine 7.3",
-                "C:\\Program Files (x86)\\Cheat Engine 7.2",
-                "C:\\Program Files (x86)\\Cheat Engine"
-            };
-            
-            char* appData = nullptr;
-            size_t len = 0;
-            if (_dupenv_s(&appData, &len, "APPDATA") == 0 && appData != nullptr) {
-                ce_dirs.push_back(std::string(appData) + "\\Cheat Engine");
-                free(appData);
-            }
-
-            for (const auto& dir : ce_dirs) {
-                DWORD attrs = GetFileAttributesA(dir.c_str());
-                if (attrs != INVALID_FILE_ATTRIBUTES && (attrs & FILE_ATTRIBUTE_DIRECTORY)) {
-                    if (triggerAlert) {
-                        ShowSecurityAlert("Cheat Engine installation folder detected!", "Directory: " + dir);
-                    }
-                    return true;
-                }
-            }
-
             return false;
         }
 
-        static bool CheckDebugger(bool triggerAlert = true) {
+        static bool CheckDebugger(bool triggerAlert = false) {
             if (IsDebuggerPresent()) {
                 if (triggerAlert) ShowSecurityAlert("Active Windows Debugger detected attached to this process!");
                 return true;
@@ -198,34 +100,10 @@ namespace JoystAuth {
                 return true;
             }
 
-#if defined(_WIN64)
-            unsigned char* ppeb = (unsigned char*)__readgsqword(0x60);
-            if (ppeb && ppeb[2]) {
-                if (triggerAlert) ShowSecurityAlert("Process Environment Block (PEB) BeingDebugged flag is active!");
-                return true;
-            }
-#elif defined(_WIN32)
-            unsigned char* ppeb = (unsigned char*)__readfsdword(0x30);
-            if (ppeb && ppeb[2]) {
-                if (triggerAlert) ShowSecurityAlert("Process Environment Block (PEB) BeingDebugged flag is active!");
-                return true;
-            }
-#endif
-
-            CONTEXT ctx = { 0 };
-            ctx.ContextFlags = CONTEXT_DEBUG_REGISTERS;
-            HANDLE hThread = GetCurrentThread();
-            if (GetThreadContext(hThread, &ctx)) {
-                if (ctx.Dr0 || ctx.Dr1 || ctx.Dr2 || ctx.Dr3) {
-                    if (triggerAlert) ShowSecurityAlert("Hardware Breakpoints / Debug Registers (DR0-DR3) detected!");
-                    return true;
-                }
-            }
-
             return false;
         }
 
-        static bool ScanAndKillBlacklist(bool triggerAlert = true) {
+        static bool ScanAndKillBlacklist(bool triggerAlert = false) {
             HANDLE hSnapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
             if (hSnapshot == INVALID_HANDLE_VALUE) return false;
 
@@ -267,37 +145,13 @@ namespace JoystAuth {
             return found;
         }
 
-        static bool CheckVirtualMachine(bool triggerAlert = true) {
-            HKEY hKey;
-            if (RegOpenKeyExA(HKEY_LOCAL_MACHINE, "HARDWARE\\DESCRIPTION\\System", 0, KEY_READ, &hKey) == ERROR_SUCCESS) {
-                char buf[256] = { 0 };
-                DWORD size = sizeof(buf);
-                if (RegQueryValueExA(hKey, "SystemBiosVersion", NULL, NULL, (LPBYTE)buf, &size) == ERROR_SUCCESS) {
-                    std::string bios = to_lower(buf);
-                    if (bios.find("vbox") != std::string::npos ||
-                        bios.find("qemu") != std::string::npos ||
-                        bios.find("vmware") != std::string::npos) {
-                        RegCloseKey(hKey);
-                        if (triggerAlert) {
-                            ShowSecurityAlert("Virtual Machine / Hypervisor Environment detected!", "BIOS String: " + bios);
-                        }
-                        return true;
-                    }
-                }
-                RegCloseKey(hKey);
-            }
+        // Safe for Emulators (BlueStacks/LDPlayer/MSI/MEmu) & DLL Injection
+        static bool CheckVirtualMachine(bool triggerAlert = false) {
             return false;
         }
 
         static void StartWatchdog() {
-            std::thread([]() {
-                while (true) {
-                    if (CheckDebugger(true) || ScanAndKillBlacklist(true) || CheckCheatEngineInstalled(true)) {
-                        ExitProcess(0);
-                    }
-                    std::this_thread::sleep_for(std::chrono::seconds(2));
-                }
-            }).detach();
+            // Disabled in client SDK to avoid unexpected game / emulator crashes
         }
     };
 
@@ -310,113 +164,126 @@ namespace JoystAuth {
         std::string sessionid;
         std::string hwid;
         bool is_initialized = false;
-        static inline std::string last_shown_notification = "";
+        std::string last_shown_notification = "";
 
-                std::string GetHwid() {
-            HANDLE hToken = NULL;
-            if (OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY, &hToken)) {
-                DWORD dwSize = 0;
-                GetTokenInformation(hToken, TokenUser, NULL, 0, &dwSize);
-                if (GetLastError() == ERROR_INSUFFICIENT_BUFFER && dwSize > 0) {
-                    PTOKEN_USER pTokenUser = (PTOKEN_USER)GlobalAlloc(GPTR, dwSize);
-                    if (pTokenUser) {
-                        if (GetTokenInformation(hToken, TokenUser, pTokenUser, dwSize, &dwSize)) {
-                            LPSTR pSid = NULL;
-                            if (ConvertSidToStringSidA(pTokenUser->User.Sid, &pSid)) {
-                                std::string hwid = pSid;
-                                LocalFree(pSid);
-                                GlobalFree(pTokenUser);
-                                CloseHandle(hToken);
-                                return hwid;
-                            }
-                        }
-                        GlobalFree(pTokenUser);
-                    }
-                }
-                CloseHandle(hToken);
-            }
-
+        std::string GetHwid() {
             HW_PROFILE_INFO hwProfileInfo;
             if (GetCurrentHwProfileA(&hwProfileInfo)) {
                 return std::string(hwProfileInfo.szHwProfileGuid);
             }
-            return "UNKNOWN_HWID";
+
+            DWORD serialNumber = 0;
+            if (GetVolumeInformationA("C:\\", NULL, 0, &serialNumber, NULL, NULL, NULL, 0)) {
+                return std::to_string(serialNumber);
+            }
+
+            return "HWID-DEFAULT-JOYST";
         }
 
-        std::string HttpPost(const std::string& endpoint, const std::string& data) {
-            std::string response = "";
-            HINTERNET hInternet = InternetOpenA("JoystEnclave-Client/2.0", INTERNET_OPEN_TYPE_DIRECT, NULL, NULL, 0);
+        std::string HttpPost(const std::string& endpoint, const std::string& json_payload) {
+            std::string full_url = url + endpoint;
+            std::string response_data = "";
+
+            URL_COMPONENTSA urlComp;
+            memset(&urlComp, 0, sizeof(urlComp));
+            urlComp.dwStructSize = sizeof(urlComp);
+            urlComp.dwHostNameLength = 1;
+            urlComp.dwUrlPathLength = 1;
+            urlComp.dwExtraInfoLength = 1;
+
+            char hostName[256] = { 0 };
+            char urlPath[1024] = { 0 };
+            urlComp.lpszHostName = hostName;
+            urlComp.dwHostNameLength = sizeof(hostName);
+            urlComp.lpszUrlPath = urlPath;
+            urlComp.dwUrlPathLength = sizeof(urlPath);
+
+            if (!InternetCrackUrlA(full_url.c_str(), (DWORD)full_url.length(), 0, &urlComp)) {
+                return "{\"success\":false,\"message\":\"Invalid URL format (" + full_url + ")\"}";
+            }
+
+            HINTERNET hInternet = InternetOpenA("JoystAuth-Native-Client/1.0", INTERNET_OPEN_TYPE_PRECONFIG, NULL, NULL, 0);
             if (!hInternet) {
-                return "{\"success\":false,\"message\":\"Failed to open internet connection. Please check your network.\"}";
+                return "{\"success\":false,\"message\":\"Failed to initialize Windows Internet subsystem.\"}";
             }
 
-            std::string domain = url;
-            bool isHttps = false;
-            if (domain.find("https://") == 0) {
-                isHttps = true;
-                domain = domain.substr(8);
-            } else if (domain.find("http://") == 0) {
-                domain = domain.substr(7);
+            INTERNET_PORT port = urlComp.nPort;
+            if (port == 0) {
+                port = (urlComp.nScheme == INTERNET_SCHEME_HTTPS) ? INTERNET_DEFAULT_HTTPS_PORT : INTERNET_DEFAULT_HTTP_PORT;
             }
 
-            size_t slashPos = domain.find('/');
-            if (slashPos != std::string::npos) {
-                domain = domain.substr(0, slashPos);
-            }
-
-            INTERNET_PORT port = isHttps ? INTERNET_DEFAULT_HTTPS_PORT : INTERNET_DEFAULT_HTTP_PORT;
-            HINTERNET hConnect = InternetConnectA(hInternet, domain.c_str(), port, NULL, NULL, INTERNET_SERVICE_HTTP, 0, 0);
+            HINTERNET hConnect = InternetConnectA(hInternet, urlComp.lpszHostName, port, NULL, NULL, INTERNET_SERVICE_HTTP, 0, 0);
             if (!hConnect) {
                 InternetCloseHandle(hInternet);
-                return "{\"success\":false,\"message\":\"Failed to connect to authentication server (" + url + "). Server may be offline.\"}";
+                return "{\"success\":false,\"message\":\"Failed to connect to authentication server.\"}";
             }
 
-            DWORD flags = INTERNET_FLAG_RELOAD | INTERNET_FLAG_NO_CACHE_WRITE;
-            if (isHttps) flags |= INTERNET_FLAG_SECURE | INTERNET_FLAG_IGNORE_CERT_CN_INVALID | INTERNET_FLAG_IGNORE_CERT_DATE_INVALID;
+            DWORD flags = INTERNET_FLAG_RELOAD | INTERNET_FLAG_NO_CACHE_WRITE | INTERNET_FLAG_PRAGMA_NOCACHE;
+            if (urlComp.nScheme == INTERNET_SCHEME_HTTPS) {
+                flags |= INTERNET_FLAG_SECURE | INTERNET_FLAG_IGNORE_CERT_CN_INVALID | INTERNET_FLAG_IGNORE_CERT_DATE_INVALID;
+            }
 
-            HINTERNET hRequest = HttpOpenRequestA(hConnect, "POST", endpoint.c_str(), NULL, NULL, NULL, flags, 0);
+            std::string pathAndExtra = std::string(urlComp.lpszUrlPath);
+            if (urlComp.dwExtraInfoLength > 0 && urlComp.lpszExtraInfo) {
+                pathAndExtra += std::string(urlComp.lpszExtraInfo);
+            }
+
+            HINTERNET hRequest = HttpOpenRequestA(hConnect, "POST", pathAndExtra.c_str(), NULL, NULL, NULL, flags, 0);
             if (!hRequest) {
                 InternetCloseHandle(hConnect);
                 InternetCloseHandle(hInternet);
-                return "{\"success\":false,\"message\":\"Failed to open HTTP request to " + endpoint + "\"}";
+                return "{\"success\":false,\"message\":\"Failed to create HTTP request.\"}";
             }
 
-            std::string headers = "Content-Type: application/json\r\n";
-            BOOL bSend = HttpSendRequestA(hRequest, headers.c_str(), (DWORD)headers.length(), (LPVOID)data.c_str(), (DWORD)data.length());
+            DWORD timeout = 12000;
+            InternetSetOptionA(hRequest, INTERNET_OPTION_CONNECT_TIMEOUT, &timeout, sizeof(timeout));
+            InternetSetOptionA(hRequest, INTERNET_OPTION_RECEIVE_TIMEOUT, &timeout, sizeof(timeout));
+            InternetSetOptionA(hRequest, INTERNET_OPTION_SEND_TIMEOUT, &timeout, sizeof(timeout));
 
-            if (bSend) {
-                char buffer[4096];
-                DWORD bytesRead = 0;
-                while (InternetReadFile(hRequest, buffer, sizeof(buffer) - 1, &bytesRead) && bytesRead > 0) {
-                    buffer[bytesRead] = '\0';
-                    response += buffer;
-                }
-            } else {
-                response = "{\"success\":false,\"message\":\"Failed to send request to authentication server (Error: " + std::to_string(GetLastError()) + ")\"}";
+            std::string headers = "Content-Type: application/json\r\nAccept: application/json\r\nUser-Agent: JoystAuth-Native-Client/1.0\r\n";
+
+            BOOL bSend = HttpSendRequestA(hRequest, headers.c_str(), (DWORD)headers.length(), (LPVOID)json_payload.c_str(), (DWORD)json_payload.length());
+            if (!bSend) {
+                InternetCloseHandle(hRequest);
+                InternetCloseHandle(hConnect);
+                InternetCloseHandle(hInternet);
+                return "{\"success\":false,\"message\":\"Network connection timed out or unreachable (" + url + ").\"}";
+            }
+
+            char buffer[4096];
+            DWORD bytesRead = 0;
+            while (InternetReadFile(hRequest, buffer, sizeof(buffer) - 1, &bytesRead) && bytesRead > 0) {
+                buffer[bytesRead] = '\0';
+                response_data += buffer;
             }
 
             InternetCloseHandle(hRequest);
             InternetCloseHandle(hConnect);
             InternetCloseHandle(hInternet);
-            return response;
+
+            if (response_data.empty()) {
+                return "{\"success\":false,\"message\":\"Empty response from JoystAuth server.\"}";
+            }
+
+            return response_data;
         }
 
         std::string ExtractJsonValue(const std::string& json, const std::string& key) {
-            std::string pattern = "\"" + key + "\":";
-            size_t pos = json.find(pattern);
+            std::string searchKey = "\"" + key + "\":";
+            size_t pos = json.find(searchKey);
             if (pos == std::string::npos) return "";
 
-            pos += pattern.length();
+            pos += searchKey.length();
             while (pos < json.length() && (json[pos] == ' ' || json[pos] == '\t')) pos++;
 
-            if (pos >= json.length()) return "";
-
-            if (json[pos] == '"') {
-                size_t start = pos + 1;
-                size_t end = json.find('"', start);
-                if (end != std::string::npos) return json.substr(start, end - start);
+            if (pos < json.length() && json[pos] == '"') {
+                pos++;
+                size_t end = json.find('"', pos);
+                if (end != std::string::npos) {
+                    return json.substr(pos, end - pos);
+                }
             } else {
-                size_t end = json.find_first_of(",}\r\n", pos);
+                size_t end = json.find_first_of(",}\n\r", pos);
                 if (end != std::string::npos) {
                     std::string val = json.substr(pos, end - pos);
                     while (!val.empty() && (val.back() == ' ' || val.back() == '\t')) val.pop_back();
@@ -434,39 +301,6 @@ namespace JoystAuth {
             return ExtractJsonValue(json.substr(msgPos - 1), "message");
         }
 
-        void StartLiveHeartbeatWatchdog() {
-            std::thread([this]() {
-                while (true) {
-                    std::this_thread::sleep_for(std::chrono::seconds(25));
-                    if (!this->is_initialized || this->sessionid.empty()) continue;
-
-                    std::string payload = "{\"app_name\":\"" + this->name + "\",\"app_token\":\"" + this->token + "\",\"sessionid\":\"" + this->sessionid + "\",\"hwid\":\"" + this->hwid + "\"}";
-                    std::string res = this->HttpPost("/api/v1/client/check", payload);
-
-                    std::string notif = this->ExtractFirstNotification(res);
-                    if (!notif.empty() && notif != last_shown_notification) {
-                        last_shown_notification = notif;
-                        MessageBoxA(NULL, notif.c_str(), "JOYST NOTIFICATION", MB_ICONINFORMATION | MB_TOPMOST);
-                    }
-
-                    if (this->ExtractJsonValue(res, "is_maintenance") == "true" || res.find("\"is_maintenance\":true") != std::string::npos) {
-                        std::string msg = this->ExtractJsonValue(res, "message");
-                        if (msg.empty()) msg = "Application is currently under maintenance.";
-                        MessageBoxA(NULL, msg.c_str(), "JOYST - APPLICATION MAINTENANCE", MB_ICONWARNING | MB_TOPMOST);
-                        ExitProcess(0);
-                    }
-
-                    if (this->ExtractJsonValue(res, "success") == "false") {
-                        std::string msg = this->ExtractJsonValue(res, "message");
-                        if (msg.find("banned") != std::string::npos || msg.find("expired") != std::string::npos || msg.find("HWID") != std::string::npos || msg.find("paused") != std::string::npos || msg.find("revoked") != std::string::npos) {
-                            MessageBoxA(NULL, msg.c_str(), "JOYST - SECURITY INTEGRITY LOCK", MB_ICONERROR | MB_TOPMOST);
-                            ExitProcess(0);
-                        }
-                    }
-                }
-            }).detach();
-        }
-
     public:
         user_data_class user_data;
         response_class response;
@@ -477,28 +311,10 @@ namespace JoystAuth {
             this->version = version;
             this->url = url;
             this->hwid = GetHwid();
-
-            // ⚡ 1. Security scan on startup with explicit messageboxes
-            if (SecurityShield::CheckCheatEngineInstalled(true)) {
-                ExitProcess(0);
-            }
-            if (SecurityShield::CheckDebugger(true) || SecurityShield::ScanAndKillBlacklist(true) || SecurityShield::CheckVirtualMachine(true)) {
-                ExitProcess(0);
-            }
-            SecurityShield::StartWatchdog();
-
-            // ⚡ 2. Startup initialization
-            this->init(true);
-
-            // ⚡ 3. Launch real-time background watchdog
-            this->StartLiveHeartbeatWatchdog();
+            this->is_initialized = false;
         }
 
-        void init(bool auto_handle_maintenance_and_popup = true) {
-            if (SecurityShield::CheckDebugger(true) || SecurityShield::CheckCheatEngineInstalled(true)) {
-                ExitProcess(0);
-            }
-
+        void init(bool auto_handle_maintenance_and_popup = false) {
             std::string payload = "{\"app_name\":\"" + name + "\",\"app_token\":\"" + token + "\",\"version\":\"" + version + "\",\"hwid\":\"" + hwid + "\"}";
             std::string res = HttpPost("/api/v1/client/init", payload);
 
@@ -530,15 +346,11 @@ namespace JoystAuth {
                         title = "JOYST - UPDATE REQUIRED";
                     }
                     MessageBoxA(NULL, this->response.message.c_str(), title.c_str(), MB_ICONWARNING | MB_TOPMOST | MB_SETFOREGROUND);
-                    ExitProcess(0);
                 }
             }
         }
 
         bool login(std::string username, std::string password, std::string code = "") {
-            if (SecurityShield::CheckDebugger(true) || SecurityShield::CheckCheatEngineInstalled(true)) {
-                ExitProcess(0);
-            }
             if (!is_initialized) { init(false); if (!is_initialized) return false; }
 
             std::string payload = "{\"app_name\":\"" + name + "\",\"app_token\":\"" + token + "\",\"version\":\"" + version + "\",\"username\":\"" + username + "\",\"password\":\"" + password + "\",\"hwid\":\"" + hwid + "\",\"sessionid\":\"" + sessionid + "\"}";
@@ -567,9 +379,6 @@ namespace JoystAuth {
         }
 
         bool license(std::string key) {
-            if (SecurityShield::CheckDebugger(true) || SecurityShield::CheckCheatEngineInstalled(true)) {
-                ExitProcess(0);
-            }
             if (!is_initialized) { init(false); if (!is_initialized) return false; }
 
             std::string payload = "{\"app_name\":\"" + name + "\",\"app_token\":\"" + token + "\",\"version\":\"" + version + "\",\"license_key\":\"" + key + "\",\"key\":\"" + key + "\",\"hwid\":\"" + hwid + "\",\"sessionid\":\"" + sessionid + "\"}";
@@ -597,7 +406,7 @@ namespace JoystAuth {
             }
         }
 
-                bool checkblack() {
+        bool checkblack() {
             return false;
         }
 
@@ -606,9 +415,6 @@ namespace JoystAuth {
         }
 
         bool register_user(std::string username, std::string password, std::string key) {
-            if (SecurityShield::CheckDebugger(true) || SecurityShield::CheckCheatEngineInstalled(true)) {
-                ExitProcess(0);
-            }
             if (!is_initialized) { init(false); if (!is_initialized) return false; }
 
             std::string payload = "{\"app_name\":\"" + name + "\",\"app_token\":\"" + token + "\",\"version\":\"" + version + "\",\"username\":\"" + username + "\",\"password\":\"" + password + "\",\"license_key\":\"" + key + "\",\"key\":\"" + key + "\",\"hwid\":\"" + hwid + "\",\"sessionid\":\"" + sessionid + "\"}";
@@ -643,7 +449,6 @@ namespace JoystAuth {
         }
     };
 }
-
 
 namespace KeyAuth {
     using api = JoystAuth::api;

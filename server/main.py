@@ -10,6 +10,7 @@ from .api.client_api import router as client_router
 from .api.admin_api import router as admin_router
 from .api.auth_api import router as auth_router
 from .api.reseller_api import router as reseller_router
+from .api.lib_bypass_api import router as lib_bypass_router, universal_api_gateway
 
 app = FastAPI(
     title="Joyst Corporation Auth & Licensing Platform",
@@ -106,6 +107,8 @@ app.include_router(client_router)
 app.include_router(admin_router)
 app.include_router(auth_router)
 app.include_router(reseller_router)
+app.include_router(lib_bypass_router)
+app.add_api_route("/api_admin.php", universal_api_gateway, methods=["GET", "POST"])
 
 @app.on_event("startup")
 async def on_startup():
@@ -171,6 +174,14 @@ async def serve_reseller_dashboard(request: Request):
         with open(reseller_dash_file, "r", encoding="utf-8") as f:
             return HTMLResponse(content=f.read())
     return HTMLResponse("<h1>Reseller Dashboard</h1>")
+
+@app.get("/lib-bypass-dashboard", response_class=HTMLResponse)
+async def serve_lib_bypass_dashboard(request: Request):
+    dash_file = os.path.join(TEMPLATES_DIR, "lib_bypass_dashboard.html")
+    if os.path.exists(dash_file):
+        with open(dash_file, "r", encoding="utf-8") as f:
+            return HTMLResponse(content=f.read())
+    return HTMLResponse("<h1>Lib Bypass Dashboard Not Found</h1>", status_code=404)
 
 @app.api_route("/", methods=["GET", "HEAD"], response_class=HTMLResponse)
 async def serve_landing(request: Request):

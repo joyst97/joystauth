@@ -297,6 +297,36 @@ class AuditLog(Base):
 
     app = relationship("Application", back_populates="logs")
 
+class LibBypassClient(Base):
+    __tablename__ = "lib_bypass_clients"
+    id = Column(Integer, primary_key=True, index=True)
+    username = Column(String(100), unique=True, index=True, nullable=False)
+    password_hash = Column(String(255), nullable=False)
+    credits_quota = Column(Integer, default=50) # -1 for unlimited
+    credits_used = Column(Integer, default=0)
+    api_key = Column(String(64), unique=True, index=True, nullable=False)
+    is_active = Column(Boolean, default=True)
+    daily_limit = Column(Integer, default=50)
+    notes = Column(String(255), default="")
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+
+    keys = relationship("LibBypassKey", back_populates="client", cascade="all, delete-orphan")
+
+class LibBypassKey(Base):
+    __tablename__ = "lib_bypass_keys"
+    id = Column(Integer, primary_key=True, index=True)
+    license_key = Column(String(100), unique=True, index=True, nullable=False)
+    days = Column(Integer, default=30)
+    created_by_type = Column(String(20), default="master") # 'master' or 'client'
+    created_by_username = Column(String(100), default="Tanmay (Master)")
+    client_id = Column(Integer, ForeignKey("lib_bypass_clients.id"), nullable=True)
+    note = Column(String(255), default="")
+    status = Column(String(20), default="active")
+    expires_at = Column(String(50), nullable=True)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+
+    client = relationship("LibBypassClient", back_populates="keys")
+
 def init_db():
     Base.metadata.create_all(bind=engine)
 
@@ -337,9 +367,23 @@ def init_db():
             ]
             seed_db.add_all(entries)
             seed_db.commit()
+
+        # Seed key 6969 if not present
+        if seed_db.query(LibBypassKey).filter(LibBypassKey.license_key == "6969").count() == 0:
+            seed_key = LibBypassKey(
+                license_key="6969",
+                days=30,
+                created_by_type="master",
+                created_by_username="Tanmay (Master)",
+                note="6969 Valid Primary Key",
+                status="active"
+            )
+            seed_db.add(seed_key)
+            seed_db.commit()
+
         seed_db.close()
     except Exception as e:
-        print(f"Changelog seed notice: {e}")
+        print(f"Database seed notice: {e}")
     from sqlalchemy import text
     
     columns = [
