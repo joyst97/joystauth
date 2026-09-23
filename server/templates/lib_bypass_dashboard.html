@@ -183,6 +183,12 @@
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
             <span>Reseller Accounts</span>
           </button>
+
+          <!-- Developer API Tab -->
+          <button onclick="switchTab('api')" id="navTabApi" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs text-slate-300 hover:text-white hover:bg-white/5">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/></svg>
+            <span>Developer API</span>
+          </button>
         </nav>
       </div>
 
@@ -370,6 +376,7 @@
                   <tr class="bg-black/40 text-[10px] font-bold text-slate-400 uppercase tracking-wider border-b border-white/10">
                     <th class="py-3 px-4">License Key</th>
                     <th class="py-3 px-4">Duration</th>
+                    <th class="py-3 px-4">Device HWID</th>
                     <th class="py-3 px-4">Issued By</th>
                     <th class="py-3 px-4">Customer Note</th>
                     <th class="py-3 px-4">Status</th>
@@ -378,7 +385,7 @@
                   </tr>
                 </thead>
                 <tbody id="inventoryTableBody" class="divide-y divide-white/5">
-                  <tr><td colspan="7" class="py-8 text-center text-slate-500 font-mono">Loading inventory data...</td></tr>
+                  <tr><td colspan="8" class="py-8 text-center text-slate-500 font-mono">Loading inventory data...</td></tr>
                 </tbody>
               </table>
             </div>
@@ -389,7 +396,7 @@
         <section id="tabGenerator" class="hidden space-y-6 max-w-3xl mx-auto">
           <div>
             <h2 class="text-lg font-bold text-white">License Mint Engine</h2>
-            <p class="text-xs text-slate-400">Generate fresh licenses with configurable durations and custom tags.</p>
+            <p class="text-xs text-slate-400">Generate fresh licenses with configurable durations, bulk batching, and custom tags.</p>
           </div>
 
           <div class="glass-card rounded-2xl p-6 space-y-5">
@@ -427,6 +434,21 @@
                 <input type="hidden" id="genSelectedDays" value="30">
               </div>
 
+              <!-- Bulk Generation Count -->
+              <div>
+                <div class="flex items-center justify-between mb-2">
+                  <label class="block text-xs font-semibold text-slate-300">QUANTITY (BATCH MINTING)</label>
+                  <span class="text-[11px] font-mono text-cyan-400 font-bold" id="currentCountDisplay">1 Key (Single)</span>
+                </div>
+                <div class="grid grid-cols-4 gap-2">
+                  <button type="button" onclick="selectCount(1, this)" class="count-btn active py-2 px-3 rounded-xl border border-cyan-500 bg-cyan-500/20 text-white text-xs font-mono font-bold transition">1 Key</button>
+                  <button type="button" onclick="selectCount(5, this)" class="count-btn py-2 px-3 rounded-xl border border-white/10 bg-black/40 text-xs font-mono font-medium hover:border-cyan-500/50 transition">5 Keys</button>
+                  <button type="button" onclick="selectCount(10, this)" class="count-btn py-2 px-3 rounded-xl border border-white/10 bg-black/40 text-xs font-mono font-medium hover:border-cyan-500/50 transition">10 Keys</button>
+                  <button type="button" onclick="selectCount(20, this)" class="count-btn py-2 px-3 rounded-xl border border-white/10 bg-black/40 text-xs font-mono font-medium hover:border-cyan-500/50 transition">20 Keys</button>
+                </div>
+                <input type="hidden" id="genSelectedCount" value="1">
+              </div>
+
               <!-- Custom Key Identifier -->
               <div>
                 <label class="block text-xs font-semibold text-slate-300 mb-1.5">CUSTOM KEY IDENTIFIER (OPTIONAL)</label>
@@ -447,16 +469,46 @@
             </form>
 
             <!-- Result Box -->
-            <div id="genResultCard" class="hidden p-5 rounded-2xl bg-gradient-to-r from-rose-950/60 to-black border border-rose-500/50 space-y-3">
+            <div id="genResultCard" class="hidden p-5 rounded-2xl bg-gradient-to-r from-rose-950/60 to-black border border-rose-500/50 space-y-4">
               <div class="flex items-center justify-between">
-                <span class="text-[10px] font-bold uppercase tracking-wider text-rose-300">Generated License Key</span>
-                <span class="text-[10px] font-mono text-emerald-400">✓ Ready to Deliver</span>
+                <div class="flex items-center gap-2">
+                  <span class="text-[10px] font-bold uppercase tracking-wider text-rose-300">Generated License</span>
+                  <span id="genResultBadge" class="hidden px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 text-[10px] font-mono font-bold">1 Key</span>
+                </div>
+                <span class="text-[10px] font-mono text-emerald-400 flex items-center gap-1.5">
+                  <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                  Ready to Deliver
+                </span>
               </div>
-              <div class="flex items-center justify-between gap-3 bg-black/60 p-3 rounded-xl border border-white/10">
-                <span id="genResultKeyText" class="font-mono font-bold text-base text-white tracking-wider select-all">---</span>
-                <button onclick="copyToClipboard(document.getElementById('genResultKeyText').innerText)" class="px-3 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-500 text-xs font-semibold text-white transition flex items-center gap-1.5">
+
+              <!-- Single Key Display -->
+              <div id="genSingleResultBox" class="flex items-center justify-between gap-3 bg-black/60 p-3 rounded-xl border border-white/10">
+                <span id="genResultKeyText" class="font-mono font-bold text-base text-white tracking-wider select-all break-all">---</span>
+                <button type="button" onclick="copyToClipboard(document.getElementById('genResultKeyText').innerText)" class="px-3 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-500 text-xs font-semibold text-white transition flex items-center gap-1.5 flex-shrink-0">
                   <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
                   Copy
+                </button>
+              </div>
+
+              <!-- Multi Key Display (Bulk) -->
+              <div id="genMultiResultBox" class="hidden space-y-1.5">
+                <label class="block text-[10px] font-mono text-slate-400">BATCH KEYS LIST (ONE PER LINE):</label>
+                <textarea id="genResultBulkText" readonly rows="4" class="w-full bg-black/70 border border-white/10 rounded-xl p-3 text-xs font-mono text-emerald-400 focus:outline-none custom-scroll select-all"></textarea>
+              </div>
+
+              <!-- 1-Click Action Delivery Deck -->
+              <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-2 border-t border-white/10">
+                <button type="button" onclick="copyAllGeneratedKeys()" class="py-2 px-3 rounded-xl bg-white/10 hover:bg-white/20 text-xs font-semibold text-white transition flex items-center justify-center gap-1.5">
+                  <span>📋</span>
+                  <span>Copy Key(s)</span>
+                </button>
+                <button type="button" onclick="copyCustomerDeliveryCard()" class="py-2 px-3 rounded-xl bg-gradient-to-r from-amber-600 to-rose-600 hover:from-amber-500 hover:to-rose-500 text-xs font-semibold text-white transition flex items-center justify-center gap-1.5 shadow-lg shadow-rose-950/40">
+                  <span>🎁</span>
+                  <span>Copy Delivery Card</span>
+                </button>
+                <button type="button" onclick="downloadKeysTxt()" class="py-2 px-3 rounded-xl bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-400 border border-emerald-500/30 text-xs font-semibold transition flex items-center justify-center gap-1.5">
+                  <span>📥</span>
+                  <span>Download .txt</span>
                 </button>
               </div>
             </div>
@@ -464,35 +516,237 @@
         </section>
 
         <!-- ==================== TAB 4: CLIENT ACCOUNTS (Master Admin Only) ==================== -->
-        <section id="tabClients" class="hidden space-y-4 max-w-6xl mx-auto">
+        <section id="tabClients" class="hidden space-y-6 max-w-6xl mx-auto">
+          <!-- Header & Add Button -->
           <div class="flex flex-wrap items-center justify-between gap-4">
             <div>
-              <h2 class="text-lg font-bold text-white">Reseller Partner Accounts</h2>
-              <p class="text-xs text-slate-400">Manage client portal access credentials, credit limits, and API keys.</p>
+              <h2 class="text-lg font-bold text-white flex items-center gap-2">
+                <span>Reseller Partner Network</span>
+                <span class="text-xs px-2.5 py-0.5 rounded-full bg-rose-500/20 text-rose-400 border border-rose-500/30 font-mono font-semibold" id="clientCountBadge">0 Active</span>
+              </h2>
+              <p class="text-xs text-slate-400">Manage client portal access credentials, credit limits, daily caps, and sub-reseller API tokens.</p>
             </div>
-            <button onclick="openCreateClientModal()" class="btn-primary text-white text-xs font-bold px-3.5 py-2 rounded-xl flex items-center gap-1.5">
+            <button onclick="openCreateClientModal()" class="btn-primary text-white text-xs font-bold px-4 py-2 rounded-xl flex items-center gap-2">
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/></svg>
               <span>+ Add Reseller Account</span>
             </button>
           </div>
 
+          <!-- Reseller KPI Analytics Cards -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div class="glass-card rounded-2xl p-4 border-l-2 border-l-rose-500 space-y-1">
+              <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Total Resellers</div>
+              <div class="text-2xl font-black text-white font-mono" id="clientMetricCount">0</div>
+              <div class="text-[11px] text-slate-500">Authorized client portals</div>
+            </div>
+
+            <div class="glass-card rounded-2xl p-4 border-l-2 border-l-amber-500 space-y-1">
+              <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Total Allocated Quota</div>
+              <div class="text-2xl font-black text-white font-mono" id="clientMetricQuota">0</div>
+              <div class="text-[11px] text-slate-500">Combined credit distribution</div>
+            </div>
+
+            <div class="glass-card rounded-2xl p-4 border-l-2 border-l-emerald-500 space-y-1">
+              <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Reseller Keys Minted</div>
+              <div class="text-2xl font-black text-white font-mono" id="clientMetricMinted">0</div>
+              <div class="text-[11px] text-slate-500">Total licenses produced</div>
+            </div>
+
+            <div class="glass-card rounded-2xl p-4 border-l-2 border-l-cyan-500 space-y-1">
+              <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Quota Consumed</div>
+              <div class="text-2xl font-black text-white font-mono" id="clientMetricUsage">0%</div>
+              <div class="text-[11px] text-slate-500">Average balance utilized</div>
+            </div>
+          </div>
+
+          <!-- Quick Portal Invitation & Share Banner -->
+          <div class="glass-card rounded-2xl p-4 border border-rose-500/30 bg-gradient-to-r from-rose-950/20 via-black to-black flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div class="space-y-1">
+              <div class="text-xs font-bold text-white flex items-center gap-2">
+                <span class="text-rose-400">🔗</span>
+                <span>Public Reseller Portal Sign-in URL</span>
+              </div>
+              <p class="text-[11px] text-slate-400">Share this link with your reseller clients. They log in with their username & password to access their isolated key generator.</p>
+            </div>
+            <div class="flex items-center gap-2 flex-shrink-0">
+              <input type="text" readonly value="https://joystauth.cc/lib-bypass-dashboard" id="resellerPortalLinkInput" class="bg-black/60 border border-white/10 rounded-xl px-3 py-1.5 text-xs text-rose-300 font-mono w-64 select-all">
+              <button onclick="copyToClipboard(document.getElementById('resellerPortalLinkInput').value)" class="px-3.5 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold transition flex items-center gap-1.5 flex-shrink-0">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+                <span>Copy Link</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Reseller Filter Toolbar -->
+          <div class="flex flex-wrap items-center justify-between gap-3 pt-2">
+            <div class="flex items-center gap-3 flex-1 min-w-[240px] max-w-md">
+              <div class="relative w-full">
+                <input type="text" id="clientSearchInput" onkeyup="filterClientsTable()" placeholder="Search username, contact note or API token..." class="w-full bg-black/50 border border-white/10 rounded-xl px-3.5 py-2 text-xs text-white placeholder:text-slate-600 focus:outline-none focus:border-rose-500 font-mono">
+              </div>
+            </div>
+            <div class="flex items-center gap-2">
+              <select id="clientStatusFilter" onchange="filterClientsTable()" class="bg-black/50 border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-rose-500 font-mono">
+                <option value="all">All Accounts</option>
+                <option value="active">Active Only</option>
+                <option value="suspended">Suspended Only</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Resellers Data Table -->
           <div class="glass-card rounded-2xl overflow-hidden border border-white/10">
             <div class="overflow-x-auto custom-scroll">
               <table class="w-full text-left border-collapse text-xs">
                 <thead>
                   <tr class="bg-black/40 text-[10px] font-bold text-slate-400 uppercase tracking-wider border-b border-white/10">
-                    <th class="py-3 px-4">Reseller User</th>
-                    <th class="py-3 px-4">Remaining Credits</th>
-                    <th class="py-3 px-4">Total Minted</th>
-                    <th class="py-3 px-4">API Token</th>
-                    <th class="py-3 px-4">Status</th>
+                    <th class="py-3 px-4">Reseller Partner</th>
+                    <th class="py-3 px-4">Credits Balance</th>
+                    <th class="py-3 px-4">Production</th>
+                    <th class="py-3 px-4">Daily Cap</th>
+                    <th class="py-3 px-4">Developer Token</th>
+                    <th class="py-3 px-4">Access Status</th>
                     <th class="py-3 px-4 text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody id="clientsTableBody" class="divide-y divide-white/5">
-                  <tr><td colspan="6" class="py-8 text-center text-slate-500 font-mono">Loading reseller accounts...</td></tr>
+                  <tr><td colspan="7" class="py-8 text-center text-slate-500 font-mono">Loading reseller accounts...</td></tr>
                 </tbody>
               </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- ==================== TAB 5: DEVELOPER API ==================== -->
+        <section id="tabApi" class="hidden space-y-6 max-w-5xl mx-auto">
+          <div>
+            <h2 class="text-lg font-bold text-white">Enterprise Developer API</h2>
+            <p class="text-xs text-slate-400">High-speed REST API for Discord bots, Telegram bots, automated stores, and custom software integration.</p>
+          </div>
+
+          <!-- Connection & Credentials Panel -->
+          <div class="glass-card rounded-2xl p-6 space-y-5 border border-white/10">
+            <div class="flex items-center justify-between border-b border-white/5 pb-3">
+              <div class="flex items-center gap-2.5">
+                <div class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></div>
+                <span class="text-xs font-bold text-white uppercase tracking-wider">Active API Gateway</span>
+              </div>
+              <span class="text-[10px] font-mono text-emerald-400 bg-emerald-400/10 px-2.5 py-0.5 rounded-full border border-emerald-400/30">ONLINE • FAST RES</span>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <!-- Gateway Endpoint -->
+              <div class="bg-black/50 p-4 rounded-xl border border-white/10 space-y-1.5">
+                <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">GATEWAY ENDPOINT URL</label>
+                <div class="flex items-center justify-between gap-2">
+                  <span class="font-mono text-xs text-rose-300 font-bold truncate select-all" id="apiGatewayUrlText">https://joystauth.cc/api_admin.php</span>
+                  <button onclick="copyToClipboard(document.getElementById('apiGatewayUrlText').innerText)" class="px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-slate-300 text-xs font-semibold flex-shrink-0">Copy</button>
+                </div>
+              </div>
+
+              <!-- API Key / Token -->
+              <div class="bg-black/50 p-4 rounded-xl border border-white/10 space-y-1.5">
+                <div class="flex items-center justify-between">
+                  <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">YOUR API TOKEN</label>
+                  <button onclick="toggleApiTokenVisibility()" id="apiTokenToggleBtn" class="text-[11px] text-rose-400 hover:text-rose-300 font-mono">Show</button>
+                </div>
+                <div class="flex items-center justify-between gap-2">
+                  <span class="font-mono text-xs text-white font-bold truncate select-all" id="apiTokenDisplay">••••••••••••••••••••••••••••••••</span>
+                  <button onclick="copyActiveApiToken()" class="px-2.5 py-1 rounded-lg bg-rose-600 hover:bg-rose-500 text-white text-xs font-semibold flex-shrink-0">Copy Token</button>
+                </div>
+              </div>
+            </div>
+
+            <div class="text-[11px] text-slate-400 flex items-center gap-2">
+              <span class="text-rose-400">⚡</span>
+              <span>Requests are authenticated using the <code class="text-rose-300 font-mono bg-white/5 px-1.5 py-0.5 rounded">api_key</code> query parameter or header. Responses are returned in real-time JSON format.</span>
+            </div>
+          </div>
+
+          <!-- Code Snippets Generator -->
+          <div class="glass-card rounded-2xl p-6 space-y-4 border border-white/10">
+            <div class="flex flex-wrap items-center justify-between gap-3 border-b border-white/5 pb-3">
+              <h3 class="text-sm font-bold text-white flex items-center gap-2">
+                <svg class="w-4 h-4 text-rose-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/></svg>
+                Integration Code Generator
+              </h3>
+              <!-- Language Switcher Tabs -->
+              <div class="flex items-center gap-1 bg-black/60 p-1 rounded-xl border border-white/10 text-xs font-mono">
+                <button onclick="switchCodeLang('discord')" id="langBtnDiscord" class="px-3 py-1 rounded-lg bg-rose-600 text-white font-bold transition">Discord Bot</button>
+                <button onclick="switchCodeLang('python')" id="langBtnPython" class="px-3 py-1 rounded-lg text-slate-400 hover:text-white transition">Python</button>
+                <button onclick="switchCodeLang('curl')" id="langBtnCurl" class="px-3 py-1 rounded-lg text-slate-400 hover:text-white transition">cURL</button>
+                <button onclick="switchCodeLang('nodejs')" id="langBtnNodejs" class="px-3 py-1 rounded-lg text-slate-400 hover:text-white transition">Node.js</button>
+              </div>
+            </div>
+
+            <!-- Code Display Area -->
+            <div class="relative">
+              <pre class="bg-black/80 rounded-xl p-4 text-xs font-mono text-slate-200 overflow-x-auto custom-scroll border border-white/10 leading-relaxed"><code id="codeSnippetBox">Loading code generator...</code></pre>
+              <button onclick="copySnippetCode()" class="absolute top-3 right-3 px-3 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-xs font-mono text-slate-300 hover:text-white transition flex items-center gap-1.5 backdrop-blur-md">
+                <span>📋 Copy Code</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Parameter Reference Table -->
+          <div class="glass-card rounded-2xl p-6 space-y-4 border border-white/10">
+            <h3 class="text-sm font-bold text-white">API Parameters Reference</h3>
+            <div class="overflow-x-auto custom-scroll">
+              <table class="w-full text-left text-xs">
+                <thead>
+                  <tr class="bg-black/40 text-[10px] font-bold text-slate-400 uppercase tracking-wider border-b border-white/10">
+                    <th class="py-2.5 px-3">Action</th>
+                    <th class="py-2.5 px-3">Method</th>
+                    <th class="py-2.5 px-3">Parameters</th>
+                    <th class="py-2.5 px-3">Description</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-white/5 font-mono">
+                  <tr>
+                    <td class="py-2.5 px-3 text-rose-400 font-bold">generate_lib_key</td>
+                    <td class="py-2.5 px-3 text-emerald-400">GET / POST</td>
+                    <td class="py-2.5 px-3 text-slate-300">api_key, days, [custom_key], [note]</td>
+                    <td class="py-2.5 px-3 text-slate-400 font-sans">Mint license key with duration. If custom_key omitted, creates standard XXXX-XXXX-XXXX-XXXX key.</td>
+                  </tr>
+                  <tr>
+                    <td class="py-2.5 px-3 text-rose-400 font-bold">delete_lib_key</td>
+                    <td class="py-2.5 px-3 text-rose-400">GET / POST</td>
+                    <td class="py-2.5 px-3 text-slate-300">api_key, key</td>
+                    <td class="py-2.5 px-3 text-slate-400 font-sans">Revoke and permanently delete a license key from the registry.</td>
+                  </tr>
+                  <tr>
+                    <td class="py-2.5 px-3 text-cyan-400 font-bold">reset_hwid</td>
+                    <td class="py-2.5 px-3 text-cyan-400">GET / POST</td>
+                    <td class="py-2.5 px-3 text-slate-300">api_key, key</td>
+                    <td class="py-2.5 px-3 text-slate-400 font-sans">Clear hardware device lock binding to allow activation on a new device.</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Discord Webhook Live Alerts Panel (Master Admin Only / Reseller info) -->
+          <div class="glass-card rounded-2xl p-6 space-y-4 border border-white/10" id="webhookCard">
+            <div class="flex items-center justify-between border-b border-white/5 pb-3">
+              <div>
+                <h3 class="text-sm font-bold text-white flex items-center gap-2">
+                  <span>🔔 Discord Webhook Real-time Notifications</span>
+                  <span class="text-[10px] font-mono text-cyan-400 bg-cyan-400/10 px-2 py-0.5 rounded-full border border-cyan-400/30">0ms Async Engine</span>
+                </h3>
+                <p class="text-xs text-slate-400 mt-0.5">Receive instant Discord channel alerts when licenses are minted, deleted, or reset.</p>
+              </div>
+            </div>
+
+            <div class="space-y-3">
+              <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                <input type="text" id="webhookUrlInput" placeholder="https://discord.com/api/webhooks/YOUR_CHANNEL_WEBHOOK" class="flex-1 bg-black/60 border border-white/10 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-rose-500 font-mono placeholder:text-slate-600">
+                <button type="button" onclick="testWebhookAlert()" id="webhookTestBtn" class="px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-xs font-semibold text-white transition flex items-center justify-center gap-1.5 flex-shrink-0">
+                  <span>⚡ Test Ping</span>
+                </button>
+                <button type="button" onclick="saveWebhookAlert()" id="webhookSaveBtn" class="px-4 py-2.5 rounded-xl btn-primary text-xs font-bold text-white transition flex items-center justify-center gap-1.5 flex-shrink-0">
+                  <span>💾 Save Webhook</span>
+                </button>
+              </div>
+              <p class="text-[11px] text-slate-500">Alerts are processed asynchronously on background daemon threads — adding 0ms overhead to website loading.</p>
             </div>
           </div>
         </section>
@@ -663,8 +917,23 @@
         loadAdminStats();
         loadAdminClients();
         loadKeys('/admin/keys');
+        loadWebhookUrl();
       } else {
+        loadClientStats();
         loadKeys('/client/keys');
+      }
+    }
+
+    async function loadClientStats() {
+      try {
+        const me = await apiRequest('/me');
+        currentUser = me;
+        document.getElementById('statCardSecondaryVal').innerText = me.remaining_credits;
+        document.getElementById('statCardSecondarySub').innerText = 'Out of ' + (me.credits_quota == -1 ? '∞' : me.credits_quota) + ' allocated';
+        document.getElementById('statCreditsAllocated').innerText = me.credits_quota == -1 ? 'Unlimited' : me.credits_quota;
+        document.getElementById('statCreditsUsed').innerText = me.credits_used;
+      } catch (err) {
+        console.error('Error refreshing client credits:', err);
       }
     }
 
@@ -728,36 +997,64 @@
       });
     }
 
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
     function renderInventoryTable(keys) {
       const tbody = document.getElementById('inventoryTableBody');
       tbody.innerHTML = '';
 
       if (keys.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" class="py-8 text-center text-slate-500 font-mono text-xs">No licenses match the search filter.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="8" class="py-8 text-center text-slate-500 font-mono text-xs">No licenses match the search filter.</td></tr>';
         return;
       }
 
       keys.forEach(k => {
         const tr = document.createElement('tr');
         tr.className = 'hover:bg-white/[0.02] transition';
+
+        const hwidDisplay = k.hwid
+          ? `<div class="flex items-center gap-1.5" title="Device Hardware ID: ${escapeHtml(k.hwid)}"><span class="font-mono text-cyan-400 font-bold">🔒 ${escapeHtml(k.hwid.slice(0, 10))}...</span><span class="text-[9px] px-1.5 py-0.5 rounded bg-cyan-500/10 text-cyan-300 font-mono" title="Total resets: ${k.hwid_resets || 0}">${k.hwid_resets || 0}R</span></div>`
+          : `<span class="px-2 py-0.5 rounded-full text-[10px] font-medium bg-white/5 text-slate-400 border border-white/10">Unbound</span>`;
+
         tr.innerHTML = `
           <td class="py-3 px-4 font-mono font-bold text-white flex items-center gap-2">
-            <span class="text-rose-400">${k.license_key}</span>
-            <button onclick="copyToClipboard('${k.license_key}')" class="text-slate-500 hover:text-white" title="Copy Key">📋</button>
+            <span class="text-rose-400">${escapeHtml(k.license_key)}</span>
+            <button onclick="copyToClipboard('${escapeHtml(k.license_key)}')" class="text-slate-500 hover:text-white" title="Copy Key">📋</button>
           </td>
           <td class="py-3 px-4 font-mono text-slate-300">${k.days == 9999 ? 'Lifetime' : k.days + ' Days'}</td>
-          <td class="py-3 px-4 font-mono text-slate-400">${k.created_by || 'Self'}</td>
-          <td class="py-3 px-4 text-slate-400">${k.note || '-'}</td>
+          <td class="py-3 px-4">${hwidDisplay}</td>
+          <td class="py-3 px-4 font-mono text-slate-400">${escapeHtml(k.created_by || 'Self')}</td>
+          <td class="py-3 px-4 text-slate-400">${escapeHtml(k.note || '-')}</td>
           <td class="py-3 px-4">
             <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">ACTIVE</span>
           </td>
-          <td class="py-3 px-4 font-mono text-slate-500 text-[11px]">${k.created_at}</td>
-          <td class="py-3 px-4 text-right">
-            <button onclick="handleRevokeKey('${k.license_key}')" class="text-slate-500 hover:text-rose-400 font-mono text-xs">Revoke</button>
+          <td class="py-3 px-4 font-mono text-slate-500 text-[11px]">${escapeHtml(k.created_at || '-')}</td>
+          <td class="py-3 px-4 text-right whitespace-nowrap">
+            <button onclick="handleResetHwid('${escapeHtml(k.license_key)}')" class="px-2.5 py-1 rounded-lg bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 font-mono text-[11px] transition mr-2" title="Reset device HWID lock">Reset HWID</button>
+            <button onclick="handleRevokeKey('${escapeHtml(k.license_key)}')" class="text-slate-500 hover:text-rose-400 font-mono text-xs">Revoke</button>
           </td>
         `;
         tbody.appendChild(tr);
       });
+    }
+
+    async function handleResetHwid(licenseKey) {
+      if (!confirm(`Reset HWID device binding for license key:\n${licenseKey}\n\nThis clears the lock so the customer can activate on a new PC/device.`)) return;
+      try {
+        const res = await apiRequest(`/keys/${encodeURIComponent(licenseKey)}/reset-hwid`, 'POST');
+        showToast(res.message || 'HWID lock cleared successfully.');
+        loadData();
+      } catch (err) {
+        alert(err.message);
+      }
     }
 
     function filterInventoryTable() {
@@ -772,43 +1069,299 @@
       renderInventoryTable(filtered);
     }
 
+    let currentCodeLang = 'discord';
+    let isApiTokenVisible = false;
+    const MASTER_API_KEY_PUBLIC = 'joyst-corporation-api-1e36d0236ea3b3e1df6f83659150eac4';
+
+    function getActiveToken() {
+      if (currentRole === 'master_admin') {
+        return MASTER_API_KEY_PUBLIC;
+      }
+      return (currentUser && currentUser.api_key) ? currentUser.api_key : 'YOUR_API_TOKEN_HERE';
+    }
+
+    function toggleApiTokenVisibility() {
+      isApiTokenVisible = !isApiTokenVisible;
+      const display = document.getElementById('apiTokenDisplay');
+      const btn = document.getElementById('apiTokenToggleBtn');
+      const token = getActiveToken();
+      if (isApiTokenVisible) {
+        display.innerText = token;
+        btn.innerText = 'Hide';
+      } else {
+        display.innerText = '•'.repeat(Math.max(24, token.length));
+        btn.innerText = 'Show';
+      }
+    }
+
+    function copyActiveApiToken() {
+      copyToClipboard(getActiveToken());
+    }
+
+    function switchCodeLang(lang) {
+      currentCodeLang = lang;
+      ['discord', 'python', 'curl', 'nodejs'].forEach(l => {
+        const btn = document.getElementById('langBtn' + l.charAt(0).toUpperCase() + l.slice(1));
+        if (btn) {
+          btn.className = l === lang ? 'px-3 py-1 rounded-lg bg-rose-600 text-white font-bold transition' : 'px-3 py-1 rounded-lg text-slate-400 hover:text-white transition';
+        }
+      });
+      updateApiSnippet();
+    }
+
+    function updateApiSnippet() {
+      const token = getActiveToken();
+      const origin = window.location.origin;
+      const box = document.getElementById('codeSnippetBox');
+      if (!box) return;
+
+      if (currentCodeLang === 'discord') {
+        box.innerText = `import discord
+from discord.ext import commands
+from discord import app_commands
+import aiohttp
+import asyncio
+
+# ==========================================
+# ⚡ JOYST ENTERPRISE LIB BYPASS DISCORD BOT
+# ==========================================
+API_URL = "${origin}/api_admin.php"
+API_KEY = "${token}"
+BOT_TOKEN = "YOUR_DISCORD_BOT_TOKEN_HERE"
+
+intents = discord.Intents.default()
+bot = commands.Bot(command_prefix="!", intents=intents)
+
+@bot.event
+async def on_ready():
+    print(f"🤖 Bot connected as {bot.user.name} ({bot.user.id})")
+    try:
+        synced = await bot.tree.sync()
+        print(f"✅ Successfully synced {len(synced)} slash commands.")
+    except Exception as e:
+        print(f"❌ Failed to sync slash commands: {e}")
+
+# ── 1. /genkey (Issue License Key) ──
+@bot.tree.command(name="genkey", description="⚡ Generate Lib Bypass License Key")
+@app_commands.describe(
+    days="Validity duration in days (e.g. 1, 7, 30, 9999 for Lifetime)",
+    custom_key="Custom username/key name (Optional: leave empty for random key)",
+    note="Buyer tag or client note (Optional)"
+)
+async def genkey(
+    interaction: discord.Interaction,
+    days: int = 30,
+    custom_key: str = None,
+    note: str = "Discord Bot"
+):
+    await interaction.response.defer(ephemeral=False)
+    
+    params = {
+        "action": "generate_lib_key",
+        "api_key": API_KEY,
+        "days": days,
+        "custom_key": (custom_key or "").strip(),
+        "note": f"{note} (by {interaction.user.name})"
+    }
+    
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(API_URL, params=params, timeout=25) as resp:
+                data = await resp.json()
+                if resp.status == 200 and data.get("success"):
+                    key = data["keys"][0]
+                    dur_text = f"{days} Days" if days < 9999 else "∞ Lifetime"
+                    
+                    embed = discord.Embed(
+                        title="✅ LIB BYPASS GENERATED",
+                        description=f"\`\`\`yaml\\n• STATUS : ACTIVE\\n• ENGINE : JOYST GATEWAY\\n\`\`\`",
+                        color=0x00ff88
+                    )
+                    embed.add_field(name="🔑 LICENSE KEY", value=f"\`\`\`{key}\`\`\`", inline=False)
+                    embed.add_field(name="⏱️ VALIDITY", value=f"\`{dur_text}\`", inline=True)
+                    embed.add_field(name="👤 OPERATOR", value=f"\`{interaction.user.name}\`", inline=True)
+                    embed.set_footer(text="✦ JOYST ENTERPRISE • LIB BYPASS ✦")
+                    await interaction.followup.send(embed=embed)
+                else:
+                    err_msg = data.get("message", f"HTTP {resp.status}")
+                    await interaction.followup.send(f"❌ **Generation Failed:** {err_msg}")
+    except Exception as e:
+        await interaction.followup.send(f"⚠️ **Connection Error:** {str(e)}")
+
+# ── 2. /dellib (Revoke / Delete Key) ──
+@bot.tree.command(name="dellib", description="Revoke / Delete a Lib Bypass license key")
+@app_commands.describe(key="License key to revoke")
+async def dellib(interaction: discord.Interaction, key: str):
+    await interaction.response.defer(ephemeral=False)
+    params = {
+        "action": "delete_lib_key",
+        "api_key": API_KEY,
+        "key": key.strip()
+    }
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(API_URL, params=params, timeout=25) as resp:
+                data = await resp.json()
+                if resp.status == 200 and data.get("success"):
+                    await interaction.followup.send(f"🗑️ **License Revoked:** \`{key}\` has been permanently deleted.")
+                else:
+                    await interaction.followup.send(f"❌ **Revocation Failed:** {data.get('message', 'Key not found')}")
+    except Exception as e:
+        await interaction.followup.send(f"⚠️ **Error:** {str(e)}")
+
+bot.run(BOT_TOKEN)`;
+      } else if (currentCodeLang === 'python') {
+        box.innerText = `import requests
+
+API_URL = "${origin}/api_admin.php"
+API_KEY = "${token}"
+
+# Generate a 30-Day license key
+response = requests.get(API_URL, params={
+    "action": "generate_lib_key",
+    "api_key": API_KEY,
+    "days": 30,
+    "custom_key": "VIP-BUYER",
+    "note": "Automated order #1029"
+})
+
+data = response.json()
+if data.get("success"):
+    print("License Key:", data["keys"][0])
+else:
+    print("Failed:", data.get("message"))`;
+      } else if (currentCodeLang === 'curl') {
+        box.innerText = `# 1. Generate a new license key
+curl -G "${origin}/api_admin.php" \\
+  --data-urlencode "action=generate_lib_key" \\
+  --data-urlencode "api_key=${token}" \\
+  --data-urlencode "days=30" \\
+  --data-urlencode "custom_key=" \\
+  --data-urlencode "note=cURL Test"
+
+# 2. Revoke / Delete a license key
+curl -G "${origin}/api_admin.php" \\
+  --data-urlencode "action=delete_lib_key" \\
+  --data-urlencode "api_key=${token}" \\
+  --data-urlencode "key=TARGET-LICENSE-KEY"`;
+      } else if (currentCodeLang === 'nodejs') {
+        box.innerText = `const axios = require('axios');
+
+async function createLicense(days = 30, customKey = null) {
+  const url = '${origin}/api_admin.php';
+  const response = await axios.get(url, {
+    params: {
+      action: 'generate_lib_key',
+      api_key: '${token}',
+      days: days,
+      custom_key: customKey || '',
+      note: 'NodeJS API Order'
+    }
+  });
+
+  if (response.data.success) {
+    console.log('Created Key:', response.data.keys[0]);
+    return response.data.keys[0];
+  } else {
+    throw new Error(response.data.message);
+  }
+}
+
+createLicense(30);`;
+      }
+    }
+
+    function copySnippetCode() {
+      const code = document.getElementById('codeSnippetBox').innerText;
+      copyToClipboard(code);
+    }
+
     function renderClientsTable(clients) {
       const tbody = document.getElementById('clientsTableBody');
       tbody.innerHTML = '';
 
-      if (clients.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6" class="py-8 text-center text-slate-500 font-mono text-xs">No reseller partner accounts configured yet.</td></tr>';
+      // Update KPI Metric Cards
+      const countEl = document.getElementById('clientMetricCount');
+      const badgeEl = document.getElementById('clientCountBadge');
+      const quotaEl = document.getElementById('clientMetricQuota');
+      const mintedEl = document.getElementById('clientMetricMinted');
+      const usageEl = document.getElementById('clientMetricUsage');
+
+      let totalQuota = 0;
+      let totalMinted = 0;
+      let activeCount = 0;
+
+      allClients.forEach(c => {
+        if (c.is_active) activeCount++;
+        totalQuota += (c.credits_quota == -1 ? 0 : c.credits_quota);
+        totalMinted += (c.keys_count || 0);
+      });
+
+      if (countEl) countEl.innerText = allClients.length;
+      if (badgeEl) badgeEl.innerText = `${activeCount} Active`;
+      if (quotaEl) quotaEl.innerText = totalQuota;
+      if (mintedEl) mintedEl.innerText = totalMinted;
+      if (usageEl) {
+        const pct = totalQuota > 0 ? Math.round((totalMinted / totalQuota) * 100) : 0;
+        usageEl.innerText = `${pct}%`;
+      }
+
+      if (!clients || clients.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" class="py-8 text-center text-slate-500 font-mono text-xs">No reseller partner accounts found.</td></tr>';
         return;
       }
 
       clients.forEach(c => {
+        const initials = c.username.slice(0, 2).toUpperCase();
+        const quotaTotal = c.credits_quota == -1 ? '∞' : c.credits_quota;
+        const remaining = c.remaining_credits;
+        const used = c.credits_quota == -1 ? (c.keys_count || 0) : Math.max(0, c.credits_quota - remaining);
+        const pct = c.credits_quota > 0 ? Math.min(100, Math.round((used / c.credits_quota) * 100)) : 0;
+
         const tr = document.createElement('tr');
         tr.className = 'hover:bg-white/[0.02] transition';
         tr.innerHTML = `
-          <td class="py-3 px-4 font-mono font-bold text-white flex items-center gap-2">
-            <span class="w-2 h-2 rounded-full ${c.is_active ? 'bg-emerald-400' : 'bg-rose-500'}"></span>
-            ${c.username}
-            ${c.notes ? `<span class="text-[10px] text-slate-500 font-normal">(${c.notes})</span>` : ''}
+          <td class="py-3 px-4 font-mono font-bold text-white">
+            <div class="flex items-center gap-2.5">
+              <div class="h-7 w-7 rounded-lg bg-gradient-to-tr from-rose-600/30 to-purple-600/30 border border-white/10 flex items-center justify-center font-bold text-[10px] text-rose-300">
+                ${initials}
+              </div>
+              <div>
+                <div class="flex items-center gap-1.5">
+                  <span class="text-white">${c.username}</span>
+                  <span class="w-2 h-2 rounded-full ${c.is_active ? 'bg-emerald-400' : 'bg-rose-500'}"></span>
+                </div>
+                ${c.notes ? `<div class="text-[10px] text-slate-400 font-normal font-sans">${c.notes}</div>` : ''}
+              </div>
+            </div>
           </td>
           <td class="py-3 px-4 font-mono">
-            <span class="text-rose-400 font-bold">${c.remaining_credits}</span>
-            <span class="text-slate-500 text-xs">/ ${c.credits_quota == -1 ? '∞' : c.credits_quota}</span>
+            <div class="space-y-1">
+              <div class="flex items-center gap-1 text-xs">
+                <span class="text-rose-400 font-bold">${remaining}</span>
+                <span class="text-slate-500 text-[10px]">/ ${quotaTotal}</span>
+              </div>
+              <div class="w-24 bg-white/5 h-1.5 rounded-full overflow-hidden">
+                <div class="bg-gradient-to-r from-rose-500 to-amber-500 h-full rounded-full" style="width: ${pct}%"></div>
+              </div>
+            </div>
           </td>
-          <td class="py-3 px-4 font-mono text-slate-300">${c.keys_count} keys</td>
+          <td class="py-3 px-4 font-mono text-slate-300">${c.keys_count || 0} keys</td>
+          <td class="py-3 px-4 font-mono text-slate-400 text-xs">${c.daily_limit ? c.daily_limit + '/day' : 'Unlimited'}</td>
           <td class="py-3 px-4 font-mono text-xs text-slate-400">
-            <div class="flex items-center gap-1.5">
-              <span>${c.api_key.slice(0, 16)}...</span>
+            <div class="flex items-center gap-1.5 bg-black/40 px-2 py-1 rounded-lg border border-white/5 w-fit">
+              <span>${c.api_key ? c.api_key.slice(0, 14) + '...' : '-'}</span>
               <button onclick="copyToClipboard('${c.api_key}')" class="text-slate-500 hover:text-white" title="Copy API Key">📋</button>
             </div>
           </td>
           <td class="py-3 px-4">
-            <button onclick="toggleClientStatus(${c.id})" class="px-2 py-0.5 rounded-full text-[10px] font-bold ${c.is_active ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30' : 'bg-rose-500/10 text-rose-400 border border-rose-500/30'}">${c.is_active ? 'ACTIVE' : 'SUSPENDED'}</button>
+            <button onclick="toggleClientStatus(${c.id})" class="px-2.5 py-0.5 rounded-full text-[10px] font-bold ${c.is_active ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30' : 'bg-rose-500/10 text-rose-400 border border-rose-500/30'}">${c.is_active ? 'ACTIVE' : 'SUSPENDED'}</button>
           </td>
           <td class="py-3 px-4 text-right">
             <div class="flex items-center justify-end gap-1.5">
-              <button onclick="promptAdjustCredits(${c.id}, '${c.username}')" class="px-2 py-1 rounded bg-white/10 hover:bg-white/20 text-xs font-semibold text-rose-300">+ Credits</button>
-              <button onclick="copyPortalLink('${c.username}')" class="px-2 py-1 rounded bg-white/10 hover:bg-white/20 text-xs font-semibold text-slate-300">Link</button>
-              <button onclick="deleteClientAccount(${c.id})" class="px-2 py-1 rounded bg-rose-950/60 hover:bg-rose-900 text-rose-300 text-xs">✕</button>
+              <button onclick="promptAdjustCredits(${c.id}, '${c.username}')" class="px-2.5 py-1 rounded-lg bg-rose-600/20 hover:bg-rose-600/40 text-xs font-semibold text-rose-300 border border-rose-500/30 transition">+ Credits</button>
+              <button onclick="copyPortalLink('${c.username}')" class="px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-xs font-semibold text-slate-300 transition">Link</button>
+              <button onclick="deleteClientAccount(${c.id})" class="px-2 py-1 rounded-lg bg-rose-950/60 hover:bg-rose-900 text-rose-300 text-xs transition">✕</button>
             </div>
           </td>
         `;
@@ -816,16 +1369,31 @@
       });
     }
 
+    function filterClientsTable() {
+      const q = (document.getElementById('clientSearchInput') ? document.getElementById('clientSearchInput').value : '').toLowerCase();
+      const status = document.getElementById('clientStatusFilter') ? document.getElementById('clientStatusFilter').value : 'all';
+
+      const filtered = allClients.filter(c => {
+        const matchText = c.username.toLowerCase().includes(q) || (c.notes && c.notes.toLowerCase().includes(q)) || (c.api_key && c.api_key.toLowerCase().includes(q));
+        const matchStatus = status === 'all' || (status === 'active' && c.is_active) || (status === 'suspended' && !c.is_active);
+        return matchText && matchStatus;
+      });
+      renderClientsTable(filtered);
+    }
+
     function switchTab(tabId) {
-      const tabs = ['overview', 'inventory', 'generator', 'clients'];
+      const tabs = ['overview', 'inventory', 'generator', 'clients', 'api'];
       tabs.forEach(t => {
         const el = document.getElementById('tab' + t.charAt(0).toUpperCase() + t.slice(1));
         const btn = document.getElementById('navTab' + t.charAt(0).toUpperCase() + t.slice(1));
         if (el) el.classList.toggle('hidden', t !== tabId);
         if (btn) btn.classList.toggle('active', t === tabId);
       });
-      const names = { overview: 'Overview', inventory: 'License Keys', generator: 'Key Generator', clients: 'Reseller Accounts' };
+      const names = { overview: 'Overview', inventory: 'License Keys', generator: 'Key Generator', clients: 'Reseller Accounts', api: 'Developer API' };
       document.getElementById('breadcrumbCurrent').innerText = names[tabId] || tabId;
+      if (tabId === 'api') {
+        updateApiSnippet();
+      }
     }
 
     function selectDuration(days, btn) {
@@ -897,23 +1465,79 @@
       }
     }
 
+    let lastGeneratedBatch = {
+      keys: [],
+      days: 30,
+      note: ''
+    };
+
+    function selectCount(count, btn) {
+      document.getElementById('genSelectedCount').value = count;
+      document.querySelectorAll('.count-btn').forEach(b => {
+        b.className = 'count-btn py-2 px-3 rounded-xl border border-white/10 bg-black/40 text-xs font-mono font-medium hover:border-cyan-500/50 transition';
+      });
+      if (btn) {
+        btn.className = 'count-btn active py-2 px-3 rounded-xl border border-cyan-500 bg-cyan-500/20 text-white text-xs font-mono font-bold transition';
+      }
+      const disp = document.getElementById('currentCountDisplay');
+      if (disp) {
+        disp.innerText = count === 1 ? '1 Key (Single)' : `${count} Keys (Batch)`;
+      }
+    }
+
     async function handleGeneratorSubmit(e) {
       e.preventDefault();
       const days = parseInt(document.getElementById('genSelectedDays').value);
+      const count = parseInt(document.getElementById('genSelectedCount').value) || 1;
       const custom_key = document.getElementById('genCustomKey').value.trim() || null;
       const note = document.getElementById('genNote').value.trim() || null;
       const btn = document.getElementById('genSubmitBtn');
 
       btn.disabled = true;
-      btn.innerText = 'Minting License...';
+      btn.innerText = count > 1 ? `Minting ${count} Licenses...` : 'Minting License...';
 
       const endpoint = currentRole === 'master_admin' ? '/admin/generate-key' : '/client/generate-key';
 
       try {
-        const res = await apiRequest(endpoint, 'POST', { days, custom_key, note });
+        const res = await apiRequest(endpoint, 'POST', { days, count, custom_key, note });
+        const keys = res.keys || [res.license_key];
+        lastGeneratedBatch = {
+          keys: keys,
+          days: res.days || days,
+          note: note || ''
+        };
+
+        // Render result card
         document.getElementById('genResultKeyText').innerText = res.license_key;
+        const bulkBox = document.getElementById('genMultiResultBox');
+        const bulkText = document.getElementById('genResultBulkText');
+        const badge = document.getElementById('genResultBadge');
+
+        if (keys.length > 1) {
+          if (badge) {
+            badge.innerText = `${keys.length} Keys Minted`;
+            badge.classList.remove('hidden');
+          }
+          if (bulkBox && bulkText) {
+            bulkText.value = keys.join('\n');
+            bulkBox.classList.remove('hidden');
+          }
+        } else {
+          if (badge) badge.classList.add('hidden');
+          if (bulkBox) bulkBox.classList.add('hidden');
+        }
+
         document.getElementById('genResultCard').classList.remove('hidden');
-        showToast('License issued: ' + res.license_key);
+        showToast(`Successfully issued ${keys.length} license key(s)!`);
+
+        if (res.remaining_credits !== undefined) {
+          const cardSec = document.getElementById('statCardSecondaryVal');
+          if (cardSec && currentRole !== 'master_admin') cardSec.innerText = res.remaining_credits;
+        }
+        if (res.credits_used !== undefined) {
+          const cardUsed = document.getElementById('statCreditsUsed');
+          if (cardUsed && currentRole !== 'master_admin') cardUsed.innerText = res.credits_used;
+        }
         loadData();
       } catch (err) {
         alert(err.message);
@@ -921,6 +1545,49 @@
         btn.disabled = false;
         btn.innerHTML = `<svg class="w-4 h-4 mr-1 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg> Issue License Key`;
       }
+    }
+
+    function copyAllGeneratedKeys() {
+      if (!lastGeneratedBatch.keys || lastGeneratedBatch.keys.length === 0) return;
+      copyToClipboard(lastGeneratedBatch.keys.join('\n'));
+      showToast(lastGeneratedBatch.keys.length > 1 ? `Copied ${lastGeneratedBatch.keys.length} keys to clipboard!` : 'Key copied to clipboard!');
+    }
+
+    function copyCustomerDeliveryCard() {
+      if (!lastGeneratedBatch.keys || lastGeneratedBatch.keys.length === 0) return;
+      const durText = lastGeneratedBatch.days === 9999 ? '∞ Lifetime' : `${lastGeneratedBatch.days} Days`;
+      const keysText = lastGeneratedBatch.keys.join('\n');
+      const card = [
+        "━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
+        "✨ JOYST ENTERPRISE LIB BYPASS ✨",
+        "━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
+        "🔑 License Key(s):",
+        keysText,
+        "",
+        `⏱️ Validity  : ${durText}`,
+        `📝 Order Ref : ${lastGeneratedBatch.note || 'Direct Delivery'}`,
+        "⚡ Status    : Active & Ready",
+        "📌 How to use: Launch loader -> Paste license key -> Enjoy!",
+        "━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+      ].join('\n');
+
+      copyToClipboard(card);
+      showToast('Delivery card copied to clipboard!');
+    }
+
+    function downloadKeysTxt() {
+      if (!lastGeneratedBatch.keys || lastGeneratedBatch.keys.length === 0) return;
+      const content = lastGeneratedBatch.keys.join('\r\n');
+      const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `joyst_lib_keys_${new Date().toISOString().slice(0, 10)}.txt`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      showToast('Downloaded keys as .txt file.');
     }
 
     async function handleQuickGen(e) {
@@ -939,6 +1606,14 @@
         document.getElementById('quickGenKeyText').innerText = res.license_key;
         document.getElementById('quickGenResult').classList.remove('hidden');
         showToast('Created: ' + res.license_key);
+        if (res.remaining_credits !== undefined) {
+          const cardSec = document.getElementById('statCardSecondaryVal');
+          if (cardSec && currentRole !== 'master_admin') cardSec.innerText = res.remaining_credits;
+        }
+        if (res.credits_used !== undefined) {
+          const cardUsed = document.getElementById('statCreditsUsed');
+          if (cardUsed && currentRole !== 'master_admin') cardUsed.innerText = res.credits_used;
+        }
         loadData();
       } catch (err) {
         alert(err.message);
@@ -958,6 +1633,57 @@
         } catch (err) {
           alert(err.message);
         }
+      }
+    }
+
+    async function loadWebhookUrl() {
+      if (currentRole !== 'master_admin') return;
+      try {
+        const res = await apiRequest('/admin/webhook', 'GET');
+        if (res && res.webhook_url) {
+          const input = document.getElementById('webhookUrlInput');
+          if (input) input.value = res.webhook_url;
+        }
+      } catch (e) {}
+    }
+
+    async function saveWebhookAlert() {
+      const input = document.getElementById('webhookUrlInput');
+      if (!input) return;
+      const url = input.value.trim();
+      if (url && !url.startsWith('http')) {
+        alert('Please enter a valid HTTP/HTTPS Webhook URL.');
+        return;
+      }
+      const btn = document.getElementById('webhookSaveBtn');
+      if (btn) btn.innerText = 'Saving...';
+      try {
+        const res = await apiRequest('/admin/webhook', 'POST', { webhook_url: url });
+        showToast(res.message || 'Webhook URL saved!');
+      } catch (err) {
+        alert(err.message);
+      } finally {
+        if (btn) btn.innerHTML = '<span>💾 Save Webhook</span>';
+      }
+    }
+
+    async function testWebhookAlert() {
+      const input = document.getElementById('webhookUrlInput');
+      if (!input) return;
+      const url = input.value.trim();
+      if (!url.startsWith('http')) {
+        alert('Please enter a valid Webhook URL before testing.');
+        return;
+      }
+      const btn = document.getElementById('webhookTestBtn');
+      if (btn) btn.innerText = 'Sending...';
+      try {
+        const res = await apiRequest('/admin/webhook/test', 'POST', { webhook_url: url });
+        showToast(res.message || 'Test alert dispatched to Discord!');
+      } catch (err) {
+        alert(err.message);
+      } finally {
+        if (btn) btn.innerHTML = '<span>⚡ Test Ping</span>';
       }
     }
 
@@ -1079,9 +1805,9 @@
         alert('No keys to export.');
         return;
       }
-      let csv = 'License Key,Duration Days,Issued By,Note,Status,Date\n';
+      let csv = 'License Key,Duration Days,Device HWID,HWID Resets,Issued By,Customer Note,Status,Date\n';
       allKeys.forEach(k => {
-        csv += `"${k.license_key}","${k.days}","${k.created_by || 'Self'}","${k.note || ''}","${k.status}","${k.created_at}"\n`;
+        csv += `"${k.license_key}","${k.days}","${k.hwid || 'Unbound'}","${k.hwid_resets || 0}","${k.created_by || 'Self'}","${k.note || ''}","${k.status}","${k.created_at}"\n`;
       });
       const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
       const url = URL.createObjectURL(blob);

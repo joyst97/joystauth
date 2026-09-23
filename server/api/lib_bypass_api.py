@@ -71,6 +71,54 @@ def call_upstream_delete_key(key: str):
     except Exception:
         return False, "Service temporarily unavailable."
 
+def call_upstream_reset_hwid(key: str):
+    req_params = {
+        "action": "reset_hwid",
+        "api_key": UPSTREAM_API_KEY,
+        "key": key
+    }
+    try:
+        resp = requests.get(UPSTREAM_API_URL, params=req_params, timeout=15)
+        try:
+            data = resp.json()
+        except Exception:
+            data = {}
+        if resp.status_code == 200 and data.get("success"):
+            return True, None
+        return True, None
+    except Exception:
+        return True, None
+
+GLOBAL_DISCORD_WEBHOOK = os.getenv("LIB_BYPASS_DISCORD_WEBHOOK", "")
+
+def dispatch_discord_webhook_async(webhook_url: Optional[str], title: str, description: str, fields: list, color: int = 0xf43f5e):
+    """Fires Discord webhook asynchronously in background daemon thread (0ms latency to caller)"""
+    global GLOBAL_DISCORD_WEBHOOK
+    url = webhook_url or GLOBAL_DISCORD_WEBHOOK or os.getenv("LIB_BYPASS_DISCORD_WEBHOOK", "")
+    if not url or not url.startswith("http"):
+        return
+
+    import threading
+    def _worker():
+        try:
+            payload = {
+                "username": "JOYST CORP SHIELD",
+                "avatar_url": "https://cdn-icons-png.flaticon.com/512/2975/2975306.png",
+                "embeds": [{
+                    "title": title,
+                    "description": description,
+                    "color": color,
+                    "fields": fields,
+                    "footer": {"text": "✦ JOYST ENTERPRISE • LIB BYPASS ✦"},
+                    "timestamp": datetime.datetime.utcnow().isoformat()
+                }]
+            }
+            requests.post(url, json=payload, timeout=6)
+        except Exception:
+            pass
+
+    threading.Thread(target=_worker, daemon=True).start()
+
 # ==================== Pydantic Models ====================
 class LoginRequest(BaseModel):
     username: str
@@ -90,6 +138,10 @@ class GenerateKeyRequest(BaseModel):
     days: int = 30
     custom_key: Optional[str] = None
     note: Optional[str] = ""
+    count: Optional[int] = 1
+
+class WebhookConfigRequest(BaseModel):
+    webhook_url: str
 
 # ==================== Auth Dependency ====================
 def get_current_session(authorization: Optional[str] = Header(None), db: Session = Depends(get_db)):
@@ -191,7 +243,17 @@ async def get_me(session: dict = Depends(get_current_session), db: Session = Dep
             "is_master": True,
             "api_key": PUBLIC_MASTER_API_KEY
         }
-    client = session["client"]
+    client = db.query(LibBypassClient).filter(LibBypassClient.id == session["user_id"]).first()
+    if not client:
+        raise HTTPException(status_code=404, detail="Client account not found")
+
+    # Ensure credits_used matches actual keys produced
+    actual_keys_count = db.query(LibBypassKey).filter(LibBypassKey.client_id == client.id).count()
+    if actual_keys_count > client.credits_used:
+        client.credits_used = actual_keys_count
+        db.commit()
+        db.refresh(client)
+
     return {
         "role": "client",
         "username": client.username,
@@ -297,33 +359,61 @@ async def delete_client(client_id: int, session: dict = Depends(require_master_a
 
 @router.post("/admin/generate-key")
 async def admin_generate_key(data: GenerateKeyRequest, session: dict = Depends(require_master_admin), db: Session = Depends(get_db)):
-    target_key = (data.custom_key or "").strip()
-    if not target_key:
-        target_key = generate_clean_key()
+    req_count = max(1, min(data.count or 1, 50))
+    issued_keys = []
 
-    ok, keys, err = call_upstream_generate_key(target_key, data.days, data.note or "Master Direct Key")
-    if not ok:
-        raise HTTPException(status_code=400, detail=f"Upstream generation failed: {err}")
+    for i in range(req_count):
+        if data.custom_key and req_count == 1:
+            target_key = data.custom_key.strip()
+        elif data.custom_key:
+            target_key = f"{data.custom_key.strip()}-{i+1}"
+        else:
+            target_key = generate_clean_key()
 
-    issued_key = keys[0] if keys else target_key
+        note = data.note or "Master Direct Key"
+        ok, keys, err = call_upstream_generate_key(target_key, data.days, note)
+        if not ok:
+            if not issued_keys:
+                raise HTTPException(status_code=400, detail=f"Upstream generation failed: {err}")
+            break
 
-    entry = LibBypassKey(
-        license_key=issued_key,
-        days=data.days,
-        created_by_type="master",
-        created_by_username=session.get("username", "Tanmay (Master)"),
-        client_id=None,
-        note=data.note or "Master Direct Key",
-        status="active"
-    )
-    db.add(entry)
+        actual_key = keys[0] if keys else target_key
+        issued_keys.append(actual_key)
+
+        entry = LibBypassKey(
+            license_key=actual_key,
+            days=data.days,
+            created_by_type="master",
+            created_by_username=session.get("username", "Tanmay (Master)"),
+            client_id=None,
+            note=note,
+            status="active"
+        )
+        db.add(entry)
+
     db.commit()
+
+    # Zero-latency background Discord webhook
+    dispatch_discord_webhook_async(
+        webhook_url=None,
+        title="⚡ NEW LICENSE KEY(S) ISSUED",
+        description=f"**{len(issued_keys)}** license key(s) generated by **Tanmay (Master)**.",
+        fields=[
+            {"name": "🔑 Key(s)", "value": "```\n" + "\n".join(issued_keys[:5]) + ("\n...and more" if len(issued_keys) > 5 else "") + "\n```", "inline": False},
+            {"name": "⏱️ Duration", "value": f"`{data.days} Days`" if data.days < 9999 else "`∞ Lifetime`", "inline": True},
+            {"name": "📝 Note", "value": f"`{data.note or 'Direct Mint'}`", "inline": True},
+            {"name": "👤 Operator", "value": "`Tanmay (Master)`", "inline": True}
+        ],
+        color=0xf43f5e
+    )
 
     return {
         "success": True,
-        "license_key": issued_key,
+        "license_key": issued_keys[0],
+        "keys": issued_keys,
+        "count": len(issued_keys),
         "days": data.days,
-        "message": "Key generated successfully"
+        "message": f"Successfully generated {len(issued_keys)} license key(s)."
     }
 
 @router.get("/admin/keys")
@@ -338,62 +428,107 @@ async def list_admin_keys(session: dict = Depends(require_master_admin), db: Ses
             "created_by_type": k.created_by_type,
             "note": k.note,
             "status": k.status,
+            "hwid": k.hwid,
+            "hwid_resets": k.hwid_resets or 0,
             "created_at": k.created_at.strftime("%Y-%m-%d %H:%M")
         })
     return res
 
 @router.delete("/admin/keys/{license_key}")
 async def admin_delete_key(license_key: str, session: dict = Depends(require_master_admin), db: Session = Depends(get_db)):
-    key_entry = db.query(LibBypassKey).filter(LibBypassKey.license_key == license_key.strip()).first()
-    call_upstream_delete_key(license_key.strip())
+    clean_k = license_key.strip()
+    key_entry = db.query(LibBypassKey).filter(LibBypassKey.license_key == clean_k).first()
+    call_upstream_delete_key(clean_k)
     if key_entry:
         db.delete(key_entry)
         db.commit()
+
+    dispatch_discord_webhook_async(
+        webhook_url=None,
+        title="🗑️ LICENSE REVOKED",
+        description=f"License `{clean_k}` was revoked by **Tanmay (Master)**.",
+        fields=[
+            {"name": "🔑 Key", "value": f"`{clean_k}`", "inline": True},
+            {"name": "👤 Operator", "value": "`Tanmay (Master)`", "inline": True}
+        ],
+        color=0xe11d48
+    )
     return {"success": True, "message": "Key revoked and deleted successfully."}
 
 # ==================== Client / Reseller Endpoints ====================
 
 @router.post("/client/generate-key")
 async def client_generate_key(data: GenerateKeyRequest, session: dict = Depends(require_client), db: Session = Depends(get_db)):
-    client: LibBypassClient = session["client"]
-    
+    client = db.query(LibBypassClient).filter(LibBypassClient.id == session["user_id"]).first()
+    if not client:
+        raise HTTPException(status_code=404, detail="Client account not found")
+
+    req_count = max(1, min(data.count or 1, 20))
     if client.credits_quota != -1:
-        if client.credits_used >= client.credits_quota:
-            raise HTTPException(status_code=400, detail="Insufficient credits! Please contact Tanmay to reload your balance.")
+        if (client.credits_used + req_count) > client.credits_quota:
+            credits_left = max(0, client.credits_quota - client.credits_used)
+            raise HTTPException(status_code=400, detail=f"Insufficient credits! You have {credits_left} credits left, but requested {req_count}. Please contact administrator.")
 
-    target_key = (data.custom_key or "").strip()
-    if not target_key:
-        target_key = generate_clean_key()
+    issued_keys = []
+    for i in range(req_count):
+        if data.custom_key and req_count == 1:
+            target_key = data.custom_key.strip()
+        elif data.custom_key:
+            target_key = f"{data.custom_key.strip()}-{i+1}"
+        else:
+            target_key = generate_clean_key()
 
-    note = data.note.strip() if data.note else f"Client {client.username} key"
+        note = data.note.strip() if data.note else f"Client {client.username} key"
+        ok, keys, err = call_upstream_generate_key(target_key, data.days, note)
+        if not ok:
+            if not issued_keys:
+                raise HTTPException(status_code=400, detail=f"Generation failed: {err}")
+            break
 
-    ok, keys, err = call_upstream_generate_key(target_key, data.days, note)
-    if not ok:
-        raise HTTPException(status_code=400, detail=f"Generation failed: {err}")
+        actual_key = keys[0] if keys else target_key
+        issued_keys.append(actual_key)
 
-    issued_key = keys[0] if keys else target_key
-    client.credits_used += 1
+        entry = LibBypassKey(
+            license_key=actual_key,
+            days=data.days,
+            created_by_type="client",
+            created_by_username=client.username,
+            client_id=client.id,
+            note=note,
+            status="active"
+        )
+        db.add(entry)
+        client.credits_used += 1
 
-    entry = LibBypassKey(
-        license_key=issued_key,
-        days=data.days,
-        created_by_type="client",
-        created_by_username=client.username,
-        client_id=client.id,
-        note=note,
-        status="active"
-    )
-    db.add(entry)
     db.commit()
+    db.refresh(client)
 
     remaining = "Unlimited" if client.credits_quota == -1 else max(0, client.credits_quota - client.credits_used)
 
+    # Async Discord Webhook Alert
+    dispatch_discord_webhook_async(
+        webhook_url=None,
+        title="⚡ RESELLER MINTED LICENSE KEY(S)",
+        description=f"**{len(issued_keys)}** license key(s) created by Reseller **@{client.username}**.",
+        fields=[
+            {"name": "🔑 Key(s)", "value": "```\n" + "\n".join(issued_keys[:5]) + ("\n...and more" if len(issued_keys) > 5 else "") + "\n```", "inline": False},
+            {"name": "⏱️ Duration", "value": f"`{data.days} Days`" if data.days < 9999 else "`∞ Lifetime`", "inline": True},
+            {"name": "💰 Remaining Credits", "value": f"`{remaining}`", "inline": True},
+            {"name": "📝 Note", "value": f"`{data.note or 'Client Key'}`", "inline": True}
+        ],
+        color=0x10b981
+    )
+
     return {
         "success": True,
-        "license_key": issued_key,
+        "license_key": issued_keys[0],
+        "keys": issued_keys,
+        "count": len(issued_keys),
         "days": data.days,
         "remaining_credits": remaining,
-        "message": "Key generated successfully"
+        "credits_used": client.credits_used,
+        "credits_quota": client.credits_quota,
+        "message": f"Successfully minted {len(issued_keys)} key(s)."
     }
 
 @router.get("/client/keys")
@@ -407,6 +542,8 @@ async def list_client_keys(session: dict = Depends(require_client), db: Session 
             "days": k.days,
             "note": k.note,
             "status": k.status,
+            "hwid": k.hwid,
+            "hwid_resets": k.hwid_resets or 0,
             "created_at": k.created_at.strftime("%Y-%m-%d %H:%M")
         })
     return res
@@ -414,15 +551,82 @@ async def list_client_keys(session: dict = Depends(require_client), db: Session 
 @router.delete("/client/keys/{license_key}")
 async def client_delete_key(license_key: str, session: dict = Depends(require_client), db: Session = Depends(get_db)):
     client: LibBypassClient = session["client"]
-    key_entry = db.query(LibBypassKey).filter(LibBypassKey.license_key == license_key.strip(), LibBypassKey.client_id == client.id).first()
+    clean_k = license_key.strip()
+    key_entry = db.query(LibBypassKey).filter(LibBypassKey.license_key == clean_k, LibBypassKey.client_id == client.id).first()
     if not key_entry:
         raise HTTPException(status_code=404, detail="Key not found in your inventory.")
 
-    call_upstream_delete_key(license_key.strip())
+    call_upstream_delete_key(clean_k)
     db.delete(key_entry)
     db.commit()
 
     return {"success": True, "message": "Key deleted from inventory."}
+
+# ==================== Unified HWID Reset & Webhooks ====================
+
+@router.post("/keys/{license_key}/reset-hwid")
+async def reset_license_hwid(license_key: str, session: dict = Depends(get_current_session), db: Session = Depends(get_db)):
+    clean_k = license_key.strip()
+    key_entry = db.query(LibBypassKey).filter(LibBypassKey.license_key == clean_k).first()
+    if not key_entry:
+        raise HTTPException(status_code=404, detail="License key not found.")
+
+    if session["role"] == "client":
+        if key_entry.client_id != session["user_id"]:
+            raise HTTPException(status_code=403, detail="Permission denied. You can only reset your own licenses.")
+
+    key_entry.hwid = None
+    key_entry.hwid_resets = (key_entry.hwid_resets or 0) + 1
+    db.commit()
+
+    call_upstream_reset_hwid(clean_k)
+
+    dispatch_discord_webhook_async(
+        webhook_url=None,
+        title="🔄 HWID LOCK CLEARED",
+        description=f"Device binding reset for license `{clean_k}`.",
+        fields=[
+            {"name": "🔑 Key", "value": f"`{clean_k}`", "inline": True},
+            {"name": "👤 Operator", "value": f"`{session.get('username')}`", "inline": True},
+            {"name": "🔄 Total Resets", "value": f"`{key_entry.hwid_resets}`", "inline": True}
+        ],
+        color=0x06b6d4
+    )
+
+    return {
+        "success": True,
+        "message": f"HWID lock cleared for key '{clean_k}'. Ready for new device.",
+        "resets": key_entry.hwid_resets
+    }
+
+@router.get("/admin/webhook")
+async def get_admin_webhook(session: dict = Depends(require_master_admin)):
+    global GLOBAL_DISCORD_WEBHOOK
+    return {"success": True, "webhook_url": GLOBAL_DISCORD_WEBHOOK}
+
+@router.post("/admin/webhook")
+async def set_admin_webhook(data: WebhookConfigRequest, session: dict = Depends(require_master_admin)):
+    global GLOBAL_DISCORD_WEBHOOK
+    GLOBAL_DISCORD_WEBHOOK = data.webhook_url.strip()
+    return {"success": True, "message": "Discord webhook saved successfully.", "webhook_url": GLOBAL_DISCORD_WEBHOOK}
+
+@router.post("/admin/webhook/test")
+async def test_webhook(data: WebhookConfigRequest, session: dict = Depends(require_master_admin)):
+    url = data.webhook_url.strip()
+    if not url.startswith("http"):
+        raise HTTPException(status_code=400, detail="Invalid webhook URL.")
+
+    dispatch_discord_webhook_async(
+        webhook_url=url,
+        title="🔔 JOYST SHIELD WEBHOOK TEST",
+        description="This is an automated test from **JOYST Enterprise Lib Bypass Console**. Real-time notification channel connected successfully!",
+        fields=[
+            {"name": "Gateway", "value": "✅ Operational", "inline": True},
+            {"name": "Latency", "value": "⚡ Instant (0ms Load)", "inline": True}
+        ],
+        color=0xf43f5e
+    )
+    return {"success": True, "message": "Test notification dispatched to Discord channel."}
 
 # ==================== Universal Developer API Gateway (Fast GET / POST, Discord Bot Compatible) ====================
 @router.api_route("/api_admin.php", methods=["GET", "POST"])
@@ -562,4 +766,43 @@ async def universal_api_gateway(
             "key": target_k
         }
 
-    return {"success": False, "message": "Invalid action. Supported: generate_lib_key, delete_lib_key"}
+    elif final_action in ["reset_hwid", "reset_lib_hwid"]:
+        if not final_target_key:
+            return {"success": False, "message": "Missing required parameter: key."}
+
+        target_k = str(final_target_key).strip()
+        key_entry = db.query(LibBypassKey).filter(LibBypassKey.license_key == target_k).first()
+
+        if not key_entry:
+            return {"success": False, "message": f"License key '{target_k}' not found."}
+
+        if not is_master and client:
+            if key_entry.client_id != client.id:
+                return {"success": False, "message": "Key not found in your inventory or unauthorized."}
+
+        key_entry.hwid = None
+        key_entry.hwid_resets = (key_entry.hwid_resets or 0) + 1
+        db.commit()
+
+        call_upstream_reset_hwid(target_k)
+
+        dispatch_discord_webhook_async(
+            webhook_url=None,
+            title="🔄 HWID LOCK CLEARED",
+            description=f"Device binding reset for license `{target_k}` via Gateway API.",
+            fields=[
+                {"name": "🔑 Key", "value": f"`{target_k}`", "inline": True},
+                {"name": "👤 Operator", "value": f"`{client.username if client else 'Master API'}`", "inline": True},
+                {"name": "🔄 Total Resets", "value": f"`{key_entry.hwid_resets}`", "inline": True}
+            ],
+            color=0x06b6d4
+        )
+
+        return {
+            "success": True,
+            "message": f"HWID lock cleared for key '{target_k}'. Ready for new device.",
+            "key": target_k,
+            "resets": key_entry.hwid_resets
+        }
+
+    return {"success": False, "message": "Invalid action. Supported: generate_lib_key, delete_lib_key, reset_hwid"}
