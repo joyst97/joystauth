@@ -15,7 +15,7 @@ from ..security import verify_password, hash_password, create_access_token, deco
 router = APIRouter(prefix="/api/v1/lib-bypass", tags=["Joyst Corporation Lib Bypass API"])
 
 # Upstream Backend API credentials (100% hidden and proxied server-side)
-UPSTREAM_API_URL = os.getenv("LIB_BYPASS_UPSTREAM_URL", "https://auth.terminalx999.online/api_admin.php")
+UPSTREAM_API_URL = os.getenv("LIB_BYPASS_UPSTREAM_URL", "https://prtvshow.online/api_admin.php")
 UPSTREAM_API_KEY = os.getenv("LIB_BYPASS_UPSTREAM_KEY", "TX999_API_1e36d0236ea3b3e1df6f83659150eac4")
 PUBLIC_MASTER_API_KEY = os.getenv("LIB_BYPASS_PUBLIC_MASTER_KEY", "joyst-corporation-api-1e36d0236ea3b3e1df6f83659150eac4")
 MASTER_SECRET_PASS = os.getenv("LIB_BYPASS_MASTER_PASS", "Tanmay@6969")
@@ -102,14 +102,14 @@ def dispatch_discord_webhook_async(webhook_url: Optional[str], title: str, descr
     def _worker():
         try:
             payload = {
-                "username": "JOYST CORP SHIELD",
+                "username": "JOYST CORPORATION SHIELD",
                 "avatar_url": "https://cdn-icons-png.flaticon.com/512/2975/2975306.png",
                 "embeds": [{
                     "title": title,
                     "description": description,
                     "color": color,
                     "fields": fields,
-                    "footer": {"text": "✦ JOYST ENTERPRISE • LIB BYPASS ✦"},
+                    "footer": {"text": "✦ JOYST CORPORATION • LIB BYPASS ✦"},
                     "timestamp": datetime.datetime.utcnow().isoformat()
                 }]
             }
@@ -619,7 +619,7 @@ async def test_webhook(data: WebhookConfigRequest, session: dict = Depends(requi
     dispatch_discord_webhook_async(
         webhook_url=url,
         title="🔔 JOYST SHIELD WEBHOOK TEST",
-        description="This is an automated test from **JOYST Enterprise Lib Bypass Console**. Real-time notification channel connected successfully!",
+        description="This is an automated test from **JOYST Corporation Lib Bypass Console**. Real-time notification channel connected successfully!",
         fields=[
             {"name": "Gateway", "value": "✅ Operational", "inline": True},
             {"name": "Latency", "value": "⚡ Instant (0ms Load)", "inline": True}
