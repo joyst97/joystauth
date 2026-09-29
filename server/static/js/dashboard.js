@@ -4119,46 +4119,22 @@ async function loadCustomClients() {
     }
 
     try {
-        const token = getAuthToken();
-        const res = await fetch("/api/v1/admin/custom-clients", {
-            headers: {
-                "Content-Type": "application/json",
-                "Authorization": `Bearer ${token}`
-            }
-        });
-
-        if (res.ok) {
-            const data = await res.json();
-            if (data && (data.success || Array.isArray(data.clients) || Array.isArray(data))) {
-                customClientsList = Array.isArray(data) ? data : (data.clients || []);
-            } else {
-                customClientsList = [];
-            }
-            renderCustomClientsTable();
+        const data = await apiFetch("/api/v1/admin/custom-clients");
+        if (data && (data.success || Array.isArray(data.clients) || Array.isArray(data))) {
+            customClientsList = Array.isArray(data) ? data : (data.clients || []);
         } else {
-            console.error("loadCustomClients non-200 status:", res.status);
             customClientsList = [];
-            tableBody.innerHTML = `
-                <tr>
-                    <td colspan="5" style="text-align: center; padding: 40px 20px;">
-                        <div style="display: flex; flex-direction: column; align-items: center; gap: 10px;">
-                            <span style="font-size: 32px;">⚠️</span>
-                            <strong style="color: #ef4444; font-size: 15px;">Server Error (${res.status}) Loading Clients</strong>
-                            <button type="button" class="btn btn-secondary btn-sm" onclick="loadCustomClients()" style="margin-top: 6px; padding: 6px 16px; font-weight: 700;">🔄 Click to Retry</button>
-                        </div>
-                    </td>
-                </tr>
-            `;
         }
+        renderCustomClientsTable();
     } catch (e) {
-        console.error("loadCustomClients fetch error:", e);
+        console.error("loadCustomClients error:", e);
         customClientsList = [];
         tableBody.innerHTML = `
             <tr>
                 <td colspan="5" style="text-align: center; padding: 40px 20px;">
                     <div style="display: flex; flex-direction: column; align-items: center; gap: 10px;">
                         <span style="font-size: 32px;">⚠️</span>
-                        <strong style="color: #ef4444; font-size: 15px;">Network Connection Error</strong>
+                        <strong style="color: #ef4444; font-size: 15px;">Connection Error Loading Clients</strong>
                         <button type="button" class="btn btn-secondary btn-sm" onclick="loadCustomClients()" style="margin-top: 6px; padding: 6px 16px; font-weight: 700;">🔄 Click to Retry</button>
                     </div>
                 </td>

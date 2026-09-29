@@ -2593,7 +2593,15 @@ async def list_custom_clients(dev: Developer = Depends(get_current_developer), d
     if getattr(dev, "is_custom_client", False):
         raise HTTPException(status_code=403, detail="Unauthorized")
     
-    clients = db.query(CustomClient).filter(CustomClient.developer_id == dev.id).order_by(CustomClient.id.desc()).all()
+    dev_ids = [dev.id]
+    try:
+        query_dev_ids = [d[0] for d in db.query(Developer.id).filter((Developer.id == dev.id) | (Developer.owner_id == dev.owner_id) | (Developer.username == dev.username) | (Developer.email == dev.email)).all()]
+        if query_dev_ids:
+            dev_ids = list(set(query_dev_ids))
+    except Exception:
+        dev_ids = [dev.id]
+
+    clients = db.query(CustomClient).filter(CustomClient.developer_id.in_(dev_ids)).order_by(CustomClient.id.desc()).all()
     if not clients:
         clients = db.query(CustomClient).order_by(CustomClient.id.desc()).all()
             
