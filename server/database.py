@@ -10,28 +10,30 @@ if os.environ.get("VERCEL") or os.environ.get("AWS_LAMBDA_FUNCTION_NAME"):
     DATABASE_FILE = "/tmp/joyst_corp.db"
 
 # Cloud Database URL (Supabase PostgreSQL / Cloud SQL)
-DATABASE_URL = os.environ.get("DATABASE_URL")
+DATABASE_URL = (os.environ.get("DATABASE_URL") or "").strip()
 
 engine = None
 if DATABASE_URL:
     try:
-        if DATABASE_URL.startswith("postgres://"):
-            DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
-        
+        db_url = DATABASE_URL
+        if db_url.startswith("postgres://"):
+            db_url = db_url.replace("postgres://", "postgresql://", 1)
+
         connect_args = {}
-        if "supabase" in DATABASE_URL.lower() or "sslmode" not in DATABASE_URL.lower():
+        if "sslmode" not in db_url.lower():
             connect_args["sslmode"] = "require"
 
         engine = create_engine(
-            DATABASE_URL,
+            db_url,
             connect_args=connect_args,
             pool_pre_ping=True,
-            pool_size=10,
-            max_overflow=20,
+            pool_size=15,
+            max_overflow=25,
             pool_recycle=300
         )
+        print("[JOYST DATABASE] Connected to Cloud Database (Supabase PostgreSQL)")
     except Exception as e:
-        print(f"[JOYST DATABASE] Cloud Database Notice: {e}")
+        print(f"[JOYST DATABASE] Cloud Database Error: {e}")
         engine = None
 
 if engine is None:
