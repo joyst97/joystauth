@@ -10,7 +10,7 @@ if os.environ.get("VERCEL") or os.environ.get("AWS_LAMBDA_FUNCTION_NAME"):
     DATABASE_FILE = "/tmp/joyst_corp.db"
 
 # Primary Supabase Production PostgreSQL Database URL
-DEFAULT_SUPABASE_URL = "postgresql://postgres.bgtudwhxgckclsxsiknr:Tm%409718424084@aws-0-eu-central-1.pooler.supabase.com:6543/postgres?sslmode=require"
+DEFAULT_SUPABASE_URL = "postgresql+psycopg2://postgres.bgtudwhxgckclsxsiknr:Tm%409718424084@aws-0-eu-central-1.pooler.supabase.com:6543/postgres?sslmode=require"
 DATABASE_URL = os.environ.get("DATABASE_URL") or DEFAULT_SUPABASE_URL
 
 def format_database_url(url: str) -> str:
@@ -18,7 +18,10 @@ def format_database_url(url: str) -> str:
         return DEFAULT_SUPABASE_URL
     url = url.strip()
     if url.startswith("postgres://"):
-        url = url.replace("postgres://", "postgresql://", 1)
+        url = url.replace("postgres://", "postgresql+psycopg2://", 1)
+    elif url.startswith("postgresql://"):
+        url = url.replace("postgresql://", "postgresql+psycopg2://", 1)
+        
     import re
     import urllib.parse
     m = re.match(r'^(postgresql(?:\+\w+)?://)([^:]+):(.+)@([^@]+)$', url)
