@@ -10,9 +10,24 @@ import json
 import discord
 from discord import app_commands
 from discord.ext import commands, tasks
+from typing import Optional, List, Dict, Any, Union
 
-# ==================== GLOBAL CONFIGURATION & MASTER ADMINS ====================
-TOKEN = os.getenv("DISCORD_BOT_TOKEN", "".join(["", ".", "", ".", ""])).strip()
+def load_bot_token():
+    token = os.getenv("DISCORD_BOT_TOKEN", "").strip()
+    if not token:
+        for p in [os.path.join(os.path.dirname(__file__), "config.json"), os.path.join(os.path.dirname(__file__), "discord_bot", "config.json")]:
+            if os.path.exists(p):
+                try:
+                    with open(p, "r", encoding="utf-8") as f:
+                        data = json.load(f)
+                        tok = data.get("token", "").strip()
+                        if tok and not tok.startswith("YOUR_"):
+                            return tok
+                except Exception:
+                    pass
+    return token
+
+TOKEN = load_bot_token()
 API_URL = "https://joystauth.cc"
 GLOBAL_LOG_CHANNEL_ID = 1538975494207438928
 MASTER_ADMIN_IDS = ["956388318961086465", "1307214230134591559"]
@@ -36,6 +51,46 @@ def save_guild_configs(configs):
         print(f"[CONFIG SAVE ERROR] {e}")
 
 guild_configs = load_guild_configs()
+
+def get_guild_config_sync(guild_id: Optional[Union[str, int]] = None) -> dict:
+    if not guild_id:
+        return {}
+    g_id = str(guild_id)
+    if g_id in guild_configs and guild_configs[g_id].get("owner_discord_id"):
+        return guild_configs[g_id]
+    try:
+        res = requests.get(f"{API_URL}/api/v1/admin/bot/guild/{g_id}", timeout=5)
+        if res.status_code == 200:
+            data = res.json()
+            if data.get("found"):
+                cfg = {
+                    "owner_discord_id": data.get("owner_discord_id"),
+                    "owner_username": data.get("owner_username"),
+                    "plan": data.get("plan", "Paid"),
+                    "staff_role_ids": data.get("staff_role_ids", []),
+                    "log_channel_id": data.get("log_channel_id")
+                }
+                guild_configs[g_id] = cfg
+                save_guild_configs(guild_configs)
+                return cfg
+    except Exception:
+        pass
+    return guild_configs.get(g_id, {})
+
+def save_guild_config_remote(guild_id: Union[str, int], cfg: dict):
+    g_id = str(guild_id)
+    guild_configs[g_id] = cfg
+    save_guild_configs(guild_configs)
+    try:
+        requests.post(f"{API_URL}/api/v1/admin/bot/guild/config", json={
+            "guild_id": g_id,
+            "owner_discord_id": cfg.get("owner_discord_id"),
+            "owner_username": cfg.get("owner_username"),
+            "staff_role_ids": cfg.get("staff_role_ids", []),
+            "log_channel_id": cfg.get("log_channel_id")
+        }, timeout=8)
+    except Exception as e:
+        print(f"[REMOTE CONFIG SAVE NOTICE] {e}")
 
 # ==================== ALL 14 CUSTOM ANIMATED EMOJIS ====================
 EMOJI = {
@@ -64,8 +119,6 @@ COLOR_PURPLE = 0x8B5CF6
 COLOR_INFO = 0x38BDF8
 
 intents = discord.Intents.default()
-intents.guilds = True
-intents.members = True
 bot = commands.Bot(command_prefix="!", intents=intents)
 
 STATUS_LIST = [
@@ -112,8 +165,8 @@ def is_master_admin(user_id: int) -> bool:
 
 def get_effective_developer_id(interaction: discord.Interaction) -> str:
     g_id = str(interaction.guild_id) if interaction.guild_id else None
-    if g_id and g_id in guild_configs:
-        cfg = guild_configs[g_id]
+    if g_id:
+        cfg = get_guild_config_sync(g_id)
         if cfg.get("owner_discord_id"):
             return str(cfg["owner_discord_id"])
     return str(interaction.user.id)
@@ -126,8 +179,8 @@ def check_staff_or_owner_permission(interaction: discord.Interaction) -> bool:
     if not g_id:
         return True
 
-    if g_id in guild_configs:
-        cfg = guild_configs[g_id]
+    cfg = get_guild_config_sync(g_id)
+    if cfg:
         if str(interaction.user.id) == str(cfg.get("owner_discord_id")):
             return True
         if interaction.guild and interaction.user.id == interaction.guild.owner_id:
@@ -164,8 +217,9 @@ async def log_to_channels(action_title: str, user: discord.User, details: str, g
     embed.add_field(name="📝 Audit Details", value=f"```{details}```", inline=False)
     embed.set_footer(text="Joyst Auth • Public Audit Trail", icon_url=user.display_avatar.url)
 
-    if guild and str(guild.id) in guild_configs:
-        guild_log_id = guild_configs[str(guild.id)].get("log_channel_id")
+    if guild:
+        cfg = get_guild_config_sync(guild.id)
+        guild_log_id = cfg.get("log_channel_id")
         if guild_log_id:
             try:
                 g_chan = bot.get_channel(int(guild_log_id)) or await bot.fetch_channel(int(guild_log_id))
@@ -205,14 +259,17 @@ def parse_api_response(res):
     except Exception:
         return {"success": False, "detail": res.text.strip() or f"HTTP Error {res.status_code}"}
 
-def fetch_developer_apps(discord_id: str, discord_username: str):
+def fetch_developer_apps(discord_id: str, discord_username: str, guild_id: Optional[Union[str, int]] = None):
     try:
-        res = requests.post(f"{API_URL}/api/v1/admin/bot/apps", json={
+        payload = {
             "discord_id": str(discord_id),
             "discord_username": str(discord_username)
-        }, timeout=15)
+        }
+        if guild_id:
+            payload["guild_id"] = str(guild_id)
+        res = requests.post(f"{API_URL}/api/v1/admin/bot/apps", json=payload, timeout=15)
         data = parse_api_response(res)
-        if res.status_code == 200:
+        if res.status_code == 200 and data.get("success"):
             return data.get("apps", [])
     except Exception:
         pass
@@ -530,6 +587,342 @@ class WarningAppSelectView(discord.ui.View):
         except Exception as e:
             await interaction.followup.send(f"Error: {e}")
 
+class ResetHwidAppSelectView(discord.ui.View):
+    def __init__(self, username: str, effective_dev_id: str, apps: list, guild: discord.Guild):
+        super().__init__(timeout=90)
+        self.username = username
+        self.effective_dev_id = effective_dev_id
+        self.apps = apps
+        self.guild = guild
+
+        options = [
+            discord.SelectOption(
+                label=f"{a['name']}",
+                description=f"App ID: #{a['id']} • Version: v{a.get('version', '1.0')} • Active Node",
+                emoji=discord.PartialEmoji(name="9093settings", id=1441087243996496079, animated=True),
+                value=a["name"]
+            )
+            for a in apps[:25]
+        ]
+
+        select = discord.ui.Select(
+            placeholder="🔄 Choose Application to Reset HWID...",
+            min_values=1,
+            max_values=1,
+            options=options
+        )
+        select.callback = self.select_callback
+        self.add_item(select)
+
+    async def select_callback(self, interaction: discord.Interaction):
+        selected_app = interaction.data["values"][0]
+        await interaction.response.defer()
+
+        try:
+            res = requests.post(f"{API_URL}/api/v1/admin/bot/resethwid", json={
+                "discord_id": self.effective_dev_id,
+                "discord_username": str(interaction.user.name),
+                "target_username": self.username.strip(),
+                "app_name": selected_app
+            }, timeout=15)
+            data = parse_api_response(res)
+            if res.status_code == 200 and data.get("success"):
+                embed = discord.Embed(
+                    title=f"{EMOJI['gear']}  HWID RESET COMPLETED",
+                    description=(
+                        f"### {EMOJI['tick']} HWID lock for `{data['username']}` cleared!\n\n"
+                        f"{EMOJI['arrow']} **Client:** `{data['username']}`\n"
+                        f"{EMOJI['arrow']} **Application:** `{selected_app}`\n"
+                        f"{EMOJI['arrow']} **Binding Status:** `Ready for New Machine` {EMOJI['shield']}\n"
+                        f"{EMOJI['dot']} Client will automatically lock to their next login device."
+                    ),
+                    color=COLOR_SUCCESS
+                )
+                embed.set_footer(text=f"Joyst Auth • Reset by @{interaction.user.name}", icon_url=interaction.user.display_avatar.url)
+                await interaction.edit_original_response(embed=embed, view=None)
+                await log_to_channels(
+                    action_title="HWID_RESET",
+                    user=interaction.user,
+                    details=f"HWID reset for user '{data['username']}' in app '{selected_app}'",
+                    guild=self.guild,
+                    app_name=selected_app
+                )
+            else:
+                embed_err = discord.Embed(
+                    title=f"{EMOJI['cross']}  NOTICE",
+                    description=f"> {EMOJI['alert']} `{data.get('detail', 'Failed to reset HWID.')}`",
+                    color=COLOR_WARNING
+                )
+                await interaction.edit_original_response(embed=embed_err, view=None)
+        except Exception as e:
+            await interaction.edit_original_response(content=f"Error: {e}", embed=None, view=None)
+
+class UserInfoAppSelectView(discord.ui.View):
+    def __init__(self, username: str, effective_dev_id: str, apps: list, guild: discord.Guild):
+        super().__init__(timeout=90)
+        self.username = username
+        self.effective_dev_id = effective_dev_id
+        self.apps = apps
+        self.guild = guild
+
+        options = [
+            discord.SelectOption(
+                label=f"{a['name']}",
+                description=f"App ID: #{a['id']} • Version: v{a.get('version', '1.0')} • Active Node",
+                emoji=discord.PartialEmoji(name="dev", id=1528079861283946538, animated=True),
+                value=a["name"]
+            )
+            for a in apps[:25]
+        ]
+
+        select = discord.ui.Select(
+            placeholder="🔍 Choose Application to Inspect User...",
+            min_values=1,
+            max_values=1,
+            options=options
+        )
+        select.callback = self.select_callback
+        self.add_item(select)
+
+    async def select_callback(self, interaction: discord.Interaction):
+        selected_app = interaction.data["values"][0]
+        await interaction.response.defer()
+
+        try:
+            res = requests.post(f"{API_URL}/api/v1/admin/bot/userinfo", json={
+                "discord_id": self.effective_dev_id,
+                "discord_username": str(interaction.user.name),
+                "target_username": self.username.strip(),
+                "app_name": selected_app
+            }, timeout=15)
+            data = parse_api_response(res)
+            if res.status_code == 200 and data.get("success"):
+                u = data["user"]
+                st = f"**BANNED** {EMOJI['cross']}" if u["is_banned"] else f"**ACTIVE** {EMOJI['tick']}"
+                embed = discord.Embed(
+                    title=f"{EMOJI['bot']}  CLIENT: {u['username']}",
+                    description=(
+                        f"{EMOJI['arrow']} **Status:** {st}\n"
+                        f"{EMOJI['arrow']} **Application:** `{u['app_name']}`\n"
+                        f"{EMOJI['arrow']} **Subscription:** `{u['subscription']}` (Lv.{u['level']})\n"
+                        f"{EMOJI['arrow']} **Expires:** `{u['expires_at']}`\n"
+                        f"{EMOJI['arrow']} **Last IP:** `{u['last_ip']}`\n"
+                        f"{EMOJI['arrow']} **Bound HWID:** `{u['hwid'][:24]}...`" if len(u['hwid']) > 24 else f"{EMOJI['arrow']} **Bound HWID:** `{u['hwid']}`"
+                    ),
+                    color=COLOR_DANGER if u["is_banned"] else COLOR_SUCCESS
+                )
+                if u["is_banned"]:
+                    embed.add_field(name=f"{EMOJI['alert']} Ban Reason", value=f"`{u['ban_reason']}`", inline=False)
+                embed.set_footer(text="Joyst Auth Database • joystauth.cc", icon_url=interaction.user.display_avatar.url)
+                await interaction.edit_original_response(embed=embed, view=None)
+            else:
+                embed_err = discord.Embed(
+                    title=f"{EMOJI['cross']}  NOTICE",
+                    description=f"> {EMOJI['alert']} `{data.get('detail', 'User not found in this app.')}`",
+                    color=COLOR_WARNING
+                )
+                await interaction.edit_original_response(embed=embed_err, view=None)
+        except Exception as e:
+            await interaction.edit_original_response(content=f"Error: {e}", embed=None, view=None)
+
+class BanAppSelectView(discord.ui.View):
+    def __init__(self, username: str, reason: str, effective_dev_id: str, apps: list, guild: discord.Guild):
+        super().__init__(timeout=90)
+        self.username = username
+        self.reason = reason
+        self.effective_dev_id = effective_dev_id
+        self.apps = apps
+        self.guild = guild
+
+        options = [
+            discord.SelectOption(
+                label=f"{a['name']}",
+                description=f"App ID: #{a['id']} • Version: v{a.get('version', '1.0')} • Active Node",
+                emoji=discord.PartialEmoji(name="redtick", id=1441097679407943782, animated=True),
+                value=a["name"]
+            )
+            for a in apps[:25]
+        ]
+
+        select = discord.ui.Select(
+            placeholder="🔨 Choose Application to Ban Client...",
+            min_values=1,
+            max_values=1,
+            options=options
+        )
+        select.callback = self.select_callback
+        self.add_item(select)
+
+    async def select_callback(self, interaction: discord.Interaction):
+        selected_app = interaction.data["values"][0]
+        await interaction.response.defer()
+
+        try:
+            res = requests.post(f"{API_URL}/api/v1/admin/bot/ban", json={
+                "discord_id": self.effective_dev_id,
+                "discord_username": str(interaction.user.name),
+                "target_username": self.username.strip(),
+                "reason": self.reason.strip(),
+                "app_name": selected_app
+            }, timeout=15)
+            data = parse_api_response(res)
+            if res.status_code == 200 and data.get("success"):
+                embed = discord.Embed(
+                    title=f"{EMOJI['cross']}  USER BANNED",
+                    description=(
+                        f"### {EMOJI['alert']} User `{data['username']}` Banned in `{selected_app}`\n\n"
+                        f"{EMOJI['arrow']} **Client:** `{data['username']}`\n"
+                        f"{EMOJI['arrow']} **Application:** `{selected_app}`\n"
+                        f"{EMOJI['arrow']} **Reason:** `{data['reason']}`"
+                    ),
+                    color=COLOR_DANGER
+                )
+                embed.set_footer(text=f"Joyst Auth • Banned by @{interaction.user.name}", icon_url=interaction.user.display_avatar.url)
+                await interaction.edit_original_response(embed=embed, view=None)
+                await log_to_channels(
+                    action_title="USER_BANNED",
+                    user=interaction.user,
+                    details=f"Banned client user '{data['username']}' in '{selected_app}' (Reason: {data['reason']})",
+                    guild=self.guild,
+                    app_name=selected_app,
+                    status="DANGER"
+                )
+            else:
+                embed_err = discord.Embed(title=f"{EMOJI['cross']}  NOTICE", description=f"> {EMOJI['alert']} `{data.get('detail', 'Failed to ban user.')}`", color=COLOR_WARNING)
+                await interaction.edit_original_response(embed=embed_err, view=None)
+        except Exception as e:
+            await interaction.edit_original_response(content=f"Error: {e}", embed=None, view=None)
+
+class UnbanAppSelectView(discord.ui.View):
+    def __init__(self, username: str, effective_dev_id: str, apps: list, guild: discord.Guild):
+        super().__init__(timeout=90)
+        self.username = username
+        self.effective_dev_id = effective_dev_id
+        self.apps = apps
+        self.guild = guild
+
+        options = [
+            discord.SelectOption(
+                label=f"{a['name']}",
+                description=f"App ID: #{a['id']} • Version: v{a.get('version', '1.0')} • Active Node",
+                emoji=discord.PartialEmoji(name="CB_greentick", id=1441097547350282260, animated=True),
+                value=a["name"]
+            )
+            for a in apps[:25]
+        ]
+
+        select = discord.ui.Select(
+            placeholder="🔓 Choose Application to Unban Client...",
+            min_values=1,
+            max_values=1,
+            options=options
+        )
+        select.callback = self.select_callback
+        self.add_item(select)
+
+    async def select_callback(self, interaction: discord.Interaction):
+        selected_app = interaction.data["values"][0]
+        await interaction.response.defer()
+
+        try:
+            res = requests.post(f"{API_URL}/api/v1/admin/bot/unban", json={
+                "discord_id": self.effective_dev_id,
+                "discord_username": str(interaction.user.name),
+                "target_username": self.username.strip(),
+                "app_name": selected_app
+            }, timeout=15)
+            data = parse_api_response(res)
+            if res.status_code == 200 and data.get("success"):
+                embed = discord.Embed(
+                    title=f"{EMOJI['tick']}  USER UNBANNED",
+                    description=(
+                        f"### {EMOJI['wave']} Access restored for `{data['username']}` in `{selected_app}`\n\n"
+                        f"{EMOJI['arrow']} **Client:** `{data['username']}`\n"
+                        f"{EMOJI['arrow']} **Application:** `{selected_app}`\n"
+                        f"{EMOJI['arrow']} **Status:** `Authorized to Login` {EMOJI['shield']}"
+                    ),
+                    color=COLOR_SUCCESS
+                )
+                embed.set_footer(text=f"Joyst Auth • Unbanned by @{interaction.user.name}", icon_url=interaction.user.display_avatar.url)
+                await interaction.edit_original_response(embed=embed, view=None)
+                await log_to_channels(
+                    action_title="USER_UNBANNED",
+                    user=interaction.user,
+                    details=f"Unbanned client user '{data['username']}' in '{selected_app}'",
+                    guild=self.guild,
+                    app_name=selected_app
+                )
+            else:
+                embed_err = discord.Embed(title=f"{EMOJI['cross']}  NOTICE", description=f"> {EMOJI['alert']} `{data.get('detail', 'Failed to unban user.')}`", color=COLOR_WARNING)
+                await interaction.edit_original_response(embed=embed_err, view=None)
+        except Exception as e:
+            await interaction.edit_original_response(content=f"Error: {e}", embed=None, view=None)
+
+class DelUserAppSelectView(discord.ui.View):
+    def __init__(self, username: str, effective_dev_id: str, apps: list, guild: discord.Guild):
+        super().__init__(timeout=90)
+        self.username = username
+        self.effective_dev_id = effective_dev_id
+        self.apps = apps
+        self.guild = guild
+
+        options = [
+            discord.SelectOption(
+                label=f"{a['name']}",
+                description=f"App ID: #{a['id']} • Version: v{a.get('version', '1.0')} • Active Node",
+                emoji=discord.PartialEmoji(name="redtick", id=1441097679407943782, animated=True),
+                value=a["name"]
+            )
+            for a in apps[:25]
+        ]
+
+        select = discord.ui.Select(
+            placeholder="🗑️ Choose Application to Delete Client...",
+            min_values=1,
+            max_values=1,
+            options=options
+        )
+        select.callback = self.select_callback
+        self.add_item(select)
+
+    async def select_callback(self, interaction: discord.Interaction):
+        selected_app = interaction.data["values"][0]
+        await interaction.response.defer()
+
+        try:
+            res = requests.post(f"{API_URL}/api/v1/admin/bot/deluser", json={
+                "discord_id": self.effective_dev_id,
+                "discord_username": str(interaction.user.name),
+                "target_username": self.username.strip(),
+                "app_name": selected_app
+            }, timeout=15)
+            data = parse_api_response(res)
+            if res.status_code == 200 and data.get("success"):
+                embed = discord.Embed(
+                    title=f"{EMOJI['cross']}  CLIENT DELETED",
+                    description=(
+                        f"### {EMOJI['tick']} Client `{data['username']}` permanently deleted.\n\n"
+                        f"{EMOJI['arrow']} **Client:** `{data['username']}`\n"
+                        f"{EMOJI['arrow']} **Application:** `{selected_app}`"
+                    ),
+                    color=COLOR_DANGER
+                )
+                embed.set_footer(text=f"Joyst Auth • Deleted by @{interaction.user.name}", icon_url=interaction.user.display_avatar.url)
+                await interaction.edit_original_response(embed=embed, view=None)
+                await log_to_channels(
+                    action_title="USER_DELETED",
+                    user=interaction.user,
+                    details=f"Deleted client user '{data['username']}' in '{selected_app}'",
+                    guild=self.guild,
+                    app_name=selected_app,
+                    status="DANGER"
+                )
+            else:
+                embed_err = discord.Embed(title=f"{EMOJI['cross']}  NOTICE", description=f"> {EMOJI['alert']} `{data.get('detail', 'Failed to delete user.')}`", color=COLOR_WARNING)
+                await interaction.edit_original_response(embed=embed_err, view=None)
+        except Exception as e:
+            await interaction.edit_original_response(content=f"Error: {e}", embed=None, view=None)
+
 class ListKeysDropdownView(discord.ui.View):
     def __init__(self, effective_dev_id: str, apps: list, guild: discord.Guild):
         super().__init__(timeout=120)
@@ -703,17 +1096,27 @@ class ListUsersDropdownView(discord.ui.View):
 @bot.tree.command(name="genkey", description="⚡ Generate license keys for an application")
 @app_commands.describe(days="Duration in days (-1 for lifetime)", count="Number of keys (1-50)")
 async def genkey(interaction: discord.Interaction, days: int, count: int):
+    await interaction.response.defer(ephemeral=False)
+
     if not check_staff_or_owner_permission(interaction):
         await reject_unauthorized(interaction, "Authorized Staff Role Required")
         return
 
     effective_dev_id = get_effective_developer_id(interaction)
-    apps = fetch_developer_apps(effective_dev_id, str(interaction.user.name))
+    apps = fetch_developer_apps(effective_dev_id, str(interaction.user.name), interaction.guild_id)
     if not apps:
-        await interaction.response.send_message(
-            f"{EMOJI['alert']} **No linked Developer Account or Apps found!** Run `/link [email_or_username]` first.",
-            ephemeral=True
+        embed = discord.Embed(
+            title=f"{EMOJI['cross']}  SERVER NOT LINKED",
+            description=(
+                f"### {EMOJI['alert']} No Linked Developer Account Found!\n\n"
+                f"{EMOJI['arrow']} This Discord Server is not linked to any Joyst Auth Developer Account.\n"
+                f"{EMOJI['arrow']} **To fix:** Run **`/link email_or_username:[YOUR_WEBSITE_USERNAME]`**\n\n"
+                f"**━━━━━━━━━━━━━━━━━━━━━━━━━━━━━**\n"
+                f"{EMOJI['dot']} *After running `/link`, all your applications and dropdowns will activate instantly.*"
+            ),
+            color=COLOR_DANGER
         )
+        await interaction.followup.send(embed=embed, ephemeral=True)
         return
 
     safe_count = min(max(1, count), 50)
@@ -732,23 +1135,33 @@ async def genkey(interaction: discord.Interaction, days: int, count: int):
         color=COLOR_BRAND
     )
     embed.set_footer(text="Joyst Auth Zero-Leak Generator", icon_url=interaction.user.display_avatar.url)
-    await interaction.response.send_message(embed=embed, view=view)
+    await interaction.followup.send(embed=embed, view=view)
 
 # 2. /adduser (Username, Password & Days Compulsory -> Instant Stylish Dropdown)
 @bot.tree.command(name="adduser", description="👤 Create client username and password account")
 @app_commands.describe(username="Client Username", password="Client Password", days="Duration in days (-1 for lifetime)")
 async def adduser(interaction: discord.Interaction, username: str, password: str, days: int):
+    await interaction.response.defer(ephemeral=False)
+
     if not check_staff_or_owner_permission(interaction):
         await reject_unauthorized(interaction, "Authorized Staff Role Required")
         return
 
     effective_dev_id = get_effective_developer_id(interaction)
-    apps = fetch_developer_apps(effective_dev_id, str(interaction.user.name))
+    apps = fetch_developer_apps(effective_dev_id, str(interaction.user.name), interaction.guild_id)
     if not apps:
-        await interaction.response.send_message(
-            f"{EMOJI['alert']} **No linked Developer Account or Apps found!** Run `/link [email_or_username]` first.",
-            ephemeral=True
+        embed = discord.Embed(
+            title=f"{EMOJI['cross']}  SERVER NOT LINKED",
+            description=(
+                f"### {EMOJI['alert']} No Linked Developer Account Found!\n\n"
+                f"{EMOJI['arrow']} This Discord Server is not linked to any Joyst Auth Developer Account.\n"
+                f"{EMOJI['arrow']} **To fix:** Run **`/link email_or_username:[YOUR_WEBSITE_USERNAME]`**\n\n"
+                f"**━━━━━━━━━━━━━━━━━━━━━━━━━━━━━**\n"
+                f"{EMOJI['dot']} *After running `/link`, all your applications and dropdowns will activate instantly.*"
+            ),
+            color=COLOR_DANGER
         )
+        await interaction.followup.send(embed=embed, ephemeral=True)
         return
 
     dur_text = f"**{days} Days**" if days > 0 else f"**Lifetime** {EMOJI['crown']}"
@@ -767,22 +1180,32 @@ async def adduser(interaction: discord.Interaction, username: str, password: str
         color=COLOR_SUCCESS
     )
     embed.set_footer(text="Joyst Auth Provisioning System", icon_url=interaction.user.display_avatar.url)
-    await interaction.response.send_message(embed=embed, view=view)
+    await interaction.followup.send(embed=embed, view=view)
 
 # 3. /listkeys (INTERACTIVE DROPDOWN MENU)
 @bot.tree.command(name="listkeys", description="🔑 Interactive Key Vault with App & Status Dropdown Menus")
 async def listkeys_cmd(interaction: discord.Interaction):
+    await interaction.response.defer(ephemeral=False)
+
     if not check_staff_or_owner_permission(interaction):
         await reject_unauthorized(interaction)
         return
 
     effective_dev_id = get_effective_developer_id(interaction)
-    apps = fetch_developer_apps(effective_dev_id, str(interaction.user.name))
+    apps = fetch_developer_apps(effective_dev_id, str(interaction.user.name), interaction.guild_id)
     if not apps:
-        await interaction.response.send_message(
-            f"{EMOJI['alert']} **No Apps found!** Run `/link [email_or_username]` first.",
-            ephemeral=True
+        embed = discord.Embed(
+            title=f"{EMOJI['cross']}  SERVER NOT LINKED",
+            description=(
+                f"### {EMOJI['alert']} No Linked Developer Account Found!\n\n"
+                f"{EMOJI['arrow']} This Discord Server is not linked to any Joyst Auth Developer Account.\n"
+                f"{EMOJI['arrow']} **To fix:** Run **`/link email_or_username:[YOUR_WEBSITE_USERNAME]`**\n\n"
+                f"**━━━━━━━━━━━━━━━━━━━━━━━━━━━━━**\n"
+                f"{EMOJI['dot']} *After running `/link`, all your applications and dropdowns will activate instantly.*"
+            ),
+            color=COLOR_DANGER
         )
+        await interaction.followup.send(embed=embed, ephemeral=True)
         return
 
     view = ListKeysDropdownView(effective_dev_id, apps, interaction.guild)
@@ -791,17 +1214,27 @@ async def listkeys_cmd(interaction: discord.Interaction):
 # 4. /listusers (INTERACTIVE DROPDOWN MENU)
 @bot.tree.command(name="listusers", description="📋 Interactive Client Roster with App Dropdown Menu")
 async def listusers_cmd(interaction: discord.Interaction):
+    await interaction.response.defer(ephemeral=False)
+
     if not check_staff_or_owner_permission(interaction):
         await reject_unauthorized(interaction)
         return
 
     effective_dev_id = get_effective_developer_id(interaction)
-    apps = fetch_developer_apps(effective_dev_id, str(interaction.user.name))
+    apps = fetch_developer_apps(effective_dev_id, str(interaction.user.name), interaction.guild_id)
     if not apps:
-        await interaction.response.send_message(
-            f"{EMOJI['alert']} **No Apps found!** Run `/link [email_or_username]` first.",
-            ephemeral=True
+        embed = discord.Embed(
+            title=f"{EMOJI['cross']}  SERVER NOT LINKED",
+            description=(
+                f"### {EMOJI['alert']} No Linked Developer Account Found!\n\n"
+                f"{EMOJI['arrow']} This Discord Server is not linked to any Joyst Auth Developer Account.\n"
+                f"{EMOJI['arrow']} **To fix:** Run **`/link email_or_username:[YOUR_WEBSITE_USERNAME]`**\n\n"
+                f"**━━━━━━━━━━━━━━━━━━━━━━━━━━━━━**\n"
+                f"{EMOJI['dot']} *After running `/link`, all your applications and dropdowns will activate instantly.*"
+            ),
+            color=COLOR_DANGER
         )
+        await interaction.followup.send(embed=embed, ephemeral=True)
         return
 
     view = ListUsersDropdownView(effective_dev_id, apps, interaction.guild)
@@ -809,25 +1242,66 @@ async def listusers_cmd(interaction: discord.Interaction):
 
 # 5. /deluser
 @bot.tree.command(name="deluser", description="🗑️ Permanently delete a client user account")
-@app_commands.describe(username="Username of the client to delete")
-async def deluser_cmd(interaction: discord.Interaction, username: str):
+@app_commands.describe(username="Username of the client to delete", app="Optional: Application Name")
+async def deluser_cmd(interaction: discord.Interaction, username: str, app: Optional[str] = None):
+    await interaction.response.defer(ephemeral=False)
+
     if not check_staff_or_owner_permission(interaction):
         await reject_unauthorized(interaction, "Authorized Staff Role Required")
         return
 
     effective_dev_id = get_effective_developer_id(interaction)
-    await interaction.response.defer()
+
+    if not app:
+        apps = fetch_developer_apps(effective_dev_id, interaction.user.name, interaction.guild_id)
+        if not apps:
+            embed = discord.Embed(
+                title=f"{EMOJI['cross']}  SERVER NOT LINKED",
+                description=(
+                    f"### {EMOJI['alert']} No Linked Developer Account Found!\n\n"
+                    f"{EMOJI['arrow']} This Discord Server is not linked to any Joyst Auth Developer Account.\n"
+                    f"{EMOJI['arrow']} **To fix:** Run **`/link email_or_username:[YOUR_WEBSITE_USERNAME]`**\n\n"
+                    f"**━━━━━━━━━━━━━━━━━━━━━━━━━━━━━**\n"
+                    f"{EMOJI['dot']} *After running `/link`, all your applications and dropdowns will activate instantly.*"
+                ),
+                color=COLOR_DANGER
+            )
+            await interaction.followup.send(embed=embed, ephemeral=True)
+            return
+
+        if len(apps) > 1:
+            view = DelUserAppSelectView(username=username, effective_dev_id=effective_dev_id, apps=apps, guild=interaction.guild)
+            embed = discord.Embed(
+                title=f"{EMOJI['cross']}  DELETE CLIENT • SELECT APPLICATION",
+                description=(
+                    f"### {EMOJI['alert']} Please choose which application **`{username}`** belongs to:\n\n"
+                    f"{EMOJI['arrow']} **Target User:** `{username}`\n"
+                    f"{EMOJI['arrow']} **Available Apps:** `{len(apps)}` Applications\n\n"
+                    f"{EMOJI['dot']} *Select from dropdown below to permanently delete.*"
+                ),
+                color=COLOR_DANGER
+            )
+            embed.set_footer(text="Joyst Auth • Client Deletion", icon_url=interaction.user.display_avatar.url)
+            await interaction.followup.send(embed=embed, view=view)
+            return
+        elif len(apps) == 1:
+            app = apps[0]["name"]
     try:
-        res = requests.post(f"{API_URL}/api/v1/admin/bot/deluser", json={
+        payload = {
             "discord_id": effective_dev_id,
             "discord_username": str(interaction.user.name),
             "target_username": username.strip()
-        }, timeout=15)
+        }
+        if app:
+            payload["app_name"] = app.strip()
+        res = requests.post(f"{API_URL}/api/v1/admin/bot/deluser", json=payload, timeout=15)
         data = parse_api_response(res)
         if res.status_code == 200 and data.get("success"):
+            app_label = data.get("app_name") or app or ""
+            app_text = f" from `{app_label}`" if app_label else ""
             embed = discord.Embed(
                 title=f"{EMOJI['cross']}  CLIENT DELETED",
-                description=f"### {EMOJI['tick']} Client `{data['username']}` permanently deleted from database.",
+                description=f"### {EMOJI['tick']} Client `{data['username']}`{app_text} permanently deleted.",
                 color=COLOR_DANGER
             )
             embed.set_footer(text=f"Joyst Auth • Deleted by @{interaction.user.name}", icon_url=interaction.user.display_avatar.url)
@@ -835,8 +1309,9 @@ async def deluser_cmd(interaction: discord.Interaction, username: str):
             await log_to_channels(
                 action_title="USER_DELETED",
                 user=interaction.user,
-                details=f"Deleted client user '{data['username']}'",
+                details=f"Deleted client user '{data['username']}' in '{app_label}'",
                 guild=interaction.guild,
+                app_name=app_label,
                 status="DANGER"
             )
         else:
@@ -885,25 +1360,56 @@ async def delkey_cmd(interaction: discord.Interaction, key: str):
 
 # 7. /resethwid
 @bot.tree.command(name="resethwid", description="🔄 Clear HWID lock for a client")
-@app_commands.describe(username="Client username")
-async def resethwid(interaction: discord.Interaction, username: str):
+@app_commands.describe(username="Client username", app="Optional: Application Name")
+async def resethwid(interaction: discord.Interaction, username: str, app: Optional[str] = None):
+    await interaction.response.defer(ephemeral=False)
+
     if not check_staff_or_owner_permission(interaction):
         await reject_unauthorized(interaction, "Authorized Staff Role Required")
         return
 
     effective_dev_id = get_effective_developer_id(interaction)
-    await interaction.response.defer()
+
+    if not app:
+        apps = fetch_developer_apps(effective_dev_id, interaction.user.name)
+        if len(apps) > 1:
+            view = ResetHwidAppSelectView(username=username, effective_dev_id=effective_dev_id, apps=apps, guild=interaction.guild)
+            embed = discord.Embed(
+                title=f"{EMOJI['gear']}  RESET HWID • SELECT APPLICATION",
+                description=(
+                    f"### {EMOJI['wave']} Please choose which application **`{username}`** belongs to:\n\n"
+                    f"{EMOJI['arrow']} **Target User:** `{username}`\n"
+                    f"{EMOJI['arrow']} **Available Apps:** `{len(apps)}` Applications\n\n"
+                    f"{EMOJI['dot']} *Select from the dropdown below to complete the HWID reset.*"
+                ),
+                color=COLOR_BRAND
+            )
+            embed.set_footer(text="Joyst Auth • HWID Management", icon_url=interaction.user.display_avatar.url)
+            await interaction.followup.send(embed=embed, view=view)
+            return
+        elif len(apps) == 1:
+            app = apps[0]["name"]
     try:
-        res = requests.post(f"{API_URL}/api/v1/admin/bot/resethwid", json={
+        payload = {
             "discord_id": effective_dev_id,
             "discord_username": str(interaction.user.name),
             "target_username": username.strip()
-        }, timeout=15)
+        }
+        if app:
+            payload["app_name"] = app.strip()
+        res = requests.post(f"{API_URL}/api/v1/admin/bot/resethwid", json=payload, timeout=15)
         data = parse_api_response(res)
         if res.status_code == 200 and data.get("success"):
+            app_label = data.get("app_name") or app or "Application"
             embed = discord.Embed(
                 title=f"{EMOJI['gear']}  HWID RESET COMPLETED",
-                description=f"### {EMOJI['tick']} HWID lock for `{data['username']}` cleared!\n{EMOJI['dot']} Client will lock on next login.",
+                description=(
+                    f"### {EMOJI['tick']} HWID lock for `{data['username']}` cleared!\n\n"
+                    f"{EMOJI['arrow']} **Client:** `{data['username']}`\n"
+                    f"{EMOJI['arrow']} **Application:** `{app_label}`\n"
+                    f"{EMOJI['arrow']} **Binding Status:** `Ready for New Machine` {EMOJI['shield']}\n"
+                    f"{EMOJI['dot']} Client will automatically lock to their next login device."
+                ),
                 color=COLOR_SUCCESS
             )
             embed.set_footer(text=f"Joyst Auth • Reset by @{interaction.user.name}", icon_url=interaction.user.display_avatar.url)
@@ -911,8 +1417,9 @@ async def resethwid(interaction: discord.Interaction, username: str):
             await log_to_channels(
                 action_title="HWID_RESET",
                 user=interaction.user,
-                details=f"HWID reset for user '{data['username']}'",
-                guild=interaction.guild
+                details=f"HWID reset for user '{data['username']}' in app '{app_label}'",
+                guild=interaction.guild,
+                app_name=app_label
             )
         else:
             embed = discord.Embed(title=f"{EMOJI['cross']}  NOTICE", description=f"> {EMOJI['alert']} `{data.get('detail', 'Failed.')}`", color=COLOR_WARNING)
@@ -922,20 +1429,46 @@ async def resethwid(interaction: discord.Interaction, username: str):
 
 # 8. /userinfo
 @bot.tree.command(name="userinfo", description="🔍 Look up a registered client")
-@app_commands.describe(username="Client username")
-async def userinfo(interaction: discord.Interaction, username: str):
+@app_commands.describe(username="Client username", app="Optional: Application Name")
+async def userinfo(interaction: discord.Interaction, username: str, app: Optional[str] = None):
+    await interaction.response.defer(ephemeral=False)
+
     if not check_staff_or_owner_permission(interaction):
         await reject_unauthorized(interaction, "Authorized Staff Role Required")
         return
 
     effective_dev_id = get_effective_developer_id(interaction)
+
+    if not app:
+        apps = fetch_developer_apps(effective_dev_id, interaction.user.name)
+        if len(apps) > 1:
+            view = UserInfoAppSelectView(username=username, effective_dev_id=effective_dev_id, apps=apps, guild=interaction.guild)
+            embed = discord.Embed(
+                title=f"{EMOJI['bot']}  INSPECT CLIENT • SELECT APPLICATION",
+                description=(
+                    f"### {EMOJI['wave']} Please choose which application **`{username}`** belongs to:\n\n"
+                    f"{EMOJI['arrow']} **Target User:** `{username}`\n"
+                    f"{EMOJI['arrow']} **Available Apps:** `{len(apps)}` Applications\n\n"
+                    f"{EMOJI['dot']} *Select from the dropdown below to view client information.*"
+                ),
+                color=COLOR_BRAND
+            )
+            embed.set_footer(text="Joyst Auth • Client Lookup", icon_url=interaction.user.display_avatar.url)
+            await interaction.followup.send(embed=embed, view=view)
+            return
+        elif len(apps) == 1:
+            app = apps[0]["name"]
+
     await interaction.response.defer()
     try:
-        res = requests.post(f"{API_URL}/api/v1/admin/bot/userinfo", json={
+        payload = {
             "discord_id": effective_dev_id,
             "discord_username": str(interaction.user.name),
             "target_username": username.strip()
-        }, timeout=15)
+        }
+        if app:
+            payload["app_name"] = app.strip()
+        res = requests.post(f"{API_URL}/api/v1/admin/bot/userinfo", json=payload, timeout=15)
         data = parse_api_response(res)
         if res.status_code == 200 and data.get("success"):
             u = data["user"]
@@ -944,14 +1477,17 @@ async def userinfo(interaction: discord.Interaction, username: str):
                 title=f"{EMOJI['bot']}  CLIENT: {u['username']}",
                 description=(
                     f"{EMOJI['arrow']} **Status:** {st}\n"
-                    f"{EMOJI['arrow']} **App:** `{u['app_name']}`\n"
-                    f"{EMOJI['arrow']} **Subscription:** `{u['subscription']}`\n"
+                    f"{EMOJI['arrow']} **Application:** `{u['app_name']}`\n"
+                    f"{EMOJI['arrow']} **Subscription:** `{u['subscription']}` (Lv.{u.get('level', 1)})\n"
                     f"{EMOJI['arrow']} **Expires:** `{u['expires_at']}`\n"
                     f"{EMOJI['arrow']} **Last IP:** `{u['last_ip']}`\n"
-                    f"{EMOJI['arrow']} **Bound HWID:** `{u['hwid'][:24]}...`"
+                    f"{EMOJI['arrow']} **Bound HWID:** `{u['hwid'][:24]}...`" if len(u['hwid']) > 24 else f"{EMOJI['arrow']} **Bound HWID:** `{u['hwid']}`"
                 ),
                 color=COLOR_DANGER if u["is_banned"] else COLOR_SUCCESS
             )
+            if u["is_banned"]:
+                embed.add_field(name=f"{EMOJI['alert']} Ban Reason", value=f"`{u.get('ban_reason', 'Banned')}`", inline=False)
+            embed.set_footer(text="Joyst Auth Database • joystauth.cc", icon_url=interaction.user.display_avatar.url)
             await interaction.followup.send(embed=embed)
         else:
             embed = discord.Embed(title=f"{EMOJI['cross']}  NOTICE", description=f"> {EMOJI['alert']} `{data.get('detail', 'User not found.')}`", color=COLOR_WARNING)
@@ -995,21 +1531,23 @@ async def stats(interaction: discord.Interaction):
 async def link_cmd(interaction: discord.Interaction, email_or_username: str):
     await interaction.response.defer()
     try:
-        res = requests.post(f"{API_URL}/api/v1/admin/bot/link", json={
+        payload = {
             "discord_id": str(interaction.user.id),
             "discord_username": str(interaction.user.name),
             "email_or_username": email_or_username.strip()
-        }, timeout=15)
+        }
+        g_id = str(interaction.guild_id) if interaction.guild_id else None
+        if g_id:
+            payload["guild_id"] = g_id
+        res = requests.post(f"{API_URL}/api/v1/admin/bot/link", json=payload, timeout=15)
         data = parse_api_response(res)
         if res.status_code == 200 and data.get("success"):
-            g_id = str(interaction.guild_id) if interaction.guild_id else None
             if g_id:
-                if g_id not in guild_configs:
-                    guild_configs[g_id] = {}
-                guild_configs[g_id]["owner_discord_id"] = str(interaction.user.id)
-                guild_configs[g_id]["owner_username"] = data["developer"]
-                guild_configs[g_id]["plan"] = data["plan"]
-                save_guild_configs(guild_configs)
+                cfg = get_guild_config_sync(g_id)
+                cfg["owner_discord_id"] = str(interaction.user.id)
+                cfg["owner_username"] = data["developer"]
+                cfg["plan"] = data["plan"]
+                save_guild_config_remote(g_id, cfg)
 
             embed = discord.Embed(
                 title=f"{EMOJI['tick']}  SERVER LINKED TO DEVELOPER ACCOUNT",
@@ -1044,14 +1582,13 @@ async def setstaffrole(interaction: discord.Interaction, role: discord.Role):
         return
 
     g_id = str(interaction.guild_id)
-    if g_id not in guild_configs:
-        guild_configs[g_id] = {}
-    if "staff_role_ids" not in guild_configs[g_id]:
-        guild_configs[g_id]["staff_role_ids"] = []
+    cfg = get_guild_config_sync(g_id)
+    if "staff_role_ids" not in cfg:
+        cfg["staff_role_ids"] = []
 
-    if str(role.id) not in [str(r) for r in guild_configs[g_id]["staff_role_ids"]]:
-        guild_configs[g_id]["staff_role_ids"].append(str(role.id))
-        save_guild_configs(guild_configs)
+    if str(role.id) not in [str(r) for r in cfg["staff_role_ids"]]:
+        cfg["staff_role_ids"].append(str(role.id))
+        save_guild_config_remote(g_id, cfg)
 
     embed = discord.Embed(
         title=f"{EMOJI['tick']}  STAFF ROLE CONFIGURED",
@@ -1073,10 +1610,9 @@ async def setlogchannel(interaction: discord.Interaction, channel: discord.TextC
         return
 
     g_id = str(interaction.guild_id)
-    if g_id not in guild_configs:
-        guild_configs[g_id] = {}
-    guild_configs[g_id]["log_channel_id"] = str(channel.id)
-    save_guild_configs(guild_configs)
+    cfg = get_guild_config_sync(g_id)
+    cfg["log_channel_id"] = str(channel.id)
+    save_guild_config_remote(g_id, cfg)
 
     embed = discord.Embed(
         title=f"{EMOJI['tick']}  AUDIT LOG CHANNEL CONFIGURED",
@@ -1155,25 +1691,65 @@ async def upgrade_cmd(interaction: discord.Interaction, key: str):
 
 # 15. /ban & /unban
 @bot.tree.command(name="ban", description="🔨 Ban a client user")
-@app_commands.describe(username="Username", reason="Reason")
-async def ban(interaction: discord.Interaction, username: str, reason: str = "Banned by Admin"):
+@app_commands.describe(username="Username", reason="Reason", app="Optional: Application Name")
+async def ban(interaction: discord.Interaction, username: str, reason: str = "Banned by Admin", app: Optional[str] = None):
     if not (interaction.user.id == interaction.guild.owner_id or is_master_admin(interaction.user.id) or (hasattr(interaction.user, "guild_permissions") and interaction.user.guild_permissions.administrator)):
         await reject_unauthorized(interaction, "Server Owner or Administrator Required")
         return
 
     effective_dev_id = get_effective_developer_id(interaction)
+
+    if not app:
+        apps = fetch_developer_apps(effective_dev_id, interaction.user.name)
+        if len(apps) > 1:
+            view = BanAppSelectView(username=username, reason=reason, effective_dev_id=effective_dev_id, apps=apps, guild=interaction.guild)
+            embed = discord.Embed(
+                title=f"{EMOJI['cross']}  BAN CLIENT • SELECT APPLICATION",
+                description=(
+                    f"### {EMOJI['alert']} Please choose which application **`{username}`** belongs to:\n\n"
+                    f"{EMOJI['arrow']} **Target User:** `{username}`\n"
+                    f"{EMOJI['arrow']} **Reason:** `{reason}`\n"
+                    f"{EMOJI['arrow']} **Available Apps:** `{len(apps)}` Applications\n\n"
+                    f"{EMOJI['dot']} *Select from dropdown below to ban client.*"
+                ),
+                color=COLOR_DANGER
+            )
+            embed.set_footer(text="Joyst Auth • Ban Management", icon_url=interaction.user.display_avatar.url)
+            await interaction.response.send_message(embed=embed, view=view)
+            return
+        elif len(apps) == 1:
+            app = apps[0]["name"]
+
     await interaction.response.defer()
     try:
-        res = requests.post(f"{API_URL}/api/v1/admin/bot/ban", json={
+        payload = {
             "discord_id": effective_dev_id,
             "discord_username": str(interaction.user.name),
             "target_username": username.strip(),
             "reason": reason.strip()
-        }, timeout=15)
+        }
+        if app:
+            payload["app_name"] = app.strip()
+        res = requests.post(f"{API_URL}/api/v1/admin/bot/ban", json=payload, timeout=15)
         data = parse_api_response(res)
         if res.status_code == 200 and data.get("success"):
-            embed = discord.Embed(title=f"{EMOJI['cross']}  USER BANNED", description=f"### {EMOJI['alert']} `{data['username']}` Banned\n{EMOJI['arrow']} **Reason:** `{data['reason']}`", color=COLOR_DANGER)
+            app_label = data.get("app_name") or app or ""
+            app_text = f" in `{app_label}`" if app_label else ""
+            embed = discord.Embed(
+                title=f"{EMOJI['cross']}  USER BANNED",
+                description=f"### {EMOJI['alert']} `{data['username']}` Banned{app_text}\n{EMOJI['arrow']} **Reason:** `{data['reason']}`",
+                color=COLOR_DANGER
+            )
+            embed.set_footer(text=f"Joyst Auth • Banned by @{interaction.user.name}", icon_url=interaction.user.display_avatar.url)
             await interaction.followup.send(embed=embed)
+            await log_to_channels(
+                action_title="USER_BANNED",
+                user=interaction.user,
+                details=f"Banned client user '{data['username']}' in '{app_label}' (Reason: {data['reason']})",
+                guild=interaction.guild,
+                app_name=app_label,
+                status="DANGER"
+            )
         else:
             embed = discord.Embed(title=f"{EMOJI['cross']}  NOTICE", description=f"> {EMOJI['alert']} `{data.get('detail', 'Failed.')}`", color=COLOR_WARNING)
             await interaction.followup.send(embed=embed)
@@ -1181,24 +1757,62 @@ async def ban(interaction: discord.Interaction, username: str, reason: str = "Ba
         await interaction.followup.send(f"Error: {e}")
 
 @bot.tree.command(name="unban", description="🔓 Unban a client user")
-@app_commands.describe(username="Username")
-async def unban(interaction: discord.Interaction, username: str):
+@app_commands.describe(username="Username", app="Optional: Application Name")
+async def unban(interaction: discord.Interaction, username: str, app: Optional[str] = None):
     if not (interaction.user.id == interaction.guild.owner_id or is_master_admin(interaction.user.id) or (hasattr(interaction.user, "guild_permissions") and interaction.user.guild_permissions.administrator)):
         await reject_unauthorized(interaction, "Server Owner or Administrator Required")
         return
 
     effective_dev_id = get_effective_developer_id(interaction)
+
+    if not app:
+        apps = fetch_developer_apps(effective_dev_id, interaction.user.name)
+        if len(apps) > 1:
+            view = UnbanAppSelectView(username=username, effective_dev_id=effective_dev_id, apps=apps, guild=interaction.guild)
+            embed = discord.Embed(
+                title=f"{EMOJI['tick']}  UNBAN CLIENT • SELECT APPLICATION",
+                description=(
+                    f"### {EMOJI['wave']} Please choose which application **`{username}`** belongs to:\n\n"
+                    f"{EMOJI['arrow']} **Target User:** `{username}`\n"
+                    f"{EMOJI['arrow']} **Available Apps:** `{len(apps)}` Applications\n\n"
+                    f"{EMOJI['dot']} *Select from dropdown below to restore access.*"
+                ),
+                color=COLOR_SUCCESS
+            )
+            embed.set_footer(text="Joyst Auth • Unban Management", icon_url=interaction.user.display_avatar.url)
+            await interaction.response.send_message(embed=embed, view=view)
+            return
+        elif len(apps) == 1:
+            app = apps[0]["name"]
+
     await interaction.response.defer()
     try:
-        res = requests.post(f"{API_URL}/api/v1/admin/bot/unban", json={
+        payload = {
             "discord_id": effective_dev_id,
             "discord_username": str(interaction.user.name),
             "target_username": username.strip()
-        }, timeout=15)
+        }
+        if app:
+            payload["app_name"] = app.strip()
+        res = requests.post(f"{API_URL}/api/v1/admin/bot/unban", json=payload, timeout=15)
         data = parse_api_response(res)
         if res.status_code == 200 and data.get("success"):
-            embed = discord.Embed(title=f"{EMOJI['tick']}  USER UNBANNED", description=f"### {EMOJI['wave']} Access restored for `{data['username']}`", color=COLOR_SUCCESS)
+            app_label = data.get("app_name") or app or ""
+            app_text = f" in `{app_label}`" if app_label else ""
+            embed = discord.Embed(
+                title=f"{EMOJI['tick']}  USER UNBANNED",
+                description=f"### {EMOJI['wave']} Access restored for `{data['username']}`{app_text}",
+                color=COLOR_SUCCESS
+            )
+            embed.set_footer(text=f"Joyst Auth • Unbanned by @{interaction.user.name}", icon_url=interaction.user.display_avatar.url)
             await interaction.followup.send(embed=embed)
+            await log_to_channels(
+                action_title="USER_UNBANNED",
+                user=interaction.user,
+                details=f"Unbanned client user '{data['username']}' in '{app_label}'",
+                guild=interaction.guild,
+                app_name=app_label
+            )
         else:
             embed = discord.Embed(title=f"{EMOJI['cross']}  NOTICE", description=f"> {EMOJI['alert']} `{data.get('detail', 'Failed.')}`", color=COLOR_WARNING)
             await interaction.followup.send(embed=embed)

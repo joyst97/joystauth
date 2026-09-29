@@ -1,0 +1,7 @@
+{
+    "token": "YOUR_DISCORD_BOT_TOKEN_HERE",
+    "api_url": "https://joystauth.cc",
+    "admin_token": "YOUR_JWT_ADMIN_TOKEN_HERE",
+    "default_app_id": 1,
+    "guild_id": null
+}
