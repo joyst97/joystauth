@@ -89,11 +89,11 @@ def get_current_developer(authorization: Optional[str] = Header(None), db: Sessi
         
     # 3. Try finding by sub / username
     if not dev and payload.get("sub"):
-        dev = db.query(Developer).filter(Developer.username.ilike(payload["sub"])).first()
+        dev = db.query(Developer).filter(Developer.username == payload["sub"]).first()
 
     # 4. Try finding by email
     if not dev and payload.get("email"):
-        dev = db.query(Developer).filter(Developer.email.ilike(payload["email"])).first()
+        dev = db.query(Developer).filter(Developer.email == payload["email"]).first()
 
     # 5. Fallback auto-recovery: If user was authenticated via JWT but database instance reset (e.g. Vercel serverless cold start), auto-recreate developer
     if not dev and (payload.get("sub") or payload.get("owner_id")):
@@ -310,22 +310,15 @@ async def google_auth(data: GoogleAuthRequest, db: Session = Depends(get_db)):
     if not email:
         raise HTTPException(status_code=400, detail="Google authentication did not provide a valid email.")
 
-    # 1. Find developer by email (case-insensitive)
-    dev = db.query(Developer).filter(Developer.email.ilike(email)).first()
+    # 1. Find developer by email
+    dev = db.query(Developer).filter(Developer.email == email).first()
 
-    # 2. Try by email username prefix
-    if not dev and email:
-        base_prefix = email.split("@")[0].strip()
-        dev = db.query(Developer).filter(Developer.username.ilike(base_prefix)).first()
-
-    # 3. If not found by email or prefix, try by name
+    # 2. If not found by email, try by name
     if not dev and name:
         clean_user = "".join(c for c in name if c.isalnum() or c in ("_", "-"))[:30]
-        dev = db.query(Developer).filter(Developer.username.ilike(clean_user)).first()
+        dev = db.query(Developer).filter(Developer.username == clean_user).first()
 
     if dev:
-        if email and not dev.email:
-            dev.email = email
         if picture:
             dev.avatar_url = picture
         if name and (dev.username == "Developer" or dev.username.startswith("dev_")):

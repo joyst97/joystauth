@@ -3,7 +3,7 @@ import datetime
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Header, UploadFile, File
 from sqlalchemy.orm import Session
-from sqlalchemy import desc, or_
+from sqlalchemy import desc
 from pydantic import BaseModel
 
 from ..database import get_db, Application, User, License, AppVariable, AppFile, AuditLog, Developer, SubscriptionTier, Blacklist, Reseller, PlanKey, AppNotification, CustomClient
@@ -187,52 +187,15 @@ class TestWebhookRequest(BaseModel):
     app_id: int
     custom_message: str
 
-def get_developer_ids_and_owner_ids(dev: Developer, db: Session):
-    """Returns all developer IDs and owner IDs associated with this developer by ID, owner_id, email, or username."""
-    dev_ids = [dev.id]
-    owner_ids = [dev.owner_id] if getattr(dev, "owner_id", None) else []
-    try:
-        filters = [Developer.id == dev.id]
-        if getattr(dev, "owner_id", None):
-            filters.append(Developer.owner_id == dev.owner_id)
-        if getattr(dev, "email", None):
-            filters.append(Developer.email.ilike(dev.email))
-            filters.append(Developer.username.ilike(dev.email.split("@")[0]))
-        if getattr(dev, "username", None):
-            filters.append(Developer.username.ilike(dev.username))
-            filters.append(Developer.email.ilike(f"{dev.username}@%"))
-            if "_" in dev.username and dev.username.split("_")[-1].isdigit():
-                base_u = dev.username.rsplit("_", 1)[0]
-                filters.append(Developer.username.ilike(base_u))
-                filters.append(Developer.email.ilike(f"{base_u}@%"))
-
-        matched = db.query(Developer.id, Developer.owner_id).filter(or_(*filters)).all()
-        for m_id, m_oid in matched:
-            if m_id:
-                dev_ids.append(m_id)
-            if m_oid:
-                owner_ids.append(m_oid)
-    except Exception:
-        pass
-    return list(set(dev_ids)), list(set(owner_ids))
-
-def get_developer_app_filter(dev: Developer, db: Session):
-    dev_ids, owner_ids = get_developer_ids_and_owner_ids(dev, db)
-    if owner_ids:
-        return (Application.developer_id.in_(dev_ids)) | (Application.owner_id.in_(owner_ids))
-    return Application.developer_id.in_(dev_ids)
-
 # ==================== 1. APPLICATIONS ====================
 @router.get("/apps")
 async def list_apps(dev: Developer = Depends(get_current_developer), db: Session = Depends(get_db)):
-    app_filter = get_developer_app_filter(dev, db)
-    query = db.query(Application).filter(app_filter)
+    query = db.query(Application).filter(Application.developer_id == dev.id)
     if getattr(dev, "is_custom_client", False):
         allowed = getattr(dev, "allowed_apps_list", [])
         app_ids = [int(x) for x in allowed if x.isdigit()]
         app_names = [x for x in allowed if not x.isdigit()]
-        if allowed:
-            query = query.filter((Application.id.in_(app_ids)) | (Application.name.in_(app_names)))
+        query = query.filter((Application.id.in_(app_ids)) | (Application.name.in_(app_names)))
     apps = query.all()
     result = []
     for app in apps:
