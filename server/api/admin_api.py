@@ -1532,6 +1532,43 @@ async def get_developer_stats(dev: Developer = Depends(get_current_developer), d
 
 
 # ==================== UNIVERSAL DISCORD BOT DEVELOPER & STAFF RESOLVER ====================
+def get_bot_accessible_apps(db: Session, dev: Developer) -> List[Application]:
+    """Returns ONLY the apps accessible to the developer or custom client."""
+    if getattr(dev, "is_custom_client", False):
+        allowed = getattr(dev, "allowed_apps_list", [])
+        if not allowed:
+            return []
+        int_ids = [int(x) for x in allowed if x.isdigit()]
+        name_strings = [x for x in allowed if not x.isdigit()]
+        
+        query = db.query(Application)
+        if int_ids and name_strings:
+            return query.filter((Application.id.in_(int_ids)) | (Application.name.in_(name_strings))).all()
+        elif int_ids:
+            return query.filter(Application.id.in_(int_ids)).all()
+        elif name_strings:
+            return query.filter(Application.name.in_(name_strings)).all()
+        return []
+    
+    # Master developer account
+    return db.query(Application).filter(Application.developer_id == dev.id).all()
+
+def find_bot_app(db: Session, dev: Developer, app_name: Optional[str] = None) -> Optional[Application]:
+    """Finds a specific app from the accessible apps list."""
+    accessible = get_bot_accessible_apps(db, dev)
+    if not accessible:
+        return None
+    if app_name and app_name.strip():
+        app_name_clean = app_name.strip().lower()
+        for a in accessible:
+            if a.name.lower() == app_name_clean or str(a.id) == app_name_clean:
+                return a
+        for a in accessible:
+            if app_name_clean in a.name.lower():
+                return a
+        return None
+    return accessible[0]
+
 def resolve_bot_developer(
     db: Session,
     discord_id: Optional[str] = None,
@@ -1540,13 +1577,12 @@ def resolve_bot_developer(
     guild_owner_id: Optional[str] = None,
     is_staff: Optional[bool] = False
 ) -> Optional[Developer]:
-    """Resolves developer workspace by direct link, staff role inheritance, guild owner, custom client, or master admin."""
+    """Resolves developer workspace by direct link, custom client, guild owner, or master admin."""
     d_id = str(discord_id).strip() if discord_id else ""
     d_user = str(discord_username).strip() if discord_username else ""
     g_owner = str(guild_owner_id).strip() if guild_owner_id else ""
 
-    dev = None
-    # 0. Check if this is a Custom Client (Brand Partner)
+    # 0. Check if this Discord user is linked as a Custom Client (Brand Partner) FIRST
     client = None
     if d_id:
         client = db.query(CustomClient).filter(CustomClient.discord_id == d_id).first()
@@ -1562,7 +1598,8 @@ def resolve_bot_developer(
             dev.allowed_apps_list = [x.strip() for x in (client.allowed_apps or "").split(",") if x.strip()]
             return dev
 
-    # 1. Direct personal Discord ID link
+    # 1. Direct personal Discord ID link to Developer
+    dev = None
     if d_id:
         dev = db.query(Developer).filter(Developer.discord_id == d_id).first()
 
@@ -1574,20 +1611,25 @@ def resolve_bot_developer(
 
     # 3. Staff Role Inheritance: Resolve Guild Owner's developer account
     if not dev and is_staff and g_owner:
+        g_client = db.query(CustomClient).filter(CustomClient.discord_id == g_owner).first()
+        if g_client:
+            dev = db.query(Developer).filter(Developer.id == g_client.developer_id).first()
+            if dev:
+                dev.is_custom_client = True
+                dev.custom_client_id = g_client.id
+                dev.custom_client_username = g_client.username
+                dev.allowed_apps_raw = g_client.allowed_apps or ""
+                dev.allowed_apps_list = [x.strip() for x in (g_client.allowed_apps or "").split(",") if x.strip()]
+                return dev
         dev = db.query(Developer).filter(Developer.discord_id == g_owner).first()
 
-    # 4. Staff Role Fallback: Resolve Master Admin / Server Workspace
-    if not dev and is_staff:
-        from ..config import MASTER_ADMIN_IDS
-        dev = db.query(Developer).filter(Developer.discord_id.in_(MASTER_ADMIN_IDS)).first()
-        if not dev:
-            dev = db.query(Developer).filter(Developer.plan.in_(["Paid", "Developer", "Enterprise"])).first()
-
-    # 5. Master Admin Direct Fallback
+    # 4. Master Admin Direct Fallback ONLY for Master Admin Discord IDs
     if not dev and d_id:
         from ..config import MASTER_ADMIN_IDS
         if d_id in MASTER_ADMIN_IDS:
-            dev = db.query(Developer).order_by(Developer.id.asc()).first()
+            dev = db.query(Developer).filter(Developer.email == "tgarmy859@gmail.com").first()
+            if not dev:
+                dev = db.query(Developer).order_by(Developer.id.asc()).first()
 
     return dev
 
@@ -1614,29 +1656,13 @@ async def bot_auto_genkey(data: BotGenKeyRequest, db: Session = Depends(get_db))
         raise HTTPException(status_code=404, detail="No linked Developer account found. Please run `/link [email_or_username]` first.")
 
     # Strict Paid Plan Verification
-    if dev.plan != "Paid" and dev.plan != "Developer" and dev.plan != "Enterprise":
+    if dev.plan != "Paid" and dev.plan != "Developer" and dev.plan != "Enterprise" and not getattr(dev, "is_custom_client", False):
         raise HTTPException(status_code=403, detail="💎 Discord Bot integration is an exclusive PAID Plan feature. Please upgrade your plan on joystauth.cc to unlock Discord Bot access!")
 
-    # Select app
-    app = None
-    if data.app_name:
-        app = db.query(Application).filter(Application.developer_id == dev.id, Application.name.ilike(data.app_name)).first()
+    # Select app strictly within accessible scope
+    app = find_bot_app(db, dev, data.app_name)
     if not app:
-        app = db.query(Application).filter(Application.developer_id == dev.id).order_by(Application.id.asc()).first()
-
-    if not app:
-        # Auto-create default app if none exists
-        app = Application(
-            developer_id=dev.id,
-            name="JOYST",
-            owner_id=dev.owner_id,
-            secret="sec_" + generate_random_token(32),
-            version="1.0",
-            status="enabled"
-        )
-        db.add(app)
-        db.commit()
-        db.refresh(app)
+        raise HTTPException(status_code=404, detail="Application not found or you do not have permission to access it.")
 
     created_keys = []
     custom_k = data.custom_key.strip() if data.custom_key else None
@@ -1673,12 +1699,13 @@ async def bot_auto_genkey(data: BotGenKeyRequest, db: Session = Depends(get_db))
             created_keys.append(k)
 
     db.commit()
-    log_audit(db, app.id, "KEYS_GENERATED", details=f"Generated {len(created_keys)} key(s) via Discord Bot for {dev.username}", status="SUCCESS")
+    active_uname = getattr(dev, "custom_client_username", None) or dev.username
+    log_audit(db, app.id, "KEYS_GENERATED", details=f"Generated {len(created_keys)} key(s) via Discord Bot for {active_uname}", status="SUCCESS")
 
     return {
         "success": True,
-        "developer": dev.username,
-        "plan": dev.plan,
+        "developer": active_uname,
+        "plan": "Enterprise" if getattr(dev, "is_custom_client", False) else dev.plan,
         "app_name": app.name,
         "app_id": app.id,
         "keys": created_keys,
@@ -1700,7 +1727,31 @@ async def bot_link_account(data: BotLinkRequest, db: Session = Depends(get_db)):
     ident = data.email_or_username.strip()
     discord_id_clean = str(data.discord_id).strip()
 
-    # 1. Try finding Developer
+    # 1. Try finding Custom Client (Brand Partner) FIRST
+    client = db.query(CustomClient).filter(
+        (CustomClient.username.ilike(ident)) |
+        (CustomClient.notes.ilike(f"%{ident}%"))
+    ).first()
+    if client:
+        client.discord_id = discord_id_clean
+        db.commit()
+        
+        allowed_raw = [x.strip() for x in (client.allowed_apps or "").split(",") if x.strip()]
+        int_ids = [int(x) for x in allowed_raw if x.isdigit()]
+        name_strings = [x for x in allowed_raw if not x.isdigit()]
+        apps = db.query(Application).filter((Application.id.in_(int_ids)) | (Application.name.in_(name_strings))).all()
+        app_names_str = ", ".join([a.name for a in apps]) if apps else "Assigned Applications"
+        
+        return {
+            "success": True,
+            "message": f"Successfully linked Discord @{data.discord_username or data.discord_id} to Brand Partner Account @{client.username}!\nAssigned Applications: {app_names_str}",
+            "developer": client.username,
+            "email": "Brand Partner Panel",
+            "plan": "Enterprise",
+            "apps_count": len(apps)
+        }
+
+    # 2. Try finding Developer
     dev = db.query(Developer).filter(
         (Developer.email.ilike(ident)) |
         (Developer.username.ilike(ident)) |
@@ -1716,19 +1767,6 @@ async def bot_link_account(data: BotLinkRequest, db: Session = Depends(get_db)):
             "developer": dev.username,
             "email": dev.email or "Google Auth",
             "plan": dev.plan
-        }
-
-    # 2. Try finding Custom Client (Brand Partner)
-    client = db.query(CustomClient).filter(CustomClient.username.ilike(ident)).first()
-    if client:
-        client.discord_id = discord_id_clean
-        db.commit()
-        return {
-            "success": True,
-            "message": f"Successfully linked Discord @{data.discord_username or data.discord_id} to Brand Partner Account @{client.username}!",
-            "developer": client.username,
-            "email": "Brand Partner",
-            "plan": "Enterprise"
         }
 
     raise HTTPException(status_code=404, detail=f"No account found matching '{ident}'. Make sure you entered your correct Dashboard username.")
@@ -1753,17 +1791,12 @@ async def bot_add_user(data: BotCreateUserRequest, db: Session = Depends(get_db)
     if not dev:
         raise HTTPException(status_code=404, detail="No linked Developer account found. Run `/link [email_or_username]` first.")
 
-    if dev.plan != "Paid" and dev.plan != "Developer" and dev.plan != "Enterprise":
+    if dev.plan != "Paid" and dev.plan != "Developer" and dev.plan != "Enterprise" and not getattr(dev, "is_custom_client", False):
         raise HTTPException(status_code=403, detail="💎 Discord Bot integration is an exclusive PAID Plan feature. Please upgrade your plan on joystauth.cc to unlock Discord Bot access!")
 
-    app = None
-    if data.app_name:
-        app = db.query(Application).filter(Application.developer_id == dev.id, Application.name.ilike(data.app_name)).first()
+    app = find_bot_app(db, dev, data.app_name)
     if not app:
-        app = db.query(Application).filter(Application.developer_id == dev.id).first()
-
-    if not app:
-        raise HTTPException(status_code=404, detail="No application found in your workspace. Create an app first.")
+        raise HTTPException(status_code=404, detail="No application found in your workspace or permission denied.")
 
     existing = db.query(User).filter(User.app_id == app.id, User.username == data.username.strip()).first()
     if existing:
@@ -1814,7 +1847,8 @@ async def bot_add_user(data: BotCreateUserRequest, db: Session = Depends(get_db)
     db.commit()
     db.refresh(new_user)
 
-    log_audit(db, app.id, "MANUAL_USER_CREATE", username=new_user.username, details=f"Created universal key/user via Discord Bot by @{data.discord_username or dev.username}" if is_same_key else f"Created via Discord Bot by @{data.discord_username or dev.username}", status="SUCCESS")
+    active_uname = getattr(dev, "custom_client_username", None) or dev.username
+    log_audit(db, app.id, "MANUAL_USER_CREATE", username=new_user.username, details=f"Created universal key/user via Discord Bot by @{data.discord_username or active_uname}" if is_same_key else f"Created via Discord Bot by @{data.discord_username or active_uname}", status="SUCCESS")
 
     return {
         "success": True,
@@ -1846,12 +1880,17 @@ async def bot_reset_hwid(data: BotUserActionRequest, db: Session = Depends(get_d
     if not dev:
         raise HTTPException(status_code=404, detail="No linked Developer account found. Run `/link [email_or_username]` first.")
 
-    if dev.plan != "Paid" and dev.plan != "Developer" and dev.plan != "Enterprise":
+    if dev.plan != "Paid" and dev.plan != "Developer" and dev.plan != "Enterprise" and not getattr(dev, "is_custom_client", False):
         raise HTTPException(status_code=403, detail="💎 Discord Bot integration is an exclusive PAID Plan feature. Please upgrade your plan on joystauth.cc to unlock Discord Bot access!")
 
+    apps = get_bot_accessible_apps(db, dev)
+    app_ids = [a.id for a in apps]
+    if not app_ids:
+        raise HTTPException(status_code=404, detail="No accessible applications found.")
+
     target = (data.target_username or data.username or "").strip()
-    user = db.query(User).join(Application).filter(
-        Application.developer_id == dev.id,
+    user = db.query(User).filter(
+        User.app_id.in_(app_ids),
         User.username.ilike(target)
     ).first()
 
@@ -1860,9 +1899,10 @@ async def bot_reset_hwid(data: BotUserActionRequest, db: Session = Depends(get_d
 
     user.hwid = None
     db.commit()
-    log_audit(db, user.app_id, "HWID_RESET", username=user.username, details=f"HWID reset via Discord Bot by {data.discord_username or dev.username}", status="SUCCESS")
+    active_uname = getattr(dev, "custom_client_username", None) or dev.username
+    log_audit(db, user.app_id, "HWID_RESET", username=user.username, details=f"HWID reset via Discord Bot by {data.discord_username or active_uname}", status="SUCCESS")
 
-    return {"success": True, "message": f"HWID for user '{user.username}' reset successfully.", "username": user.username, "app_name": user.app.name}
+    return {"success": True, "message": f"HWID for user '{user.username}' reset successfully.", "username": user.username, "app_name": user.app.name if user.app else "App"}
 
 @router.post("/bot/ban")
 async def bot_ban_user(data: BotUserActionRequest, db: Session = Depends(get_db)):
@@ -1870,12 +1910,17 @@ async def bot_ban_user(data: BotUserActionRequest, db: Session = Depends(get_db)
     if not dev:
         raise HTTPException(status_code=404, detail="No linked Developer account found. Run `/link [email_or_username]` first.")
 
-    if dev.plan != "Paid" and dev.plan != "Developer" and dev.plan != "Enterprise":
+    if dev.plan != "Paid" and dev.plan != "Developer" and dev.plan != "Enterprise" and not getattr(dev, "is_custom_client", False):
         raise HTTPException(status_code=403, detail="💎 Discord Bot integration is an exclusive PAID Plan feature. Please upgrade your plan on joystauth.cc to unlock Discord Bot access!")
 
+    apps = get_bot_accessible_apps(db, dev)
+    app_ids = [a.id for a in apps]
+    if not app_ids:
+        raise HTTPException(status_code=404, detail="No accessible applications found.")
+
     target = (data.target_username or data.username or "").strip()
-    user = db.query(User).join(Application).filter(
-        Application.developer_id == dev.id,
+    user = db.query(User).filter(
+        User.app_id.in_(app_ids),
         User.username.ilike(target)
     ).first()
 
@@ -1895,12 +1940,17 @@ async def bot_unban_user(data: BotUserActionRequest, db: Session = Depends(get_d
     if not dev:
         raise HTTPException(status_code=404, detail="No linked Developer account found. Run `/link [email_or_username]` first.")
 
-    if dev.plan != "Paid" and dev.plan != "Developer" and dev.plan != "Enterprise":
+    if dev.plan != "Paid" and dev.plan != "Developer" and dev.plan != "Enterprise" and not getattr(dev, "is_custom_client", False):
         raise HTTPException(status_code=403, detail="💎 Discord Bot integration is an exclusive PAID Plan feature. Please upgrade your plan on joystauth.cc to unlock Discord Bot access!")
 
+    apps = get_bot_accessible_apps(db, dev)
+    app_ids = [a.id for a in apps]
+    if not app_ids:
+        raise HTTPException(status_code=404, detail="No accessible applications found.")
+
     target = (data.target_username or data.username or "").strip()
-    user = db.query(User).join(Application).filter(
-        Application.developer_id == dev.id,
+    user = db.query(User).filter(
+        User.app_id.in_(app_ids),
         User.username.ilike(target)
     ).first()
 
@@ -1920,12 +1970,17 @@ async def bot_user_info(data: BotUserActionRequest, db: Session = Depends(get_db
     if not dev:
         raise HTTPException(status_code=404, detail="No linked Developer account found. Run `/link [email_or_username]` first.")
 
-    if dev.plan != "Paid" and dev.plan != "Developer" and dev.plan != "Enterprise":
+    if dev.plan != "Paid" and dev.plan != "Developer" and dev.plan != "Enterprise" and not getattr(dev, "is_custom_client", False):
         raise HTTPException(status_code=403, detail="💎 Discord Bot integration is an exclusive PAID Plan feature. Please upgrade your plan on joystauth.cc to unlock Discord Bot access!")
 
+    apps = get_bot_accessible_apps(db, dev)
+    app_ids = [a.id for a in apps]
+    if not app_ids:
+        raise HTTPException(status_code=404, detail="No accessible applications found.")
+
     target = (data.target_username or data.username or "").strip()
-    user = db.query(User).join(Application).filter(
-        Application.developer_id == dev.id,
+    user = db.query(User).filter(
+        User.app_id.in_(app_ids),
         User.username.ilike(target)
     ).first()
 
@@ -1937,7 +1992,7 @@ async def bot_user_info(data: BotUserActionRequest, db: Session = Depends(get_db
         "user": {
             "id": user.id,
             "username": user.username,
-            "app_name": user.app.name,
+            "app_name": user.app.name if user.app else "App",
             "hwid": user.hwid or "Not Bound",
             "last_ip": user.last_ip or "Unknown",
             "subscription": user.subscription_tier,
@@ -1962,21 +2017,22 @@ async def bot_get_stats(data: BotStatsRequest, db: Session = Depends(get_db)):
     if not dev:
         raise HTTPException(status_code=404, detail="No linked Developer account found. Run `/link [email_or_username]` first.")
 
-    if dev.plan != "Paid" and dev.plan != "Developer" and dev.plan != "Enterprise":
+    if dev.plan != "Paid" and dev.plan != "Developer" and dev.plan != "Enterprise" and not getattr(dev, "is_custom_client", False):
         raise HTTPException(status_code=403, detail="💎 Discord Bot integration is an exclusive PAID Plan feature. Please upgrade your plan on joystauth.cc to unlock Discord Bot access!")
 
-    apps = db.query(Application).filter(Application.developer_id == dev.id).all()
+    apps = get_bot_accessible_apps(db, dev)
     app_ids = [a.id for a in apps]
 
     total_users = db.query(User).filter(User.app_id.in_(app_ids)).count() if app_ids else 0
     total_keys = db.query(License).filter(License.app_id.in_(app_ids)).count() if app_ids else 0
     unused_keys = db.query(License).filter(License.app_id.in_(app_ids), License.status == "unused").count() if app_ids else 0
     banned_users = db.query(User).filter(User.app_id.in_(app_ids), User.is_banned == True).count() if app_ids else 0
+    active_uname = getattr(dev, "custom_client_username", None) or dev.username
 
     return {
         "success": True,
-        "developer": dev.username,
-        "plan": dev.plan,
+        "developer": active_uname,
+        "plan": "Enterprise" if getattr(dev, "is_custom_client", False) else dev.plan,
         "total_apps": len(apps),
         "apps_list": [a.name for a in apps],
         "total_users": total_users,
@@ -1987,18 +2043,19 @@ async def bot_get_stats(data: BotStatsRequest, db: Session = Depends(get_db)):
 
 @router.post("/bot/apps")
 async def bot_get_developer_apps(data: BotStatsRequest, db: Session = Depends(get_db)):
-    """Returns all applications owned by developer for Discord Dropdown Menus."""
+    """Returns all applications owned by developer/custom client for Discord Dropdown Menus."""
     dev = resolve_bot_developer(db, data.discord_id, data.discord_username, getattr(data, "guild_id", None), getattr(data, "guild_owner_id", None), getattr(data, "is_staff", False))
     if not dev:
         raise HTTPException(status_code=404, detail="No linked Developer account found. Run `/link [email_or_username]` first.")
 
-    if dev.plan != "Paid" and dev.plan != "Developer" and dev.plan != "Enterprise":
+    if dev.plan != "Paid" and dev.plan != "Developer" and dev.plan != "Enterprise" and not getattr(dev, "is_custom_client", False):
         raise HTTPException(status_code=403, detail="💎 Discord Bot integration is an exclusive PAID Plan feature. Please upgrade your plan on joystauth.cc to unlock Discord Bot access!")
 
-    apps = db.query(Application).filter(Application.developer_id == dev.id).all()
+    apps = get_bot_accessible_apps(db, dev)
+    active_uname = getattr(dev, "custom_client_username", None) or dev.username
     return {
         "success": True,
-        "developer": dev.username,
+        "developer": active_uname,
         "apps": [{"id": a.id, "name": a.name, "version": a.version, "secret": a.secret} for a in apps]
     }
 
@@ -2358,14 +2415,9 @@ async def bot_broadcast_warning(data: BotWarningRequest, db: Session = Depends(g
     if not dev:
         raise HTTPException(status_code=404, detail="No linked Developer account found. Run `/link [email_or_username]` first.")
 
-    app = None
-    if data.app_name:
-        app = db.query(Application).filter(Application.developer_id == dev.id, Application.name.ilike(data.app_name)).first()
+    app = find_bot_app(db, dev, data.app_name)
     if not app:
-        app = db.query(Application).filter(Application.developer_id == dev.id).first()
-
-    if not app:
-        raise HTTPException(status_code=404, detail="No application found.")
+        raise HTTPException(status_code=404, detail="No application found or permission denied.")
 
     notif = AppNotification(
         app_id=app.id,
@@ -2405,10 +2457,10 @@ async def bot_delete_user(data: BotDeleteUserRequest, db: Session = Depends(get_
     if not dev:
         raise HTTPException(status_code=404, detail="No linked Developer account found.")
 
-    apps = db.query(Application).filter(Application.developer_id == dev.id).all()
+    apps = get_bot_accessible_apps(db, dev)
     app_ids = [a.id for a in apps]
     if not app_ids:
-        raise HTTPException(status_code=404, detail="No applications found.")
+        raise HTTPException(status_code=404, detail="No accessible applications found.")
 
     u = db.query(User).filter(User.app_id.in_(app_ids), User.username.ilike(data.target_username.strip())).first()
     if not u:
@@ -2440,10 +2492,10 @@ async def bot_delete_key(data: BotDeleteKeyRequest, db: Session = Depends(get_db
     if not dev:
         raise HTTPException(status_code=404, detail="No linked Developer account found.")
 
-    apps = db.query(Application).filter(Application.developer_id == dev.id).all()
+    apps = get_bot_accessible_apps(db, dev)
     app_ids = [a.id for a in apps]
     if not app_ids:
-        raise HTTPException(status_code=404, detail="No applications found.")
+        raise HTTPException(status_code=404, detail="No accessible applications found.")
 
     lic = db.query(License).filter(License.app_id.in_(app_ids), License.license_key == data.target_key.strip()).first()
     if not lic:
@@ -2476,9 +2528,18 @@ async def bot_list_users(data: BotListUsersRequest, db: Session = Depends(get_db
     if not dev:
         raise HTTPException(status_code=404, detail="No linked Developer account found.")
 
-    query = db.query(User).join(Application).filter(Application.developer_id == dev.id)
+    apps = get_bot_accessible_apps(db, dev)
+    app_ids = [a.id for a in apps]
+    if not app_ids:
+        raise HTTPException(status_code=404, detail="No accessible applications found.")
+
+    query = db.query(User).filter(User.app_id.in_(app_ids))
     if data.app_name:
-        query = query.filter(Application.name.ilike(data.app_name.strip()))
+        matched_app = find_bot_app(db, dev, data.app_name)
+        if matched_app:
+            query = query.filter(User.app_id == matched_app.id)
+        else:
+            raise HTTPException(status_code=404, detail=f"Application '{data.app_name}' not found.")
 
     total = query.count()
     users = query.order_by(desc(User.id)).limit(min(max(1, data.limit or 15), 50)).all()
@@ -2516,15 +2577,25 @@ async def bot_list_keys(data: BotListKeysRequest, db: Session = Depends(get_db))
     if not dev:
         raise HTTPException(status_code=404, detail="No linked Developer account found.")
 
-    query = db.query(License).join(Application).filter(Application.developer_id == dev.id)
+    apps = get_bot_accessible_apps(db, dev)
+    app_ids = [a.id for a in apps]
+    if not app_ids:
+        raise HTTPException(status_code=404, detail="No accessible applications found.")
+
+    query = db.query(License).filter(License.app_id.in_(app_ids))
     if data.app_name:
-        query = query.filter(Application.name.ilike(data.app_name.strip()))
+        matched_app = find_bot_app(db, dev, data.app_name)
+        if matched_app:
+            query = query.filter(License.app_id == matched_app.id)
+        else:
+            raise HTTPException(status_code=404, detail=f"Application '{data.app_name}' not found.")
+            
     if data.status_filter and data.status_filter != "all":
         query = query.filter(License.status == data.status_filter.lower())
 
     total = query.count()
-    unused_count = db.query(License).join(Application).filter(Application.developer_id == dev.id, License.status == "unused").count()
-    used_count = db.query(License).join(Application).filter(Application.developer_id == dev.id, License.status == "used").count()
+    unused_count = db.query(License).filter(License.app_id.in_(app_ids), License.status == "unused").count()
+    used_count = db.query(License).filter(License.app_id.in_(app_ids), License.status == "used").count()
 
     keys = query.order_by(desc(License.id)).limit(min(max(1, data.limit or 15), 50)).all()
 
