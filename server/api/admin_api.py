@@ -3,7 +3,7 @@ import datetime
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Header, UploadFile, File
 from sqlalchemy.orm import Session
-from sqlalchemy import desc
+from sqlalchemy import desc, or_
 from pydantic import BaseModel
 
 from ..database import get_db, Application, User, License, AppVariable, AppFile, AuditLog, Developer, SubscriptionTier, Blacklist, Reseller, PlanKey, AppNotification, CustomClient, DiscordGuildConfig
@@ -187,15 +187,52 @@ class TestWebhookRequest(BaseModel):
     app_id: int
     custom_message: str
 
+def get_developer_ids_and_owner_ids(dev: Developer, db: Session):
+    """Returns all developer IDs and owner IDs associated with this developer by ID, owner_id, email, or username."""
+    dev_ids = [dev.id]
+    owner_ids = [dev.owner_id] if getattr(dev, "owner_id", None) else []
+    try:
+        filters = [Developer.id == dev.id]
+        if getattr(dev, "owner_id", None):
+            filters.append(Developer.owner_id == dev.owner_id)
+        if getattr(dev, "email", None):
+            filters.append(Developer.email.ilike(dev.email))
+            filters.append(Developer.username.ilike(dev.email.split("@")[0]))
+        if getattr(dev, "username", None):
+            filters.append(Developer.username.ilike(dev.username))
+            filters.append(Developer.email.ilike(f"{dev.username}@%"))
+            if "_" in dev.username and dev.username.split("_")[-1].isdigit():
+                base_u = dev.username.rsplit("_", 1)[0]
+                filters.append(Developer.username.ilike(base_u))
+                filters.append(Developer.email.ilike(f"{base_u}@%"))
+
+        matched = db.query(Developer.id, Developer.owner_id).filter(or_(*filters)).all()
+        for m_id, m_oid in matched:
+            if m_id:
+                dev_ids.append(m_id)
+            if m_oid:
+                owner_ids.append(m_oid)
+    except Exception:
+        pass
+    return list(set(dev_ids)), list(set(owner_ids))
+
+def get_developer_app_filter(dev: Developer, db: Session):
+    dev_ids, owner_ids = get_developer_ids_and_owner_ids(dev, db)
+    if owner_ids:
+        return (Application.developer_id.in_(dev_ids)) | (Application.owner_id.in_(owner_ids))
+    return Application.developer_id.in_(dev_ids)
+
 # ==================== 1. APPLICATIONS ====================
 @router.get("/apps")
 async def list_apps(dev: Developer = Depends(get_current_developer), db: Session = Depends(get_db)):
-    query = db.query(Application).filter(Application.developer_id == dev.id)
+    app_filter = get_developer_app_filter(dev, db)
+    query = db.query(Application).filter(app_filter)
     if getattr(dev, "is_custom_client", False):
         allowed = getattr(dev, "allowed_apps_list", [])
         app_ids = [int(x) for x in allowed if x.isdigit()]
         app_names = [x for x in allowed if not x.isdigit()]
-        query = query.filter((Application.id.in_(app_ids)) | (Application.name.in_(app_names)))
+        if allowed:
+            query = query.filter((Application.id.in_(app_ids)) | (Application.name.in_(app_names)))
     apps = query.all()
     result = []
     for app in apps:
@@ -1532,7 +1569,7 @@ def resolve_bot_developer(
     guild_owner_id: Optional[str] = None,
     is_staff: Optional[bool] = False
 ) -> Optional[Developer]:
-    """Resolves developer workspace by Supabase DiscordGuildConfig, direct link, staff role inheritance, custom client, or master admin."""
+    """Resolves developer workspace strictly by Supabase DiscordGuildConfig, direct link, staff role inheritance, or custom client."""
     d_id = str(discord_id).strip() if discord_id else ""
     d_user = str(discord_username).strip() if discord_username else ""
     g_id = str(guild_id).strip() if guild_id else ""
@@ -1550,41 +1587,26 @@ def resolve_bot_developer(
             if dev:
                 return dev
 
-    # 1. Check if this is a Custom Client (Brand Partner)
-    client = None
+    # 1. Check if this is a Custom Client (Brand Partner) explicitly linked by discord_id
     if d_id:
         client = db.query(CustomClient).filter(CustomClient.discord_id == d_id).first()
-    if not client and d_user:
-        client = db.query(CustomClient).filter(CustomClient.username.ilike(d_user)).first()
-    if client:
-        dev = db.query(Developer).filter(Developer.id == client.developer_id).first()
-        if dev:
-            dev.is_custom_client = True
-            dev.custom_client_id = client.id
-            dev.custom_client_username = client.username
-            dev.allowed_apps_raw = client.allowed_apps or ""
-            dev.allowed_apps_list = [x.strip() for x in (client.allowed_apps or "").split(",") if x.strip()]
-            return dev
+        if client:
+            dev = db.query(Developer).filter(Developer.id == client.developer_id).first()
+            if dev:
+                dev.is_custom_client = True
+                dev.custom_client_id = client.id
+                dev.custom_client_username = client.username
+                dev.allowed_apps_raw = client.allowed_apps or ""
+                dev.allowed_apps_list = [x.strip() for x in (client.allowed_apps or "").split(",") if x.strip()]
+                return dev
 
     # 2. Direct personal Discord ID link
     if d_id:
         dev = db.query(Developer).filter(Developer.discord_id == d_id).first()
 
-    # 3. Direct username / email match
-    if not dev and d_user:
-        dev = db.query(Developer).filter(Developer.username.ilike(d_user)).first()
-    if not dev and d_user:
-        dev = db.query(Developer).filter(Developer.email.ilike(f"{d_user}%")).first()
-
-    # 4. Staff Role Inheritance: Resolve Guild Owner's developer account
+    # 3. Staff Role Inheritance: Resolve Guild Owner's developer account
     if not dev and (is_staff or g_owner) and g_owner:
         dev = db.query(Developer).filter(Developer.discord_id == g_owner).first()
-
-    # 5. Master Admin Direct Fallback
-    if not dev and d_id:
-        from ..config import MASTER_ADMIN_IDS
-        if d_id in MASTER_ADMIN_IDS:
-            dev = db.query(Developer).order_by(Developer.id.asc()).first()
 
     return dev
 
@@ -1618,18 +1640,7 @@ async def bot_auto_genkey(data: BotGenKeyRequest, db: Session = Depends(get_db))
         app = db.query(Application).filter(Application.developer_id == dev.id).order_by(Application.id.asc()).first()
 
     if not app:
-        # Auto-create default app if none exists
-        app = Application(
-            developer_id=dev.id,
-            name="JOYST",
-            owner_id=dev.owner_id,
-            secret="sec_" + generate_random_token(32),
-            version="1.0",
-            status="enabled"
-        )
-        db.add(app)
-        db.commit()
-        db.refresh(app)
+        raise HTTPException(status_code=404, detail="No application found in your account. Please create an application on the dashboard first.")
 
     created_keys = []
     custom_k = data.custom_key.strip() if data.custom_key else None
