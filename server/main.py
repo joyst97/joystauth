@@ -108,7 +108,6 @@ app.include_router(admin_router)
 app.include_router(auth_router)
 app.include_router(reseller_router)
 app.include_router(lib_bypass_router)
-app.add_api_route("/api_admin.php", universal_api_gateway, methods=["GET", "POST"])
 
 @app.on_event("startup")
 async def on_startup():
@@ -175,14 +174,6 @@ async def serve_reseller_dashboard(request: Request):
             return HTMLResponse(content=f.read())
     return HTMLResponse("<h1>Reseller Dashboard</h1>")
 
-@app.get("/lib-bypass-dashboard", response_class=HTMLResponse)
-async def serve_lib_bypass_dashboard(request: Request):
-    dash_file = os.path.join(TEMPLATES_DIR, "lib_bypass_dashboard.html")
-    if os.path.exists(dash_file):
-        with open(dash_file, "r", encoding="utf-8") as f:
-            return HTMLResponse(content=f.read())
-    return HTMLResponse("<h1>Lib Bypass Dashboard Not Found</h1>", status_code=404)
-
 @app.api_route("/", methods=["GET", "HEAD"], response_class=HTMLResponse)
 async def serve_landing(request: Request):
     landing_file = os.path.join(TEMPLATES_DIR, "landing.html")
@@ -247,6 +238,16 @@ async def serve_changelog(request: Request):
         with open(cl_file, "r", encoding="utf-8") as f:
             return HTMLResponse(content=f.read())
     return HTMLResponse("<h1>Changelog</h1>")
+@app.get("/lib-bypass", response_class=HTMLResponse)
+@app.get("/lib-bypass/login", response_class=HTMLResponse)
+@app.get("/lib-bypass/dashboard", response_class=HTMLResponse)
+async def serve_lib_bypass(request: Request):
+    b_file = os.path.join(TEMPLATES_DIR, "lib_bypass_dashboard.html")
+    if os.path.exists(b_file):
+        with open(b_file, "r", encoding="utf-8") as f:
+            return HTMLResponse(content=f.read())
+    return HTMLResponse("<h1>Lib Bypass Console</h1>")
+
 @app.get("/status", response_class=HTMLResponse)
 async def serve_status(request: Request):
     s_file = os.path.join(TEMPLATES_DIR, "status.html")

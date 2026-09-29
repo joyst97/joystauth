@@ -349,135 +349,29 @@ class AppSelectView(discord.ui.View):
                 )
                 await interaction.edit_original_response(content=None, embed=embed, view=None)
 
-        elif self.action_type == "resethwid":
+        elif self.action_type == "warning":
             self.action_data["app_name"] = selected_app
-            res = requests.post(f"{config['api_url']}/api/v1/admin/bot/resethwid", json=self.action_data, timeout=15)
+            res = requests.post(f"{config['api_url']}/api/v1/admin/bot/warning", json=self.action_data, timeout=15)
             data = parse_api_response(res)
             if res.status_code == 200 and data.get("success"):
                 embed = discord.Embed(
-                    title=f"{EMOJI['gear']}  HWID RESET COMPLETED",
+                    title=f"🚨  LIVE EMERGENCY WARNING BROADCASTED",
                     description=(
-                        f"### {EMOJI['tick']} HWID lock for `{data['username']}` has been cleared!\n\n"
-                        f"{EMOJI['arrow']} **Client:** `{data['username']}`\n"
-                        f"{EMOJI['arrow']} **Application:** `{selected_app}`\n"
-                        f"{EMOJI['arrow']} **Binding Status:** `Ready for New Machine` {EMOJI['shield']}\n"
-                        f"{EMOJI['dot']} Client will automatically lock to their next login device."
+                        f"### {EMOJI['tick']} Warning Sent to All Running and New Clients!\n"
+                        f"{EMOJI['arrow']} **Target App:** `{selected_app}`\n"
+                        f"{EMOJI['arrow']} **Title:** `{self.action_data.get('title')}`\n"
+                        f"{EMOJI['arrow']} **Notice Body:** `{self.action_data.get('message')}`\n"
+                        f"{EMOJI['arrow']} **Delivery:** `Instant In-App Pop-up on next poll / login`"
                     ),
-                    color=COLOR_SUCCESS
+                    color=COLOR_WARNING if self.action_data.get('type') == 'warning' else COLOR_DANGER
                 )
-                embed.set_footer(text="Joyst Auth Security • joystauth.cc", icon_url=interaction.user.display_avatar.url)
+                embed.set_footer(text="Joyst Auth • Zero-Leak Security", icon_url=interaction.user.display_avatar.url)
                 await interaction.edit_original_response(content=None, embed=embed, view=None)
             else:
                 embed = discord.Embed(
-                    title=f"{EMOJI['cross']}  NOTICE",
-                    description=f"> {EMOJI['alert']} `{data.get('detail', 'User not found in this application.')}`",
-                    color=COLOR_WARNING
-                )
-                await interaction.edit_original_response(content=None, embed=embed, view=None)
-
-        elif self.action_type == "userinfo":
-            self.action_data["app_name"] = selected_app
-            res = requests.post(f"{config['api_url']}/api/v1/admin/bot/userinfo", json=self.action_data, timeout=15)
-            data = parse_api_response(res)
-            if res.status_code == 200 and data.get("success"):
-                u = data["user"]
-                status_text = f"**BANNED** {EMOJI['cross']}" if u["is_banned"] else f"**ACTIVE** {EMOJI['tick']}"
-                embed = discord.Embed(
-                    title=f"{EMOJI['bot']}  CLIENTFILE: {u['username']}",
-                    description=(
-                        f"{EMOJI['arrow']} **Application:** `{u['app_name']}`\n"
-                        f"{EMOJI['arrow']} **Status:** {status_text}\n"
-                        f"{EMOJI['arrow']} **Subscription:** `{u['subscription']}` (Lv.{u['level']})\n"
-                        f"{EMOJI['arrow']} **Expires:** `{u['expires_at']}`\n"
-                        f"{EMOJI['arrow']} **Last Login IP:** `{u['last_ip']}`\n"
-                        f"{EMOJI['arrow']} **Bound HWID:** `{u['hwid'][:24]}...`" if len(u['hwid']) > 24 else f"{EMOJI['arrow']} **Bound HWID:** `{u['hwid']}`"
-                    ),
-                    color=COLOR_DANGER if u["is_banned"] else COLOR_SUCCESS
-                )
-                if u["is_banned"]:
-                    embed.add_field(name=f"{EMOJI['alert']} Ban Reason", value=f"`{u['ban_reason']}`", inline=False)
-                embed.set_footer(text="Joyst Auth Database • joystauth.cc", icon_url=interaction.user.display_avatar.url)
-                await interaction.edit_original_response(content=None, embed=embed, view=None)
-            else:
-                embed = discord.Embed(
-                    title=f"{EMOJI['cross']}  NOTICE",
-                    description=f"> {EMOJI['alert']} `{data.get('detail', 'User not found in this application.')}`",
-                    color=COLOR_WARNING
-                )
-                await interaction.edit_original_response(content=None, embed=embed, view=None)
-
-        elif self.action_type == "ban":
-            self.action_data["app_name"] = selected_app
-            res = requests.post(f"{config['api_url']}/api/v1/admin/bot/ban", json=self.action_data, timeout=15)
-            data = parse_api_response(res)
-            if res.status_code == 200 and data.get("success"):
-                embed = discord.Embed(
-                    title=f"{EMOJI['cross']}  USER ACCOUNT BANNED",
-                    description=(
-                        f"### {EMOJI['alert']} User `{data['username']}` Has Been Permanently Banned\n\n"
-                        f"{EMOJI['arrow']} **Client:** `{data['username']}`\n"
-                        f"{EMOJI['arrow']} **Application:** `{selected_app}`\n"
-                        f"{EMOJI['arrow']} **Reason:** `{data['reason']}`\n"
-                        f"{EMOJI['dot']} All authentication attempts for this user will be rejected."
-                    ),
+                    title=f"{EMOJI['cross']}  BROADCAST FAILED",
+                    description=f"> {EMOJI['alert']} **Reason:** `{data.get('detail', 'Failed to broadcast warning.')}`",
                     color=COLOR_DANGER
-                )
-                embed.set_footer(text="Joyst Auth Shield • joystauth.cc", icon_url=interaction.user.display_avatar.url)
-                await interaction.edit_original_response(content=None, embed=embed, view=None)
-            else:
-                embed = discord.Embed(
-                    title=f"{EMOJI['cross']}  NOTICE",
-                    description=f"> {EMOJI['alert']} `{data.get('detail', 'Failed to ban user.')}`",
-                    color=COLOR_WARNING
-                )
-                await interaction.edit_original_response(content=None, embed=embed, view=None)
-
-        elif self.action_type == "unban":
-            self.action_data["app_name"] = selected_app
-            res = requests.post(f"{config['api_url']}/api/v1/admin/bot/unban", json=self.action_data, timeout=15)
-            data = parse_api_response(res)
-            if res.status_code == 200 and data.get("success"):
-                embed = discord.Embed(
-                    title=f"{EMOJI['tick']}  USER UNBANNED",
-                    description=(
-                        f"### {EMOJI['wave']} User `{data['username']}` Access Restored\n\n"
-                        f"{EMOJI['arrow']} **Client:** `{data['username']}`\n"
-                        f"{EMOJI['arrow']} **Application:** `{selected_app}`\n"
-                        f"{EMOJI['arrow']} **Status:** `Authorized to Login` {EMOJI['shield']}"
-                    ),
-                    color=COLOR_SUCCESS
-                )
-                embed.set_footer(text="Joyst Auth Shield • joystauth.cc", icon_url=interaction.user.display_avatar.url)
-                await interaction.edit_original_response(content=None, embed=embed, view=None)
-            else:
-                embed = discord.Embed(
-                    title=f"{EMOJI['cross']}  NOTICE",
-                    description=f"> {EMOJI['alert']} `{data.get('detail', 'Failed to unban user.')}`",
-                    color=COLOR_WARNING
-                )
-                await interaction.edit_original_response(content=None, embed=embed, view=None)
-
-        elif self.action_type == "deluser":
-            self.action_data["app_name"] = selected_app
-            res = requests.post(f"{config['api_url']}/api/v1/admin/bot/deluser", json=self.action_data, timeout=15)
-            data = parse_api_response(res)
-            if res.status_code == 200 and data.get("success"):
-                embed = discord.Embed(
-                    title=f"{EMOJI['cross']}  CLIENT DELETED",
-                    description=(
-                        f"### {EMOJI['tick']} Client `{data['username']}` permanently deleted.\n\n"
-                        f"{EMOJI['arrow']} **Client:** `{data['username']}`\n"
-                        f"{EMOJI['arrow']} **Application:** `{selected_app}`"
-                    ),
-                    color=COLOR_DANGER
-                )
-                embed.set_footer(text="Joyst Auth • Deleted", icon_url=interaction.user.display_avatar.url)
-                await interaction.edit_original_response(content=None, embed=embed, view=None)
-            else:
-                embed = discord.Embed(
-                    title=f"{EMOJI['cross']}  NOTICE",
-                    description=f"> {EMOJI['alert']} `{data.get('detail', 'Failed to delete user.')}`",
-                    color=COLOR_WARNING
                 )
                 await interaction.edit_original_response(content=None, embed=embed, view=None)
 
@@ -567,8 +461,6 @@ async def link_cmd(interaction: discord.Interaction, email_or_username: str):
         "discord_username": str(interaction.user.name),
         "email_or_username": email_or_username.strip()
     }
-    if interaction.guild_id:
-        payload["guild_id"] = str(interaction.guild_id)
     try:
         res = requests.post(f"{config['api_url']}/api/v1/admin/bot/link", json=payload, timeout=15)
         data = parse_api_response(res)
@@ -860,43 +752,23 @@ async def upgrade_cmd(interaction: discord.Interaction, key: str):
 @bot.tree.command(name="resethwid", description="🔄 Clear HWID lock for a client")
 @app_commands.allowed_contexts(guilds=True, dms=True, private_channels=True)
 @app_commands.allowed_installs(guilds=True, users=True)
-@app_commands.describe(username="Client username to reset", app="Optional: Application Name")
-async def resethwid(interaction: discord.Interaction, username: str, app: Optional[str] = None):
-    payload = get_bot_payload(interaction, target_username=username.strip())
-    if not app:
-        apps = fetch_developer_apps(interaction)
-        if len(apps) > 1:
-            view = AppSelectView("resethwid", payload, apps)
-            embed = discord.Embed(
-                title=f"{EMOJI['gear']}  RESET HWID • SELECT APPLICATION",
-                description=(
-                    f"### {EMOJI['wave']} Please choose which application **`{username}`** belongs to:\n\n"
-                    f"{EMOJI['arrow']} **Target User:** `{username}`\n"
-                    f"{EMOJI['arrow']} **Available Apps:** `{len(apps)}` Applications\n\n"
-                    f"{EMOJI['dot']} *Select from dropdown below to complete the HWID reset.*"
-                ),
-                color=COLOR_BRAND
-            )
-            embed.set_footer(text="Joyst Auth • HWID Management", icon_url=interaction.user.display_avatar.url)
-            await interaction.response.send_message(embed=embed, view=view, ephemeral=False)
-            return
-        elif len(apps) == 1:
-            app = apps[0]["name"]
-
+@app_commands.describe(username="Client username to reset")
+async def resethwid(interaction: discord.Interaction, username: str):
     await interaction.response.defer(ephemeral=False)
-    if app:
-        payload["app_name"] = app.strip()
+    payload = {
+        "discord_id": str(interaction.user.id),
+        "discord_username": str(interaction.user.name),
+        "target_username": username.strip()
+    }
     try:
         res = requests.post(f"{config['api_url']}/api/v1/admin/bot/resethwid", json=payload, timeout=15)
         data = parse_api_response(res)
         if res.status_code == 200 and data.get("success"):
-            app_label = data.get("app_name") or app or "Application"
             embed = discord.Embed(
                 title=f"{EMOJI['gear']}  HWID RESET COMPLETED",
                 description=(
                     f"### {EMOJI['tick']} HWID lock for `{data['username']}` has been cleared!\n\n"
                     f"{EMOJI['arrow']} **Client:** `{data['username']}`\n"
-                    f"{EMOJI['arrow']} **Application:** `{app_label}`\n"
                     f"{EMOJI['arrow']} **Binding Status:** `Ready for New Machine` {EMOJI['shield']}\n"
                     f"{EMOJI['dot']} Client will automatically lock to their next login device."
                 ),
@@ -923,32 +795,14 @@ async def resethwid(interaction: discord.Interaction, username: str, app: Option
 @bot.tree.command(name="userinfo", description="🔍 Look up a registered client'sfile, subscription & HWID")
 @app_commands.allowed_contexts(guilds=True, dms=True, private_channels=True)
 @app_commands.allowed_installs(guilds=True, users=True)
-@app_commands.describe(username="Username to inspect", app="Optional: Application Name")
-async def userinfo(interaction: discord.Interaction, username: str, app: Optional[str] = None):
-    payload = get_bot_payload(interaction, target_username=username.strip())
-    if not app:
-        apps = fetch_developer_apps(interaction)
-        if len(apps) > 1:
-            view = AppSelectView("userinfo", payload, apps)
-            embed = discord.Embed(
-                title=f"{EMOJI['bot']}  INSPECT CLIENT • SELECT APPLICATION",
-                description=(
-                    f"### {EMOJI['wave']} Please choose which application **`{username}`** belongs to:\n\n"
-                    f"{EMOJI['arrow']} **Target User:** `{username}`\n"
-                    f"{EMOJI['arrow']} **Available Apps:** `{len(apps)}` Applications\n\n"
-                    f"{EMOJI['dot']} *Select from dropdown below to inspect user.*"
-                ),
-                color=COLOR_BRAND
-            )
-            embed.set_footer(text="Joyst Auth • Client Lookup", icon_url=interaction.user.display_avatar.url)
-            await interaction.response.send_message(embed=embed, view=view, ephemeral=False)
-            return
-        elif len(apps) == 1:
-            app = apps[0]["name"]
-
+@app_commands.describe(username="Username to inspect")
+async def userinfo(interaction: discord.Interaction, username: str):
     await interaction.response.defer(ephemeral=False)
-    if app:
-        payload["app_name"] = app.strip()
+    payload = {
+        "discord_id": str(interaction.user.id),
+        "discord_username": str(interaction.user.name),
+        "target_username": username.strip()
+    }
     try:
         res = requests.post(f"{config['api_url']}/api/v1/admin/bot/userinfo", json=payload, timeout=15)
         data = parse_api_response(res)
@@ -990,43 +844,23 @@ async def userinfo(interaction: discord.Interaction, username: str, app: Optiona
 @bot.tree.command(name="ban", description="🔨 Ban a client user from authenticating")
 @app_commands.allowed_contexts(guilds=True, dms=True, private_channels=True)
 @app_commands.allowed_installs(guilds=True, users=True)
-@app_commands.describe(username="User to ban", reason="Reason for ban", app="Optional: Application Name")
-async def ban(interaction: discord.Interaction, username: str, reason: str = "Banned by Admin", app: Optional[str] = None):
-    payload = get_bot_payload(interaction, target_username=username.strip(), reason=reason.strip())
-    if not app:
-        apps = fetch_developer_apps(interaction)
-        if len(apps) > 1:
-            view = AppSelectView("ban", payload, apps)
-            embed = discord.Embed(
-                title=f"{EMOJI['cross']}  BAN CLIENT • SELECT APPLICATION",
-                description=(
-                    f"### {EMOJI['alert']} Please choose which application **`{username}`** belongs to:\n\n"
-                    f"{EMOJI['arrow']} **Target User:** `{username}`\n"
-                    f"{EMOJI['arrow']} **Reason:** `{reason}`\n"
-                    f"{EMOJI['arrow']} **Available Apps:** `{len(apps)}` Applications\n\n"
-                    f"{EMOJI['dot']} *Select from dropdown below to ban client.*"
-                ),
-                color=COLOR_DANGER
-            )
-            embed.set_footer(text="Joyst Auth • Ban Management", icon_url=interaction.user.display_avatar.url)
-            await interaction.response.send_message(embed=embed, view=view, ephemeral=False)
-            return
-        elif len(apps) == 1:
-            app = apps[0]["name"]
-
+@app_commands.describe(username="User to ban", reason="Reason for ban")
+async def ban(interaction: discord.Interaction, username: str, reason: str = "Banned by Admin"):
     await interaction.response.defer(ephemeral=False)
-    if app:
-        payload["app_name"] = app.strip()
+    payload = {
+        "discord_id": str(interaction.user.id),
+        "discord_username": str(interaction.user.name),
+        "target_username": username.strip(),
+        "reason": reason.strip()
+    }
     try:
         res = requests.post(f"{config['api_url']}/api/v1/admin/bot/ban", json=payload, timeout=15)
         data = parse_api_response(res)
         if res.status_code == 200 and data.get("success"):
-            app_label = data.get("app_name") or app or ""
-            app_text = f" in `{app_label}`" if app_label else ""
             embed = discord.Embed(
                 title=f"{EMOJI['cross']}  USER ACCOUNT BANNED",
                 description=(
-                    f"### {EMOJI['alert']} User `{data['username']}` Has Been Permanently Banned{app_text}\n\n"
+                    f"### {EMOJI['alert']} User `{data['username']}` Has Been Permanently Banned\n\n"
                     f"{EMOJI['arrow']} **Client:** `{data['username']}`\n"
                     f"{EMOJI['arrow']} **Reason:** `{data['reason']}`\n"
                     f"{EMOJI['dot']} All authentication attempts for this user will be rejected."
@@ -1053,42 +887,22 @@ async def ban(interaction: discord.Interaction, username: str, reason: str = "Ba
 @bot.tree.command(name="unban", description="🔓 Unban a previously banned client user")
 @app_commands.allowed_contexts(guilds=True, dms=True, private_channels=True)
 @app_commands.allowed_installs(guilds=True, users=True)
-@app_commands.describe(username="User to unban", app="Optional: Application Name")
-async def unban(interaction: discord.Interaction, username: str, app: Optional[str] = None):
-    payload = get_bot_payload(interaction, target_username=username.strip())
-    if not app:
-        apps = fetch_developer_apps(interaction)
-        if len(apps) > 1:
-            view = AppSelectView("unban", payload, apps)
-            embed = discord.Embed(
-                title=f"{EMOJI['tick']}  UNBAN CLIENT • SELECT APPLICATION",
-                description=(
-                    f"### {EMOJI['wave']} Please choose which application **`{username}`** belongs to:\n\n"
-                    f"{EMOJI['arrow']} **Target User:** `{username}`\n"
-                    f"{EMOJI['arrow']} **Available Apps:** `{len(apps)}` Applications\n\n"
-                    f"{EMOJI['dot']} *Select from dropdown below to unban client.*"
-                ),
-                color=COLOR_SUCCESS
-            )
-            embed.set_footer(text="Joyst Auth • Unban Management", icon_url=interaction.user.display_avatar.url)
-            await interaction.response.send_message(embed=embed, view=view, ephemeral=False)
-            return
-        elif len(apps) == 1:
-            app = apps[0]["name"]
-
+@app_commands.describe(username="User to unban")
+async def unban(interaction: discord.Interaction, username: str):
     await interaction.response.defer(ephemeral=False)
-    if app:
-        payload["app_name"] = app.strip()
+    payload = {
+        "discord_id": str(interaction.user.id),
+        "discord_username": str(interaction.user.name),
+        "target_username": username.strip()
+    }
     try:
         res = requests.post(f"{config['api_url']}/api/v1/admin/bot/unban", json=payload, timeout=15)
         data = parse_api_response(res)
         if res.status_code == 200 and data.get("success"):
-            app_label = data.get("app_name") or app or ""
-            app_text = f" in `{app_label}`" if app_label else ""
             embed = discord.Embed(
                 title=f"{EMOJI['tick']}  USER UNBANNED",
                 description=(
-                    f"### {EMOJI['wave']} User `{data['username']}` Access Restored{app_text}\n\n"
+                    f"### {EMOJI['wave']} User `{data['username']}` Access Restored\n\n"
                     f"{EMOJI['arrow']} **Client:** `{data['username']}`\n"
                     f"{EMOJI['arrow']} **Status:** `Authorized to Login` {EMOJI['shield']}"
                 ),

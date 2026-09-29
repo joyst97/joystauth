@@ -458,9 +458,9 @@
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="8.5" cy="7" r="4"></circle><line x1="20" y1="8" x2="20" y2="14"></line><line x1="23" y1="11" x2="17" y2="11"></line></svg>
                     <span>Resellers</span>
                 </li>
-                <li class="nav-item" data-tab="custom-clients" id="sidebar-tab-custom-clients" data-tooltip="Custom Panel" onclick="switchTab('custom-clients')">
+                <li class="nav-item" data-tab="custom-clients" id="sidebar-tab-custom-clients" data-tooltip="Custom Clients" onclick="switchTab('custom-clients')">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
-                    <span>Custom Panel</span>
+                    <span>Custom Clients</span>
                 </li>
                 <li class="nav-item" data-tab="webhooks" data-tooltip="Discord Bot & Logs" onclick="switchTab('webhooks')">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M22 17H2a3 3 0 0 0 3-3V9a7 7 0 0 1 14 0v5a3 3 0 0 0 3 3zm-8.27 4a2 2 0 0 1-3.46 0"></path></svg>
@@ -1333,65 +1333,33 @@
             </section>
 
             
-            <!-- 14. TAB: CUSTOM PANEL / BRAND PARTNERS -->
+            <!-- 14. TAB: CUSTOM CLIENTS / SUB-DEVELOPERS -->
             <section id="page-custom-clients" class="page-container">
                 <div class="page-header">
                     <div class="page-title">
-                        <h2>Custom Panel & Brand Partner Accounts</h2>
-                        <p>Delegate full application management (Maintenance, License Keys, Users & HWID, Settings) to branded client partners with instant Discord Bot & Web Console integration.</p>
+                        <h2>Custom Brand Partners & Clients</h2>
+                        <p>Delegate full application management (Maintenance, Keys, Users, Settings) to branded client owners without allowing them to create new apps.</p>
                     </div>
-                    <div style="display: flex; gap: 10px; align-items: center;">
-                        <button class="btn btn-secondary btn-sm" onclick="loadCustomClients()">
-                            <span>🔄 Sync Data</span>
-                        </button>
-                        <button class="btn btn-primary btn-sm" onclick="openCreateCustomClientModal()">
-                            <span>➕ Create Custom Panel Account</span>
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Custom Panel KPI Stat Pods -->
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 22px;">
-                    <div class="stat-card spotlight-card" style="padding: 18px 20px;">
-                        <div style="font-size: 11px; font-weight: 800; color: #a855f7; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px;">Total Custom Panels</div>
-                        <div id="cc-stat-total" style="font-size: 26px; font-weight: 900; color: #fff; font-family: monospace;">0</div>
-                        <div style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">Active Brand Partners</div>
-                    </div>
-                    <div class="stat-card spotlight-card" style="padding: 18px 20px;">
-                        <div style="font-size: 11px; font-weight: 800; color: #38bdf8; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px;">Assigned Applications</div>
-                        <div id="cc-stat-apps" style="font-size: 26px; font-weight: 900; color: #fff; font-family: monospace;">0</div>
-                        <div style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">Delegated App Nodes</div>
-                    </div>
-                    <div class="stat-card spotlight-card" style="padding: 18px 20px;">
-                        <div style="font-size: 11px; font-weight: 800; color: #10b981; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px;">Discord Bot Link</div>
-                        <div id="cc-stat-discord" style="font-size: 26px; font-weight: 900; color: #fff; font-family: monospace;">0</div>
-                        <div style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">Connected Discord IDs</div>
-                    </div>
-                    <div class="stat-card spotlight-card" style="padding: 18px 20px;">
-                        <div style="font-size: 11px; font-weight: 800; color: #f59e0b; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px;">Portal Access</div>
-                        <div style="font-size: 26px; font-weight: 900; color: #10b981; font-family: monospace;">ONLINE</div>
-                        <div style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">joystauth.cc/login</div>
-                    </div>
+                    <button class="btn btn-primary btn-sm" onclick="openCreateCustomClientModal()">
+                        <span>➕ Create Custom Client</span>
+                    </button>
                 </div>
 
                 <div class="table-card spotlight-card">
                     <div class="table-toolbar" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
                         <div class="search-input-wrap" style="width: 320px;">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-                            <input type="text" id="custom-clients-search" class="search-input" placeholder="Search custom panels, usernames, apps..." oninput="filterCustomClientsTable()">
+                            <input type="text" id="custom-clients-search" class="search-input" placeholder="Search custom clients..." oninput="filterCustomClientsTable()">
                         </div>
-                        <div style="display: flex; gap: 8px;">
-                            <button class="btn btn-secondary btn-sm" onclick="loadCustomClients()">🔄 Refresh List</button>
-                        </div>
+                        <button class="btn btn-secondary btn-sm" onclick="loadCustomClients()">🔄 Refresh</button>
                     </div>
 
                     <table class="data-table">
                         <thead>
                             <tr>
-                                <th>Custom Panel Account</th>
+                                <th>Client Username</th>
                                 <th>Assigned Applications</th>
-                                <th>Discord Bot Status</th>
-                                <th>Notes / Owner Info</th>
+                                <th>Notes</th>
                                 <th>Created Date</th>
                                 <th style="text-align: right;">Actions</th>
                             </tr>
@@ -2365,66 +2333,6 @@
             <div class="modal-footer">
                 <button type="button" data-close-modal type="button" class="btn btn-secondary btn-sm" onclick="closeModal('modal-manage-reseller-apps')">Cancel</button>
                 <button type="button" class="btn btn-primary btn-sm" onclick="submitSaveResellerApps()">💾 Save Assigned Apps</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- View Custom Client Details Modal -->
-    <div id="modal-view-custom-client" class="modal-overlay">
-        <div class="modal-box" style="max-width: 580px;">
-            <div class="modal-header" style="border-bottom: 1px solid rgba(168, 85, 247, 0.2);">
-                <div style="display: flex; align-items: center; gap: 12px;">
-                    <div id="cc-view-avatar" style="width: 42px; height: 42px; border-radius: 12px; background: linear-gradient(135deg, #a855f7, #6366f1); display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: 900; color: #fff; box-shadow: 0 0 20px rgba(168, 85, 247, 0.4);">C</div>
-                    <div>
-                        <h3 id="cc-view-username" style="margin: 0; font-size: 17px; color: #fff; font-weight: 800;">Custom Client</h3>
-                        <span style="color: #a855f7; font-size: 11.5px; font-weight: 700; letter-spacing: 0.5px;">👑 BRAND PARTNER PANEL ACCOUNT</span>
-                    </div>
-                </div>
-                <button type="button" class="modal-close" data-close-modal onclick="closeModal('modal-view-custom-client')">&times;</button>
-            </div>
-            <div class="modal-body" style="padding: 20px; display: flex; flex-direction: column; gap: 16px;">
-                <!-- Summary Pods -->
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-                    <div style="background: rgba(0,0,0,0.5); padding: 12px; border-radius: 10px; border: 1px solid var(--border-glass);">
-                        <div style="font-size: 11px; color: var(--text-muted); font-weight: 700; text-transform: uppercase;">Portal Access Level</div>
-                        <div style="color: #10b981; font-weight: 800; font-size: 13px; margin-top: 3px;">👑 Full Paid Management</div>
-                    </div>
-                    <div style="background: rgba(0,0,0,0.5); padding: 12px; border-radius: 10px; border: 1px solid var(--border-glass);">
-                        <div style="font-size: 11px; color: var(--text-muted); font-weight: 700; text-transform: uppercase;">Discord Bot Link</div>
-                        <div id="cc-view-discord-badge" style="font-weight: 800; font-size: 13px; margin-top: 3px;">-</div>
-                    </div>
-                </div>
-
-                <!-- Assigned Applications -->
-                <div>
-                    <label style="font-size: 12px; font-weight: 800; color: #38bdf8; text-transform: uppercase; letter-spacing: 0.5px; display: block; margin-bottom: 6px;">📱 Assigned Application(s)</label>
-                    <div id="cc-view-apps-list" style="display: flex; flex-direction: column; gap: 6px; max-height: 150px; overflow-y: auto; background: rgba(0,0,0,0.4); padding: 10px; border-radius: 8px; border: 1px solid var(--border-glass);"></div>
-                </div>
-
-                <!-- Portal Login URL & Discord Link Command -->
-                <div style="background: rgba(168, 85, 247, 0.08); border: 1px solid rgba(168, 85, 247, 0.3); border-radius: 10px; padding: 14px;">
-                    <div style="font-size: 12px; font-weight: 800; color: #fff; margin-bottom: 8px;">🔗 Portal Credentials & Quick Link</div>
-                    <div style="font-size: 12px; color: var(--text-secondary); line-height: 1.6;">
-                        • <strong>Web Portal:</strong> <a href="https://joystauth.cc/login" target="_blank" style="color: #38bdf8; text-decoration: underline;">https://joystauth.cc/login</a><br>
-                        • <strong>Username:</strong> <code id="cc-view-copy-user" class="mono" style="color: #a855f7; font-weight: 700;"></code><br>
-                        • <strong>Discord Bot Command:</strong> <code id="cc-view-copy-discord-cmd" class="mono" style="color: #10b981; font-weight: 700;"></code>
-                    </div>
-                </div>
-
-                <!-- Notes -->
-                <div>
-                    <label style="font-size: 12px; font-weight: 700; color: var(--text-muted); display: block; margin-bottom: 4px;">Internal Notes</label>
-                    <div id="cc-view-notes" style="font-size: 13px; color: var(--text-secondary); background: rgba(0,0,0,0.3); padding: 8px 12px; border-radius: 6px; border: 1px solid var(--border-glass);">-</div>
-                </div>
-            </div>
-            <div class="modal-footer" style="display: flex; justify-content: space-between; align-items: center;">
-                <button type="button" class="btn btn-secondary btn-sm" onclick="copyCustomClientDeliveryCard()" style="font-weight: 800; background: linear-gradient(135deg, rgba(168, 85, 247, 0.2), rgba(99, 102, 241, 0.2)); border-color: rgba(168, 85, 247, 0.4); color: #fff;">
-                    📋 Copy Delivery Card
-                </button>
-                <div style="display: flex; gap: 8px;">
-                    <button type="button" class="btn btn-secondary btn-sm" onclick="closeModal('modal-view-custom-client')">Close</button>
-                    <button type="button" class="btn btn-primary btn-sm" id="cc-view-edit-btn" onclick="">✏️ Edit Client</button>
-                </div>
             </div>
         </div>
     </div>

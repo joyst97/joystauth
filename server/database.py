@@ -31,9 +31,8 @@ if DATABASE_URL:
             max_overflow=25,
             pool_recycle=300
         )
-        print("[JOYST DATABASE] Connected to Cloud Database (Supabase PostgreSQL)")
     except Exception as e:
-        print(f"[JOYST DATABASE] Cloud Database Error: {e}")
+        print(f"[JOYST DATABASE] Cloud Database Notice: {e}")
         engine = None
 
 if engine is None:
@@ -250,21 +249,6 @@ class CustomClient(Base):
 
     developer = relationship("Developer", back_populates="custom_clients")
 
-class DiscordGuildConfig(Base):
-    __tablename__ = "discord_guild_configs"
-    id = Column(Integer, primary_key=True, index=True)
-    guild_id = Column(String(50), unique=True, index=True, nullable=False)
-    owner_discord_id = Column(String(50), index=True, nullable=True)
-    owner_username = Column(String(100), nullable=True)
-    developer_id = Column(Integer, ForeignKey("developers.id"), nullable=True)
-    plan = Column(String(50), default="Paid")
-    staff_role_ids = Column(Text, default="[]")
-    log_channel_id = Column(String(50), nullable=True)
-    created_at = Column(DateTime, default=datetime.datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
-
-    developer = relationship("Developer")
-
 class PlanKey(Base):
     __tablename__ = "plan_keys"
     id = Column(Integer, primary_key=True, index=True)
@@ -314,18 +298,27 @@ class AuditLog(Base):
 
     app = relationship("Application", back_populates="logs")
 
+class DiscordGuildConfig(Base):
+    __tablename__ = "discord_guild_configs"
+    id = Column(Integer, primary_key=True, index=True)
+    guild_id = Column(String(50), unique=True, index=True, nullable=False)
+    owner_discord_id = Column(String(50), nullable=True)
+    owner_username = Column(String(100), nullable=True)
+    developer_id = Column(Integer, ForeignKey("developers.id"), nullable=True)
+    staff_role_ids = Column(Text, default="[]") # JSON list of role IDs
+    log_channel_id = Column(String(50), nullable=True)
+    plan = Column(String(20), default="Paid")
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+
 class LibBypassClient(Base):
     __tablename__ = "lib_bypass_clients"
     id = Column(Integer, primary_key=True, index=True)
-    username = Column(String(100), unique=True, index=True, nullable=False)
+    username = Column(String(50), unique=True, index=True, nullable=False)
     password_hash = Column(String(255), nullable=False)
-    credits_quota = Column(Integer, default=50) # -1 for unlimited
-    credits_used = Column(Integer, default=0)
-    api_key = Column(String(64), unique=True, index=True, nullable=False)
     is_active = Column(Boolean, default=True)
-    daily_limit = Column(Integer, default=50)
-    notes = Column(String(255), default="")
+    note = Column(String(255), default="")
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    discord_webhook = Column(String(500), default="")
 
     keys = relationship("LibBypassKey", back_populates="client", cascade="all, delete-orphan")
 
@@ -349,7 +342,48 @@ class LibBypassKey(Base):
 def init_db():
     Base.metadata.create_all(bind=engine)
 
+    try:
+        from sqlalchemy.orm import sessionmaker
+        SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+        seed_db = SessionLocal()
+        if seed_db.query(ChangelogEntry).count() == 0:
+            entries = [
+                ChangelogEntry(
+                    version="v2.5.0",
+                    title="Direct Bot Dispatch & Unified OAuth Account Linking",
+                    category="Security",
+                    description="• Instant real-time platform event logs dispatched directly to Discord Channel 1538975494207438928 with zero webhook delay.\n• Unified single-developer workspace linking Google and Discord logins with identical email.\n• Motherboard BIOS UUID enclave encryption upgrade with anti-tamper telemetry.",
+                    author="Joyst SecOps"
+                ),
+                ChangelogEntry(
+                    version="v2.4.0",
+                    title="Modern Cyber Aesthetics & Responsive Full-Width Engine",
+                    category="UI",
+                    description="• Obsidian glass inputs with vibrant crimson focus glows and cyber stat pods.\n• Full-width zero-overflow flexbox engine across all dashboard consoles.\n• Per-account circular avatar synchronization with Discord CDN profile images.",
+                    author="Joyst UI Team"
+                ),
+                ChangelogEntry(
+                    version="v2.2.0",
+                    title="Dynamic Multi-Tier Encryption & Reseller Protocol",
+                    category="Feature",
+                    description="• Autonomous Sub-Account credit provisioning with automated license generation.\n• AES-256-GCM ephemeral session token rotation for C++, C#, Python, and Node.js SDKs.\n• Real-time heartbeat keep-alive with instant killswitch protection.",
+                    author="Joyst Core Team"
+                ),
+                ChangelogEntry(
+                    version="v2.0.0",
+                    title="Next-Gen HWID & Cloud Authentication Enclave Release",
+                    category="Performance",
+                    description="• Launch of Joyst Auth cloud licensing framework.\n• Microsecond rest round-trip caching with 99.99% infrastructure uptime.",
+                    author="Joyst Architect"
+                )
+            ]
+            seed_db.add_all(entries)
+            seed_db.commit()
+        seed_db.close()
+    except Exception as e:
+        print(f"Changelog seed notice: {e}")
     from sqlalchemy import text
+    
     columns = [
         ("developers", "api_key", "VARCHAR(64)"),
         ("developers", "discord_id", "VARCHAR(50)"),
@@ -399,13 +433,11 @@ def init_db():
         ("app_files", "file_url", "VARCHAR(500) DEFAULT ''"),
         ("app_files", "auth_required", "BOOLEAN DEFAULT TRUE"),
         ("subscription_tiers", "description", "VARCHAR(255) DEFAULT ''"),
-        ("developers", "avatar_url", "VARCHAR(500) DEFAULT ''"),
-        ("lib_bypass_keys", "hwid", "VARCHAR(255) DEFAULT NULL"),
-        ("lib_bypass_keys", "hwid_resets", "INTEGER DEFAULT 0"),
-        ("lib_bypass_clients", "discord_webhook", "VARCHAR(500) DEFAULT ''")
+        ("developers", "avatar_url", "VARCHAR(500) DEFAULT ''")
     ]
 
     for table, col, col_def in columns:
+        # 1. Try PostgreSQL IF NOT EXISTS syntax in isolated connection
         try:
             with engine.connect() as conn:
                 conn.execute(text(f"ALTER TABLE {table} ADD COLUMN IF NOT EXISTS {col} {col_def}"))
@@ -414,94 +446,13 @@ def init_db():
         except Exception:
             pass
             
+        # 2. Fallback for SQLite in isolated connection
         try:
             with engine.connect() as conn:
                 conn.execute(text(f"ALTER TABLE {table} ADD COLUMN {col} {col_def}"))
                 conn.commit()
         except Exception:
             pass
-
-    try:
-        from sqlalchemy.orm import sessionmaker
-        SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-        seed_db = SessionLocal()
-        if seed_db.query(ChangelogEntry).count() == 0:
-            entries = [
-                ChangelogEntry(
-                    version="v2.5.0",
-                    title="Direct Bot Dispatch & Unified OAuth Account Linking",
-                    category="Security",
-                    description="• Instant real-time platform event logs dispatched directly to Discord Channel 1538975494207438928 with zero webhook delay.\n• Unified single-developer workspace linking Google and Discord logins with identical email.\n• Motherboard BIOS UUID enclave encryption upgrade with anti-tamper telemetry.",
-                    author="Joyst SecOps"
-                ),
-                ChangelogEntry(
-                    version="v2.4.0",
-                    title="Modern Cyber Aesthetics & Responsive Full-Width Engine",
-                    category="UI",
-                    description="• Obsidian glass inputs with vibrant crimson focus glows and cyber stat pods.\n• Full-width zero-overflow flexbox engine across all dashboard consoles.\n• Per-account circular avatar synchronization with Discord CDN profile images.",
-                    author="Joyst UI Team"
-                ),
-                ChangelogEntry(
-                    version="v2.2.0",
-                    title="Dynamic Multi-Tier Encryption & Reseller Protocol",
-                    category="Feature",
-                    description="• Autonomous Sub-Account credit provisioning with automated license generation.\n• AES-256-GCM ephemeral session token rotation for C++, C#, Python, and Node.js SDKs.\n• Real-time heartbeat keep-alive with instant killswitch protection.",
-                    author="Joyst Core Team"
-                ),
-                ChangelogEntry(
-                    version="v2.0.0",
-                    title="Next-Gen HWID & Cloud Authentication Enclave Release",
-                    category="Performance",
-                    description="• Launch of Joyst Auth cloud licensing framework.\n• Microsecond rest round-trip caching with 99.99% infrastructure uptime.",
-                    author="Joyst Architect"
-                )
-            ]
-            seed_db.add_all(entries)
-            seed_db.commit()
-
-        # Seed / Sync all official Lib Bypass keys
-        initial_lib_keys = [
-            {"license_key": "6969", "days": 999, "created_by_username": "joystcorp", "note": "Client", "created_at": datetime.datetime(2026, 9, 20, 11, 55, 25), "expires_at": datetime.datetime(2029, 6, 15)},
-            {"license_key": "SHUBH1", "days": 7, "created_by_username": "joystcorp", "note": "Client", "created_at": datetime.datetime(2026, 9, 20, 9, 24, 2), "expires_at": datetime.datetime(2026, 9, 27)},
-            {"license_key": "KAVISH1", "days": 5, "created_by_username": "joystcorp", "note": "Client", "created_at": datetime.datetime(2026, 9, 20, 9, 30, 42), "expires_at": datetime.datetime(2026, 9, 25)},
-            {"license_key": "KFX4-1FE8-SM0E-URLJ", "days": 60, "created_by_username": "lucius_gg", "note": "Client", "created_at": datetime.datetime(2026, 9, 20, 16, 26, 5), "expires_at": datetime.datetime(2026, 11, 19)},
-            {"license_key": "ROHIT1", "days": 99, "created_by_username": "joystcorp", "note": "Client", "created_at": datetime.datetime(2026, 9, 21, 7, 53, 10), "expires_at": datetime.datetime(2026, 12, 29)},
-            {"license_key": "GHOST99", "days": 99, "created_by_username": "classy_72", "note": "Client", "created_at": datetime.datetime(2026, 9, 21, 7, 57, 57), "expires_at": datetime.datetime(2026, 12, 29)},
-            {"license_key": "8RYU-QG81-9ZC9-CADU", "days": 99, "created_by_username": "classy_72", "note": "Client", "created_at": datetime.datetime(2026, 9, 21, 11, 28, 55), "expires_at": datetime.datetime(2026, 12, 29)},
-            {"license_key": "VHQ4-COBO-PNCZ-E67X", "days": 1, "created_by_username": "joystcorp", "note": "Client", "created_at": datetime.datetime(2026, 9, 22, 17, 18, 27), "expires_at": datetime.datetime(2026, 9, 23)},
-            {"license_key": "HII BROO", "days": 20, "created_by_username": "classy_72", "note": "Client", "created_at": datetime.datetime(2026, 9, 22, 18, 4, 28), "expires_at": datetime.datetime(2026, 10, 12)},
-            {"license_key": "QOSC-JFLH-MGIW-5L2F", "days": 99, "created_by_username": "classy_72", "note": "Client", "created_at": datetime.datetime(2026, 9, 22, 18, 4, 46), "expires_at": datetime.datetime(2026, 12, 30)},
-            {"license_key": "8BAD-6U2G-0R31-PWDB", "days": 999, "created_by_username": "classy_72", "note": "Client", "created_at": datetime.datetime(2026, 9, 23, 5, 21, 32), "expires_at": datetime.datetime(2029, 6, 18)},
-            {"license_key": "TAMALQ", "days": 99, "created_by_username": "joystcorp", "note": "Client", "created_at": datetime.datetime(2026, 9, 23, 13, 28, 50), "expires_at": datetime.datetime(2026, 12, 31)}
-        ]
-
-        for kdata in initial_lib_keys:
-            existing = seed_db.query(LibBypassKey).filter(LibBypassKey.license_key == kdata["license_key"]).first()
-            if existing:
-                existing.days = kdata["days"]
-                existing.created_by_type = "master"
-                existing.created_by_username = kdata["created_by_username"]
-                existing.note = kdata["note"]
-                existing.status = "active"
-                if kdata.get("expires_at"):
-                    existing.expires_at = kdata["expires_at"]
-            else:
-                new_key = LibBypassKey(
-                    license_key=kdata["license_key"],
-                    days=kdata["days"],
-                    created_by_type="master",
-                    created_by_username=kdata["created_by_username"],
-                    note=kdata["note"],
-                    status="active",
-                    created_at=kdata["created_at"],
-                    expires_at=kdata.get("expires_at")
-                )
-                seed_db.add(new_key)
-
-        seed_db.commit()
-        seed_db.close()
-    except Exception as e:
-        print(f"Database seed notice: {e}")
 
 def get_db():
     db = SessionLocal()
