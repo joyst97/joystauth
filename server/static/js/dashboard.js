@@ -4100,6 +4100,7 @@ window.initDashboard = initDashboard;
 
 // ==================== 16. CUSTOM CLIENTS / SUB-DEVELOPERS SYSTEM ====================
 let customClientsList = [];
+let currentViewingCustomClient = null;
 
 async function loadCustomClients() {
     const tableBody = document.getElementById("custom-clients-table-body");
@@ -4108,7 +4109,7 @@ async function loadCustomClients() {
     if (!customClientsList || customClientsList.length === 0) {
         tableBody.innerHTML = `
             <tr>
-                <td colspan="5" style="text-align: center; padding: 40px 20px;">
+                <td colspan="6" style="text-align: center; padding: 40px 20px;">
                     <div style="display: inline-flex; flex-direction: column; align-items: center; gap: 12px;">
                         <div style="width: 32px; height: 32px; border: 3px solid rgba(168, 85, 247, 0.2); border-top-color: #a855f7; border-radius: 50%; animation: spin 0.65s linear infinite;"></div>
                         <span style="color: #a855f7; font-size: 13px; font-weight: 700; letter-spacing: 0.5px;">Loading Custom Brand Clients...</span>
@@ -4119,46 +4120,22 @@ async function loadCustomClients() {
     }
 
     try {
-        const token = getAuthToken();
-        const res = await fetch("/api/v1/admin/custom-clients", {
-            headers: {
-                "Content-Type": "application/json",
-                "Authorization": `Bearer ${token}`
-            }
-        });
-
-        if (res.ok) {
-            const data = await res.json();
-            if (data && (data.success || Array.isArray(data.clients) || Array.isArray(data))) {
-                customClientsList = Array.isArray(data) ? data : (data.clients || []);
-            } else {
-                customClientsList = [];
-            }
-            renderCustomClientsTable();
+        const data = await apiFetch("/api/v1/admin/custom-clients");
+        if (data && (data.success || Array.isArray(data.clients) || Array.isArray(data))) {
+            customClientsList = Array.isArray(data) ? data : (data.clients || []);
         } else {
-            console.error("loadCustomClients non-200 status:", res.status);
             customClientsList = [];
-            tableBody.innerHTML = `
-                <tr>
-                    <td colspan="5" style="text-align: center; padding: 40px 20px;">
-                        <div style="display: flex; flex-direction: column; align-items: center; gap: 10px;">
-                            <span style="font-size: 32px;">⚠️</span>
-                            <strong style="color: #ef4444; font-size: 15px;">Server Error (${res.status}) Loading Clients</strong>
-                            <button type="button" class="btn btn-secondary btn-sm" onclick="loadCustomClients()" style="margin-top: 6px; padding: 6px 16px; font-weight: 700;">🔄 Click to Retry</button>
-                        </div>
-                    </td>
-                </tr>
-            `;
         }
+        renderCustomClientsTable();
     } catch (e) {
-        console.error("loadCustomClients fetch error:", e);
+        console.error("loadCustomClients error:", e);
         customClientsList = [];
         tableBody.innerHTML = `
             <tr>
-                <td colspan="5" style="text-align: center; padding: 40px 20px;">
+                <td colspan="6" style="text-align: center; padding: 40px 20px;">
                     <div style="display: flex; flex-direction: column; align-items: center; gap: 10px;">
                         <span style="font-size: 32px;">⚠️</span>
-                        <strong style="color: #ef4444; font-size: 15px;">Network Connection Error</strong>
+                        <strong style="color: #ef4444; font-size: 15px;">Network Connection Error Loading Clients</strong>
                         <button type="button" class="btn btn-secondary btn-sm" onclick="loadCustomClients()" style="margin-top: 6px; padding: 6px 16px; font-weight: 700;">🔄 Click to Retry</button>
                     </div>
                 </td>
@@ -4175,6 +4152,24 @@ function renderCustomClientsTable() {
     const tableBody = document.getElementById("custom-clients-table-body");
     if (!tableBody) return;
 
+    // Update KPI stat pods
+    const totalCount = customClientsList.length;
+    const discordLinkedCount = customClientsList.filter(c => !!c.discord_id).length;
+    let allAssignedAppSet = new Set();
+    customClientsList.forEach(c => {
+        if (c.allowed_apps) {
+            c.allowed_apps.split(',').forEach(a => { if (a.trim()) allAssignedAppSet.add(a.trim()); });
+        }
+    });
+    const assignedAppsCount = allAssignedAppSet.size;
+
+    const elTotal = document.getElementById("cc-stat-total");
+    const elApps = document.getElementById("cc-stat-apps");
+    const elDiscord = document.getElementById("cc-stat-discord");
+    if (elTotal) elTotal.textContent = totalCount;
+    if (elApps) elApps.textContent = assignedAppsCount;
+    if (elDiscord) elDiscord.textContent = discordLinkedCount;
+
     const searchInput = document.getElementById("custom-clients-search");
     const query = (searchInput ? searchInput.value : "").toLowerCase().trim();
     let filtered = customClientsList || [];
@@ -4182,6 +4177,7 @@ function renderCustomClientsTable() {
         filtered = filtered.filter(c => 
             (c.username && c.username.toLowerCase().includes(query)) ||
             (c.notes && c.notes.toLowerCase().includes(query)) ||
+            (c.discord_id && c.discord_id.toLowerCase().includes(query)) ||
             (c.assigned_app_names && c.assigned_app_names.some(name => String(name).toLowerCase().includes(query))) ||
             (c.allowed_apps && c.allowed_apps.toLowerCase().includes(query))
         );
@@ -4191,7 +4187,7 @@ function renderCustomClientsTable() {
         if (query) {
             tableBody.innerHTML = `
                 <tr>
-                    <td colspan="5" style="text-align: center; padding: 50px 20px;">
+                    <td colspan="6" style="text-align: center; padding: 50px 20px;">
                         <div style="display: flex; flex-direction: column; align-items: center; gap: 10px;">
                             <span style="font-size: 32px;">🔍</span>
                             <strong style="color: #fff; font-size: 15px;">No client matching search: "${escapeHtml(query)}"</strong>
@@ -4205,9 +4201,9 @@ function renderCustomClientsTable() {
         } else {
             tableBody.innerHTML = `
                 <tr>
-                    <td colspan="5" style="text-align: center; padding: 50px 20px;">
+                    <td colspan="6" style="text-align: center; padding: 50px 20px;">
                         <div style="display: flex; flex-direction: column; align-items: center; gap: 12px;">
-                            <span style="font-size: 38px;">👥</span>
+                            <span style="font-size: 38px;">👑</span>
                             <strong style="color: #fff; font-size: 16px;">No Custom Brand Clients Added Yet</strong>
                             <span style="color: var(--text-secondary); font-size: 13px; max-width: 500px; line-height: 1.5;">
                                 Delegate full app management (Keys, Users, HWID, Maintenance) to your partner clients without allowing them to create new apps.
@@ -4225,39 +4221,70 @@ function renderCustomClientsTable() {
 
     tableBody.innerHTML = filtered.map(c => {
         let appBadges = '<span style="color: var(--text-muted); font-size: 12px;">No apps assigned</span>';
-        if (c.assigned_app_names && c.assigned_app_names.length > 0) {
-            appBadges = c.assigned_app_names.map(name => `<span class="badge badge-cyan" style="font-size: 11px; margin: 2px;">📱 ${escapeHtml(name)}</span>`).join(" ");
+        if (c.assigned_apps_details && c.assigned_apps_details.length > 0) {
+            appBadges = c.assigned_apps_details.map(a => 
+                `<span class="badge badge-cyan" style="font-size: 11px; margin: 2px; border: 1px solid rgba(56, 189, 248, 0.3);">📱 ${escapeHtml(a.name || ('App #' + a.id))}</span>`
+            ).join(" ");
+        } else if (c.assigned_app_names && c.assigned_app_names.length > 0) {
+            appBadges = c.assigned_app_names.map(name => 
+                `<span class="badge badge-cyan" style="font-size: 11px; margin: 2px; border: 1px solid rgba(56, 189, 248, 0.3);">📱 ${escapeHtml(name)}</span>`
+            ).join(" ");
         } else if (c.allowed_apps) {
-            appBadges = c.allowed_apps.split(",").map(a => `<span class="badge badge-cyan" style="font-size: 11px; margin: 2px;">📱 ${escapeHtml(a.trim())}</span>`).join(" ");
+            appBadges = c.allowed_apps.split(",").map(a => 
+                `<span class="badge badge-cyan" style="font-size: 11px; margin: 2px; border: 1px solid rgba(56, 189, 248, 0.3);">📱 ${escapeHtml(a.trim())}</span>`
+            ).join(" ");
         }
 
-        const dateStr = c.created_at ? new Date(c.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : "Active";
+        let discordBadge = '';
+        if (c.discord_id) {
+            discordBadge = `
+                <div style="display: flex; flex-direction: column; gap: 2px;">
+                    <span class="badge badge-success" style="font-size: 11px; font-weight: 700; padding: 3px 8px; width: fit-content;">🟢 Linked</span>
+                    <code style="font-size: 10.5px; color: var(--text-muted); font-family: monospace;">ID: ${escapeHtml(c.discord_id)}</code>
+                </div>
+            `;
+        } else {
+            discordBadge = `
+                <div style="display: flex; align-items: center; gap: 6px;">
+                    <span class="badge badge-warning" style="font-size: 11px; font-weight: 700; padding: 3px 8px;">🟡 Not Linked</span>
+                    <button class="btn btn-secondary btn-sm" style="padding: 2px 7px; font-size: 10.5px; font-weight: 700;" onclick="copyDiscordLinkCmd('${escapeHtml(c.username)}')" title="Copy Discord bot link command">📋 Link Cmd</button>
+                </div>
+            `;
+        }
+
+        const dateStr = c.created_at ? formatDate(c.created_at) : "Active";
 
         return `
             <tr>
                 <td>
                     <div style="display: flex; align-items: center; gap: 10px;">
-                        <div style="width: 34px; height: 34px; border-radius: 9px; background: linear-gradient(135deg, #a855f7, #6366f1); display: flex; align-items: center; justify-content: center; font-size: 15px; font-weight: 800; color: #fff; box-shadow: 0 0 15px rgba(168, 85, 247, 0.4);">
-                            ${(c.username || 'C').charAt(0).toUpperCase()}
+                        <div style="width: 36px; height: 36px; border-radius: 10px; background: linear-gradient(135deg, #a855f7, #6366f1); display: flex; align-items: center; justify-content: center; font-size: 15px; font-weight: 800; color: #fff; box-shadow: 0 0 15px rgba(168, 85, 247, 0.4);">
+                            ${escapeHtml((c.username || 'C').charAt(0).toUpperCase())}
                         </div>
                         <div>
                             <strong style="color: #fff; font-size: 14.5px;">${escapeHtml(c.username)}</strong>
-                            <div style="font-size: 11px; color: #a855f7; font-weight: 700;">👑 Brand Partner Client</div>
+                            <div style="font-size: 11px; color: #a855f7; font-weight: 700; display: flex; align-items: center; gap: 4px; margin-top: 1px;">
+                                <span>👑</span> Brand Partner Client
+                            </div>
                         </div>
                     </div>
                 </td>
                 <td>
-                    <div style="display: flex; flex-wrap: wrap; gap: 4px; max-width: 350px;">
+                    <div style="display: flex; flex-wrap: wrap; gap: 4px; max-width: 320px;">
                         ${appBadges}
                     </div>
                 </td>
-                <td style="font-size: 12.5px; color: var(--text-secondary);">${escapeHtml(c.notes || '-')}</td>
+                <td>
+                    ${discordBadge}
+                </td>
+                <td style="font-size: 12.5px; color: var(--text-secondary); max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${escapeHtml(c.notes || '-')}">${escapeHtml(c.notes || '-')}</td>
                 <td style="font-size: 12px; color: var(--text-muted);">${dateStr}</td>
                 <td style="text-align: right;">
                     <div style="display: flex; gap: 6px; justify-content: flex-end; flex-wrap: wrap;">
+                        <button class="btn btn-secondary btn-sm" style="padding: 5px 10px; font-size: 11.5px; font-weight: 700; color: #a855f7; border-color: rgba(168, 85, 247, 0.4);" onclick="openViewCustomClientModal(${c.id})" title="View Details & Copy Delivery Card">👁️ Details</button>
                         <button class="btn btn-secondary btn-sm" style="padding: 5px 10px; font-size: 11.5px; font-weight: 700;" onclick="openEditCustomClientModal(${c.id})" title="Add/Remove Apps or Edit Password">📱 Apps & Pass</button>
-                        <button class="btn btn-secondary btn-sm" style="padding: 5px 10px; font-size: 11.5px; font-weight: 700;" onclick="convertCustomClientToReseller(${c.id})" title="Convert to Reseller">🔄 Convert to Reseller</button>
-                        <button class="btn btn-danger btn-sm" style="padding: 5px 10px; font-size: 11.5px;" onclick="deleteCustomClient(${c.id})">🗑️</button>
+                        <button class="btn btn-secondary btn-sm" style="padding: 5px 10px; font-size: 11.5px; font-weight: 700;" onclick="convertCustomClientToReseller(${c.id}, '${escapeHtml(c.username)}')" title="Convert to Reseller Portal">🔄 Reseller</button>
+                        <button class="btn btn-danger btn-sm" style="padding: 5px 10px; font-size: 11.5px;" onclick="deleteCustomClient(${c.id}, '${escapeHtml(c.username)}')" title="Delete Account">🗑️</button>
                     </div>
                 </td>
             </tr>
@@ -4297,6 +4324,7 @@ async function submitCreateCustomClient() {
     const notes = (document.getElementById("cc-create-notes")?.value || "").trim();
 
     let checkedBoxes = Array.from(document.querySelectorAll(".cc-create-app-cb:checked"));
+    let allowedAppIds = "";
     if (checkedBoxes.length === 0 && appsList && appsList.length > 0) {
         const defaultAppId = currentAppId || appsList[0].id;
         allowedAppIds = String(defaultAppId);
@@ -4362,7 +4390,7 @@ async function submitCreateCustomClient() {
 }
 
 function openEditCustomClientModal(clientId) {
-    const client = customClientsList.find(c => c.id === clientId);
+    const client = customClientsList.find(c => String(c.id) === String(clientId));
     if (!client) return;
 
     document.getElementById("cc-edit-client-id").value = client.id;
@@ -4426,17 +4454,129 @@ async function submitEditCustomClient() {
     }
 }
 
+function openViewCustomClientModal(clientId) {
+    const client = customClientsList.find(c => String(c.id) === String(clientId));
+    if (!client) {
+        showToast("Client details not found", "error");
+        return;
+    }
+    currentViewingCustomClient = client;
+
+    const avatarEl = document.getElementById("cc-view-avatar");
+    const userEl = document.getElementById("cc-view-username");
+    const discordBadgeEl = document.getElementById("cc-view-discord-badge");
+    const appsListEl = document.getElementById("cc-view-apps-list");
+    const copyUserEl = document.getElementById("cc-view-copy-user");
+    const copyDiscordEl = document.getElementById("cc-view-copy-discord-cmd");
+    const notesEl = document.getElementById("cc-view-notes");
+    const editBtn = document.getElementById("cc-view-edit-btn");
+
+    if (avatarEl) avatarEl.textContent = (client.username || 'C').charAt(0).toUpperCase();
+    if (userEl) userEl.textContent = client.username;
+    
+    if (discordBadgeEl) {
+        if (client.discord_id) {
+            discordBadgeEl.innerHTML = `<span style="color: #10b981;">🟢 Connected (ID: ${escapeHtml(client.discord_id)})</span>`;
+        } else {
+            discordBadgeEl.innerHTML = `<span style="color: #f59e0b;">🟡 Not Linked Yet</span>`;
+        }
+    }
+
+    if (appsListEl) {
+        let appDetails = client.assigned_apps_details || [];
+        if (appDetails.length > 0) {
+            appsListEl.innerHTML = appDetails.map(a => `
+                <div style="display: flex; align-items: center; justify-content: space-between; background: rgba(255,255,255,0.04); padding: 7px 10px; border-radius: 6px; font-size: 12.5px;">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <span style="color: #38bdf8; font-weight: 800;">📱 ${escapeHtml(a.name || ('App #' + a.id))}</span>
+                        <span class="badge badge-cyan" style="font-size: 10px; padding: 2px 6px;">v${escapeHtml(a.version || '1.0')}</span>
+                    </div>
+                    <span style="color: #10b981; font-size: 11px; font-weight: 700;">● Active Node</span>
+                </div>
+            `).join("");
+        } else if (client.assigned_app_names && client.assigned_app_names.length > 0) {
+            appsListEl.innerHTML = client.assigned_app_names.map(name => `
+                <div style="display: flex; align-items: center; justify-content: space-between; background: rgba(255,255,255,0.04); padding: 7px 10px; border-radius: 6px; font-size: 12.5px;">
+                    <span style="color: #38bdf8; font-weight: 800;">📱 ${escapeHtml(name)}</span>
+                    <span style="color: #10b981; font-size: 11px; font-weight: 700;">● Active Node</span>
+                </div>
+            `).join("");
+        } else {
+            appsListEl.innerHTML = `<div style="color: var(--text-muted); font-size: 12px;">No apps assigned</div>`;
+        }
+    }
+
+    if (copyUserEl) copyUserEl.textContent = client.username;
+    if (copyDiscordEl) copyDiscordEl.textContent = `/link email_or_username:${client.username}`;
+    if (notesEl) notesEl.textContent = client.notes || "No internal notes provided.";
+
+    if (editBtn) {
+        editBtn.onclick = () => {
+            closeModal("modal-view-custom-client");
+            openEditCustomClientModal(client.id);
+        };
+    }
+
+    openModal("modal-view-custom-client");
+}
+
+async function copyCustomClientDeliveryCard(clientId) {
+    const client = clientId ? customClientsList.find(c => String(c.id) === String(clientId)) : currentViewingCustomClient;
+    if (!client) {
+        showToast("No client selected", "warning");
+        return;
+    }
+    const c = client;
+    const appNames = (c.assigned_app_names && c.assigned_app_names.length > 0) 
+        ? c.assigned_app_names.join(", ") 
+        : (c.allowed_apps || "Assigned Apps");
+
+    const text = `👑 **JOYST CORPORATION - BRAND PARTNER PANEL**\n` +
+        `━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+        `👤 **Username:** \`${c.username}\`\n` +
+        `📱 **Assigned Apps:** \`${appNames}\`\n` +
+        `🛡️ **Access Tier:** \`Brand Partner (Keys, Users, HWID, Maintenance)\`\n` +
+        `🌐 **Portal Login:** https://joystauth.cc/login\n` +
+        `🤖 **Discord Bot Link:** \`/link email_or_username:${c.username}\`\n` +
+        `━━━━━━━━━━━━━━━━━━━━━━━━━━`;
+
+    try {
+        await navigator.clipboard.writeText(text);
+        showToast("Delivery card copied to clipboard!", "success");
+    } catch (e) {
+        showToast("Could not copy to clipboard", "error");
+    }
+}
+
+async function copyDiscordLinkCmd(username) {
+    const cmd = `/link email_or_username:${username}`;
+    try {
+        await navigator.clipboard.writeText(cmd);
+        showToast(`Copied bot command: ${cmd}`, "success");
+    } catch (e) {
+        showToast("Could not copy command", "error");
+    }
+}
+
 async function deleteCustomClient(clientId, username) {
-    const target = customClientsList ? customClientsList.find(x => x.id === clientId) : null;
+    const target = customClientsList ? customClientsList.find(x => String(x.id) === String(clientId)) : null;
     const name = username || (target ? target.username : "client");
-    if (!confirm(`Are you sure you want to delete custom client '${name}'?`)) return;
+    
+    const confirmed = await showConfirmDialog({
+        title: "Delete Brand Partner Account",
+        message: `Are you sure you want to permanently delete custom client account '${name}'? All portal access for this client will be immediately revoked.`,
+        okText: "Delete Account",
+        isDanger: true,
+        icon: "🗑️"
+    });
+    if (!confirmed) return;
 
     try {
         const res = await apiFetch(`/api/v1/admin/custom-clients/${clientId}`, {
             method: "DELETE"
         });
         if (res && res.success) {
-            showToast(`Custom client '${name}' deleted.`, "success");
+            showToast(`Custom client '${name}' deleted successfully.`, "success");
             loadCustomClients();
         } else {
             showToast(res?.detail || "Failed to delete client", "error");
@@ -4520,9 +4660,14 @@ async function submitSaveResellerApps() {
 }
 
 async function convertResellerToCustomClient(resellerId, username) {
-    if (!confirm(`👑 Convert Reseller '${username}' to Custom Client?\n\nThey will be able to log in with their EXACT SAME username & password and get full panel controls (Maintenance Mode, Keys, Users, Settings) for their assigned applications without re-setup.`)) {
-        return;
-    }
+    const confirmed = await showConfirmDialog({
+        title: "Convert Reseller to Custom Client",
+        message: `Convert Reseller '${username}' to Custom Brand Partner Client?\n\nThey will be able to log in with their EXACT SAME credentials and manage Keys, Users, HWID, and Maintenance mode for their assigned applications.`,
+        okText: "Convert to Custom Client",
+        isDanger: false,
+        icon: "👑"
+    });
+    if (!confirmed) return;
 
     try {
         const res = await apiFetch(`/api/v1/admin/resellers/${resellerId}/convert-to-client`, {
@@ -4541,11 +4686,16 @@ async function convertResellerToCustomClient(resellerId, username) {
 }
 
 async function convertCustomClientToReseller(clientId, username) {
-    const target = customClientsList ? customClientsList.find(x => x.id === clientId) : null;
+    const target = customClientsList ? customClientsList.find(x => String(x.id) === String(clientId)) : null;
     const name = username || (target ? target.username : "client");
-    if (!confirm(`🔄 Convert Custom Client '${name}' back to Reseller?\n\nThey will log in with their same credentials to the Reseller Portal with Key credits.`)) {
-        return;
-    }
+    const confirmed = await showConfirmDialog({
+        title: "Convert to Reseller Account",
+        message: `Convert Custom Client '${name}' back to a Reseller Account?\n\nThey will retain their credentials and access the Reseller Portal with key credits.`,
+        okText: "Convert to Reseller",
+        isDanger: false,
+        icon: "🔄"
+    });
+    if (!confirmed) return;
 
     try {
         const res = await apiFetch(`/api/v1/admin/custom-clients/${clientId}/convert-to-reseller`, {
@@ -4569,9 +4719,13 @@ window.openCreateCustomClientModal = typeof openCreateCustomClientModal !== 'und
 window.submitCreateCustomClient = typeof submitCreateCustomClient !== 'undefined' ? submitCreateCustomClient : () => {};
 window.openEditCustomClientModal = typeof openEditCustomClientModal !== 'undefined' ? openEditCustomClientModal : () => {};
 window.submitEditCustomClient = typeof submitEditCustomClient !== 'undefined' ? submitEditCustomClient : () => {};
+window.openViewCustomClientModal = typeof openViewCustomClientModal !== 'undefined' ? openViewCustomClientModal : () => {};
+window.copyCustomClientDeliveryCard = typeof copyCustomClientDeliveryCard !== 'undefined' ? copyCustomClientDeliveryCard : () => {};
+window.copyDiscordLinkCmd = typeof copyDiscordLinkCmd !== 'undefined' ? copyDiscordLinkCmd : () => {};
 window.deleteCustomClient = typeof deleteCustomClient !== 'undefined' ? deleteCustomClient : () => {};
 window.loadCustomClients = typeof loadCustomClients !== 'undefined' ? loadCustomClients : () => {};
 window.renderCustomClientsTable = typeof renderCustomClientsTable !== 'undefined' ? renderCustomClientsTable : () => {};
+window.filterCustomClientsTable = typeof filterCustomClientsTable !== 'undefined' ? filterCustomClientsTable : () => {};
 window.convertResellerToCustomClient = typeof convertResellerToCustomClient !== 'undefined' ? convertResellerToCustomClient : () => {};
 window.convertCustomClientToReseller = typeof convertCustomClientToReseller !== 'undefined' ? convertCustomClientToReseller : () => {};
 window.openManageResellerAppsModal = typeof openManageResellerAppsModal !== 'undefined' ? openManageResellerAppsModal : () => {};
@@ -4580,3 +4734,4 @@ window.batchExtendSelected = typeof openBulkExtendUsersModal !== 'undefined' ? o
 window.submitResellerPasswordReset = typeof submitResellerPassReset !== 'undefined' ? submitResellerPassReset : () => {};
 window.openModal = typeof openModal !== 'undefined' ? openModal : (id) => { const m = document.getElementById(id); if (m) m.classList.add('active'); };
 window.closeModal = typeof closeModal !== 'undefined' ? closeModal : (id) => { if (!id) { document.querySelectorAll('.modal-overlay.active').forEach(m => m.classList.remove('active')); } else { const m = document.getElementById(id); if (m) m.classList.remove('active'); } };
+

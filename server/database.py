@@ -248,6 +248,21 @@ class CustomClient(Base):
 
     developer = relationship("Developer", back_populates="custom_clients")
 
+class DiscordGuildConfig(Base):
+    __tablename__ = "discord_guild_configs"
+    id = Column(Integer, primary_key=True, index=True)
+    guild_id = Column(String(50), unique=True, index=True, nullable=False)
+    owner_discord_id = Column(String(50), index=True, nullable=True)
+    owner_username = Column(String(100), nullable=True)
+    developer_id = Column(Integer, ForeignKey("developers.id"), nullable=True)
+    plan = Column(String(50), default="Paid")
+    staff_role_ids = Column(Text, default="[]")
+    log_channel_id = Column(String(50), nullable=True)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
+
+    developer = relationship("Developer")
+
 class PlanKey(Base):
     __tablename__ = "plan_keys"
     id = Column(Integer, primary_key=True, index=True)
