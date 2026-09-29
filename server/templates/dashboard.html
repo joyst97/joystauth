@@ -1369,6 +1369,179 @@
                 </div>
             </section>
 
+            <script>
+            // ==================== INLINE BULLETPROOF CUSTOM CLIENTS ENGINE ====================
+            let customClientsList = [];
+
+            async function loadCustomClients() {
+                const tableBody = document.getElementById("custom-clients-table-body");
+                if (!tableBody) return;
+
+                if (!customClientsList || customClientsList.length === 0) {
+                    tableBody.innerHTML = `
+                        <tr>
+                            <td colspan="5" style="text-align: center; padding: 40px 20px;">
+                                <div style="display: inline-flex; flex-direction: column; align-items: center; gap: 12px;">
+                                    <div style="width: 32px; height: 32px; border: 3px solid rgba(168, 85, 247, 0.2); border-top-color: #a855f7; border-radius: 50%; animation: spin 0.65s linear infinite;"></div>
+                                    <span style="color: #a855f7; font-size: 13px; font-weight: 700; letter-spacing: 0.5px;">Loading Custom Brand Clients...</span>
+                                </div>
+                            </td>
+                        </tr>
+                    `;
+                }
+
+                try {
+                    const token = localStorage.getItem("auth_admin_token") || localStorage.getItem("token") || "";
+                    const res = await fetch("/api/v1/admin/custom-clients", {
+                        headers: {
+                            "Content-Type": "application/json",
+                            "Authorization": token ? ("Bearer " + token) : ""
+                        }
+                    });
+
+                    if (res.ok) {
+                        const data = await res.json();
+                        if (data && (data.success || Array.isArray(data.clients) || Array.isArray(data))) {
+                            customClientsList = Array.isArray(data) ? data : (data.clients || []);
+                        } else {
+                            customClientsList = [];
+                        }
+                        renderCustomClientsTable();
+                    } else {
+                        console.error("loadCustomClients non-200 status:", res.status);
+                        customClientsList = [];
+                        tableBody.innerHTML = `
+                            <tr>
+                                <td colspan="5" style="text-align: center; padding: 40px 20px;">
+                                    <div style="display: flex; flex-direction: column; align-items: center; gap: 10px;">
+                                        <span style="font-size: 32px;">⚠️</span>
+                                        <strong style="color: #ef4444; font-size: 15px;">Server Error (${res.status}) Loading Clients</strong>
+                                        <button type="button" class="btn btn-secondary btn-sm" onclick="loadCustomClients()" style="margin-top: 6px; padding: 6px 16px; font-weight: 700;">🔄 Click to Retry</button>
+                                    </div>
+                                </td>
+                            </tr>
+                        `;
+                    }
+                } catch (e) {
+                    console.error("loadCustomClients error:", e);
+                    customClientsList = [];
+                    tableBody.innerHTML = `
+                        <tr>
+                            <td colspan="5" style="text-align: center; padding: 40px 20px;">
+                                <div style="display: flex; flex-direction: column; align-items: center; gap: 10px;">
+                                    <span style="font-size: 32px;">⚠️</span>
+                                    <strong style="color: #ef4444; font-size: 15px;">Connection Error Loading Clients</strong>
+                                    <button type="button" class="btn btn-secondary btn-sm" onclick="loadCustomClients()" style="margin-top: 6px; padding: 6px 16px; font-weight: 700;">🔄 Click to Retry</button>
+                                </div>
+                            </td>
+                        </tr>
+                    `;
+                }
+            }
+
+            function filterCustomClientsTable() {
+                renderCustomClientsTable();
+            }
+
+            function renderCustomClientsTable() {
+                const tableBody = document.getElementById("custom-clients-table-body");
+                if (!tableBody) return;
+
+                const searchInput = document.getElementById("custom-clients-search");
+                const query = (searchInput ? searchInput.value : "").toLowerCase().trim();
+                let filtered = customClientsList || [];
+                if (query) {
+                    filtered = filtered.filter(c => 
+                        (c.username && c.username.toLowerCase().includes(query)) ||
+                        (c.notes && c.notes.toLowerCase().includes(query)) ||
+                        (c.assigned_app_names && c.assigned_app_names.some(name => String(name).toLowerCase().includes(query))) ||
+                        (c.allowed_apps && c.allowed_apps.toLowerCase().includes(query))
+                    );
+                }
+
+                if (!filtered || filtered.length === 0) {
+                    if (query) {
+                        tableBody.innerHTML = `
+                            <tr>
+                                <td colspan="5" style="text-align: center; padding: 50px 20px;">
+                                    <div style="display: flex; flex-direction: column; align-items: center; gap: 10px;">
+                                        <span style="font-size: 32px;">🔍</span>
+                                        <strong style="color: #fff; font-size: 15px;">No client matching search: "${escapeHtml(query)}"</strong>
+                                        <span style="color: var(--text-muted); font-size: 13px;">
+                                            <button type="button" onclick="const si=document.getElementById('custom-clients-search'); if(si) si.value=''; renderCustomClientsTable();" class="btn btn-secondary btn-sm" style="margin-top: 6px; padding: 6px 14px; font-weight: 700;">Clear Search Filter</button>
+                                        </span>
+                                    </div>
+                                </td>
+                            </tr>
+                        `;
+                    } else {
+                        tableBody.innerHTML = `
+                            <tr>
+                                <td colspan="5" style="text-align: center; padding: 50px 20px;">
+                                    <div style="display: flex; flex-direction: column; align-items: center; gap: 12px;">
+                                        <span style="font-size: 38px;">👥</span>
+                                        <strong style="color: #fff; font-size: 16px;">No Custom Brand Clients Added Yet</strong>
+                                        <span style="color: var(--text-secondary); font-size: 13px; max-width: 500px; line-height: 1.5;">
+                                            Delegate full app management (Keys, Users, HWID, Maintenance) to your partner clients without allowing them to create new apps.
+                                        </span>
+                                        <button type="button" class="btn btn-primary btn-sm" onclick="openCreateCustomClientModal()" style="margin-top: 8px; font-weight: 800; padding: 9px 20px;">
+                                            ➕ Create Your First Custom Client
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        `;
+                    }
+                    return;
+                }
+
+                tableBody.innerHTML = filtered.map(c => {
+                    let appBadges = '<span style="color: var(--text-muted); font-size: 12px;">No apps assigned</span>';
+                    if (c.assigned_app_names && c.assigned_app_names.length > 0) {
+                        appBadges = c.assigned_app_names.map(name => `<span class="badge badge-cyan" style="font-size: 11px; margin: 2px;">📱 ${escapeHtml(name)}</span>`).join(" ");
+                    } else if (c.allowed_apps) {
+                        appBadges = c.allowed_apps.split(",").map(a => `<span class="badge badge-cyan" style="font-size: 11px; margin: 2px;">📱 ${escapeHtml(a.trim())}</span>`).join(" ");
+                    }
+
+                    const dateStr = c.created_at ? new Date(c.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : "Active";
+
+                    return `
+                        <tr>
+                            <td>
+                                <div style="display: flex; align-items: center; gap: 10px;">
+                                    <div style="width: 34px; height: 34px; border-radius: 9px; background: linear-gradient(135deg, #a855f7, #6366f1); display: flex; align-items: center; justify-content: center; font-size: 15px; font-weight: 800; color: #fff; box-shadow: 0 0 15px rgba(168, 85, 247, 0.4);">
+                                        ${(c.username || 'C').charAt(0).toUpperCase()}
+                                    </div>
+                                    <div>
+                                        <strong style="color: #fff; font-size: 14.5px;">${escapeHtml(c.username)}</strong>
+                                        <div style="font-size: 11px; color: #a855f7; font-weight: 700;">👑 Brand Partner Client</div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                <div style="display: flex; flex-wrap: wrap; gap: 4px; max-width: 350px;">
+                                    ${appBadges}
+                                </div>
+                            </td>
+                            <td style="font-size: 12.5px; color: var(--text-secondary);">${escapeHtml(c.notes || '-')}</td>
+                            <td style="font-size: 12px; color: var(--text-muted);">${dateStr}</td>
+                            <td style="text-align: right;">
+                                <div style="display: flex; gap: 6px; justify-content: flex-end; flex-wrap: wrap;">
+                                    <button class="btn btn-secondary btn-sm" style="padding: 5px 10px; font-size: 11.5px; font-weight: 700;" onclick="openEditCustomClientModal(${c.id})" title="Add/Remove Apps or Edit Password">📱 Apps & Pass</button>
+                                    <button class="btn btn-secondary btn-sm" style="padding: 5px 10px; font-size: 11.5px; font-weight: 700;" onclick="convertCustomClientToReseller(${c.id})" title="Convert to Reseller">🔄 Convert to Reseller</button>
+                                    <button class="btn btn-danger btn-sm" style="padding: 5px 10px; font-size: 11.5px;" onclick="deleteCustomClient(${c.id})">🗑️</button>
+                                </div>
+                            </td>
+                        </tr>
+                    `;
+                }).join("");
+            }
+
+            window.loadCustomClients = loadCustomClients;
+            window.renderCustomClientsTable = renderCustomClientsTable;
+            window.filterCustomClientsTable = filterCustomClientsTable;
+            </script>
+
             <!-- 12. TAB: SDK CODE STUDIO -->
             <section id="page-sdk" class="page-container">
                 <div class="page-header">
@@ -2236,7 +2409,7 @@
     <script src="/static/js/particles.js?v=3.0.0"></script>
     <script src="/static/js/reactbits.js?v=3.0.0"></script>
     <!-- Dashboard Controller -->
-    <script src="/static/js/dashboard.js?v=23.0.0"></script>
+    <script src="/static/js/dashboard.js?v=20260930_100"></script>
     <script src="/static/js/shield_defense.js?v=3.0.0"></script>
     <script>
         if (typeof initDashboard === "function") {
