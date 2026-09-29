@@ -9,8 +9,8 @@ DATABASE_FILE = os.path.join(DATABASE_DIR, "joyst_corp.db")
 if os.environ.get("VERCEL") or os.environ.get("AWS_LAMBDA_FUNCTION_NAME"):
     DATABASE_FILE = "/tmp/joyst_corp.db"
 
-# Primary Supabase Production PostgreSQL Database URL
-DEFAULT_SUPABASE_URL = "postgresql+psycopg2://postgres.bgtudwhxgckclsxsiknr:Tm%409718424084@aws-0-eu-central-1.pooler.supabase.com:6543/postgres?sslmode=require"
+# Primary Supabase Production PostgreSQL Database URL (Port 5432 Session Pooler / Direct)
+DEFAULT_SUPABASE_URL = "postgresql+psycopg2://postgres.bgtudwhxgckclsxsiknr:Tm%409718424084@aws-0-eu-central-1.pooler.supabase.com:5432/postgres?sslmode=require"
 DATABASE_URL = os.environ.get("DATABASE_URL") or DEFAULT_SUPABASE_URL
 
 def format_database_url(url: str) -> str:
@@ -21,6 +21,10 @@ def format_database_url(url: str) -> str:
         url = url.replace("postgres://", "postgresql+psycopg2://", 1)
     elif url.startswith("postgresql://"):
         url = url.replace("postgresql://", "postgresql+psycopg2://", 1)
+
+    # Convert read-only transaction pooler (6543) to read-write session mode (5432)
+    if ":6543" in url:
+        url = url.replace(":6543", ":5432")
         
     import re
     import urllib.parse

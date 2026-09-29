@@ -220,7 +220,7 @@ async def developer_login(data: DeveloperLoginRequest, db: Session = Depends(get
     username = data.username.strip()
     
     # 1. Check Developer Account
-    dev = db.query(Developer).filter(Developer.username == username).first()
+    dev = db.query(Developer).filter(Developer.username.ilike(username)).first()
     if dev and verify_password(data.password, dev.password_hash):
         token = create_access_token({
             "sub": dev.username,
@@ -239,26 +239,8 @@ async def developer_login(data: DeveloperLoginRequest, db: Session = Depends(get
             "plan": dev.plan
         }
     
-    # 2. Check Reseller Account (Smart Auto-Detection)
-    reseller = db.query(Reseller).filter(Reseller.username == username).first()
-    if reseller and verify_password(data.password, reseller.password_hash):
-        token = create_access_token({
-            "sub": str(reseller.id),
-            "username": reseller.username,
-            "role": "reseller"
-        })
-        return {
-            "success": True,
-            "role": "reseller",
-            "redirect_url": "/reseller/dashboard",
-            "access_token": token,
-            "token_type": "bearer",
-            "username": reseller.username,
-            "balance": reseller.balance
-        }
-
-    # 3. Check Custom Client Account (Branded Partner / Scoped Manager)
-    client = db.query(CustomClient).filter(CustomClient.username == username).first()
+    # 2. Check Custom Client Account (Branded Partner / Scoped Manager)
+    client = db.query(CustomClient).filter(CustomClient.username.ilike(username)).first()
     if client and verify_password(data.password, client.password_hash):
         dev = db.query(Developer).filter(Developer.id == client.developer_id).first()
         token = create_access_token({
@@ -277,6 +259,24 @@ async def developer_login(data: DeveloperLoginRequest, db: Session = Depends(get
             "token_type": "bearer",
             "username": client.username,
             "plan": "Enterprise"
+        }
+
+    # 3. Check Reseller Account (Smart Auto-Detection)
+    reseller = db.query(Reseller).filter(Reseller.username.ilike(username)).first()
+    if reseller and verify_password(data.password, reseller.password_hash):
+        token = create_access_token({
+            "sub": str(reseller.id),
+            "username": reseller.username,
+            "role": "reseller"
+        })
+        return {
+            "success": True,
+            "role": "reseller",
+            "redirect_url": "/reseller/dashboard",
+            "access_token": token,
+            "token_type": "bearer",
+            "username": reseller.username,
+            "balance": reseller.balance
         }
 
     raise HTTPException(
