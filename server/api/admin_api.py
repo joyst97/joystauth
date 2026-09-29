@@ -190,7 +190,15 @@ class TestWebhookRequest(BaseModel):
 # ==================== 1. APPLICATIONS ====================
 @router.get("/apps")
 async def list_apps(dev: Developer = Depends(get_current_developer), db: Session = Depends(get_db)):
-    query = db.query(Application).filter(Application.developer_id == dev.id)
+    # Auto-heal: If applications match dev.owner_id or dev.id, ensure developer_id is in sync
+    try:
+        if dev.owner_id:
+            db.query(Application).filter(Application.owner_id == dev.owner_id, Application.developer_id != dev.id).update({"developer_id": dev.id}, synchronize_session=False)
+            db.commit()
+    except Exception:
+        db.rollback()
+
+    query = db.query(Application).filter((Application.developer_id == dev.id) | (Application.owner_id == dev.owner_id))
     if getattr(dev, "is_custom_client", False):
         allowed = getattr(dev, "allowed_apps_list", [])
         app_ids = [int(x) for x in allowed if x.isdigit()]

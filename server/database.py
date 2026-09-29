@@ -9,36 +9,38 @@ DATABASE_FILE = os.path.join(DATABASE_DIR, "joyst_corp.db")
 if os.environ.get("VERCEL") or os.environ.get("AWS_LAMBDA_FUNCTION_NAME"):
     DATABASE_FILE = "/tmp/joyst_corp.db"
 
-# Cloud Database URL (Supabase PostgreSQL / Cloud SQL)
-DATABASE_URL = os.environ.get("DATABASE_URL")
+# Primary Supabase Production PostgreSQL Database URL
+DEFAULT_SUPABASE_URL = "postgresql://postgres.bgtudwhxgckclsxsiknr:Tm%409718424084@aws-0-eu-central-1.pooler.supabase.com:6543/postgres?sslmode=require"
+DATABASE_URL = os.environ.get("DATABASE_URL") or DEFAULT_SUPABASE_URL
 
-engine = None
-if DATABASE_URL:
-    try:
-        if DATABASE_URL.startswith("postgres://"):
-            DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
-        
-        connect_args = {}
-        if "supabase" in DATABASE_URL.lower() or "sslmode" not in DATABASE_URL.lower():
-            connect_args["sslmode"] = "require"
+def format_database_url(url: str) -> str:
+    if not url:
+        return DEFAULT_SUPABASE_URL
+    url = url.strip()
+    if url.startswith("postgres://"):
+        url = url.replace("postgres://", "postgresql://", 1)
+    import re
+    import urllib.parse
+    m = re.match(r'^(postgresql(?:\+\w+)?://)([^:]+):(.+)@([^@]+)$', url)
+    if m:
+        prefix, user, password, host_part = m.groups()
+        encoded_pass = urllib.parse.quote(urllib.parse.unquote(password))
+        url = f"{prefix}{user}:{encoded_pass}@{host_part}"
+    return url
 
-        engine = create_engine(
-            DATABASE_URL,
-            connect_args=connect_args,
-            pool_pre_ping=True,
-            pool_size=10,
-            max_overflow=20,
-            pool_recycle=300
-        )
-    except Exception as e:
-        print(f"[JOYST DATABASE] Cloud Database Notice: {e}")
-        engine = None
+formatted_db_url = format_database_url(DATABASE_URL)
+connect_args = {}
+if "supabase" in formatted_db_url.lower() or "sslmode" not in formatted_db_url.lower():
+    connect_args["sslmode"] = "require"
 
-if engine is None:
-    engine = create_engine(
-        f"sqlite:///{DATABASE_FILE}",
-        connect_args={"check_same_thread": False}
-    )
+engine = create_engine(
+    formatted_db_url,
+    connect_args=connect_args,
+    pool_pre_ping=True,
+    pool_size=15,
+    max_overflow=25,
+    pool_recycle=300
+)
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
