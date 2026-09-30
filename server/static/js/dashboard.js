@@ -1,10 +1,53 @@
 // ==================== CORE PLATFORM UTILITIES & API CLIENT ====================
 
+let activeApiRequests = 0;
+function showGlobalProgress() {
+    let bar = document.getElementById("global-page-progress-bar");
+    if (!bar) {
+        bar = document.createElement("div");
+        bar.id = "global-page-progress-bar";
+        bar.className = "global-page-progress-bar";
+        document.body.appendChild(bar);
+    }
+    bar.style.transition = "width 0.25s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.2s ease";
+    bar.style.width = "0%";
+    bar.classList.add("active");
+    setTimeout(() => { if (bar) bar.style.width = "75%"; }, 20);
+}
+
+function hideGlobalProgress() {
+    const bar = document.getElementById("global-page-progress-bar");
+    if (bar) {
+        bar.style.width = "100%";
+        setTimeout(() => {
+            bar.classList.remove("active");
+            setTimeout(() => { if (bar) bar.style.width = "0%"; }, 250);
+        }, 200);
+    }
+}
+
+function trackApiStart() {
+    activeApiRequests++;
+    if (activeApiRequests === 1) {
+        showGlobalProgress();
+    }
+}
+
+function trackApiEnd() {
+    activeApiRequests = Math.max(0, activeApiRequests - 1);
+    if (activeApiRequests === 0) {
+        hideGlobalProgress();
+    }
+}
+
 function getAuthToken() {
     return localStorage.getItem("auth_admin_token") || localStorage.getItem("token") || "";
 }
 
 async function apiFetch(url, options = {}) {
+    const isBackground = options.background === true;
+    if (!isBackground) trackApiStart();
+
     const token = getAuthToken();
     const headers = {
         "Content-Type": "application/json",
@@ -33,6 +76,8 @@ async function apiFetch(url, options = {}) {
     } catch (err) {
         console.error(`API Fetch Error on ${url}:`, err);
         return null;
+    } finally {
+        if (!isBackground) trackApiEnd();
     }
 }
 
@@ -373,6 +418,63 @@ function toggleMobileSidebar() {
     }
 }
 
+let preloadingAppId = null;
+async function preloadAppData(appId) {
+    if (!appId || preloadingAppId === appId) return;
+    preloadingAppId = appId;
+
+    try {
+        await Promise.allSettled([
+            apiFetch(`/api/v1/admin/licenses?app_id=${appId}`, { background: true }).then(data => {
+                if (data && data.licenses) window.tabDataCache.licenses[appId] = data.licenses;
+            }),
+            apiFetch(`/api/v1/admin/users?app_id=${appId}`, { background: true }).then(data => {
+                if (data && data.users) {
+                    window.tabDataCache.users[appId] = data.users;
+                    if (currentAppId === appId) rawUsersList = data.users;
+                }
+            }),
+            apiFetch(`/api/v1/admin/tiers?app_id=${appId}`, { background: true }).then(data => {
+                if (data && data.tiers) window.tabDataCache.tiers[appId] = data.tiers;
+            }),
+            apiFetch(`/api/v1/admin/variables?app_id=${appId}`, { background: true }).then(data => {
+                if (data && data.variables) window.tabDataCache.variables[appId] = data.variables;
+            }),
+            apiFetch(`/api/v1/admin/files?app_id=${appId}`, { background: true }).then(data => {
+                if (data && data.files) window.tabDataCache.files[appId] = data.files;
+            }),
+            apiFetch(`/api/v1/admin/blacklists?app_id=${appId}`, { background: true }).then(data => {
+                if (data && data.blacklists) window.tabDataCache.blacklists[appId] = data.blacklists;
+            }),
+            apiFetch(`/api/v1/admin/notifications?app_id=${appId}`, { background: true }).then(data => {
+                if (data && data.notifications) {
+                    window.tabDataCache.notifications[appId] = data.notifications;
+                    if (currentAppId === appId) rawNotificationsList = data.notifications;
+                }
+            }),
+            apiFetch(`/api/v1/admin/logs?app_id=${appId}`, { background: true }).then(data => {
+                if (data && data.logs) window.tabDataCache.logs[appId] = data.logs;
+            }),
+            apiFetch(`/api/v1/admin/custom-clients`, { background: true }).then(data => {
+                if (data && (data.clients || data.custom_clients || Array.isArray(data))) {
+                    customClientsList = data.clients || data.custom_clients || data;
+                    window.tabDataCache.custom_clients = customClientsList;
+                }
+            }),
+            apiFetch(`/api/v1/admin/resellers`, { background: true }).then(data => {
+                if (data && data.resellers) {
+                    resellersList = data.resellers;
+                    window.tabDataCache.resellers = data.resellers;
+                }
+            })
+        ]);
+    } catch (e) {
+        console.warn("preloadAppData error:", e);
+    } finally {
+        preloadingAppId = null;
+    }
+}
+
 async function initDashboard() {
     initSidebarState();
     setupNavigation();
@@ -399,6 +501,11 @@ async function initDashboard() {
         console.error("Error during dashboard init:", err);
     }
     loadActiveTab();
+
+    // 3. Background prefetch for instant 0ms tab switching
+    if (currentAppId) {
+        preloadAppData(currentAppId);
+    }
 }
 
 async function loadUserProfile() {
@@ -1852,6 +1959,25 @@ async function deleteUser(userId) {
 }
 
 // 5. Subscriptions & Tiers
+function renderTiersData(tiers) {
+    const tbody = document.getElementById("tiers-table-body");
+    if (!tbody) return;
+    if (!tiers || tiers.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="4" style="text-align: center; color: var(--text-muted); padding: 30px;">No subscription tiers found. Click "+ Create Tier" to create ranks.</td></tr>`;
+        return;
+    }
+    tbody.innerHTML = tiers.map(t => `
+        <tr>
+            <td><strong style="color: #fff;">${escapeHtml(t.name)}</strong></td>
+            <td><span class="badge badge-cyan">Level ${t.level_rank}</span></td>
+            <td><span style="color: var(--text-secondary);">${escapeHtml(t.description || 'Standard Tier')}</span></td>
+            <td>
+                <button class="btn btn-danger btn-sm" onclick="deleteTier(${t.id})">🗑️ Delete</button>
+            </td>
+        </tr>
+    `).join("");
+}
+
 async function loadTiers() {
     const tbody = document.getElementById("tiers-table-body");
     if (!tbody) return;
@@ -1859,21 +1985,21 @@ async function loadTiers() {
         tbody.innerHTML = `<tr><td colspan="4" style="text-align: center; color: var(--text-muted); padding: 30px;">No application selected.</td></tr>`;
         return;
     }
-    const data = await apiFetch(`/api/v1/admin/tiers?app_id=${currentAppId}`);
-    if (!data || !data.tiers || data.tiers.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="4" style="text-align: center; color: var(--text-muted); padding: 30px;">No subscription tiers found. Click "+ Create Tier" to create ranks.</td></tr>`;
-        return;
+
+    const cached = window.tabDataCache.tiers[currentAppId];
+    if (cached && cached.length > 0) {
+        renderTiersData(cached);
+    } else if (!tbody.children.length || tbody.innerHTML.includes("No subscription tiers")) {
+        tbody.innerHTML = getTableSkeletonHtml(4, "Loading Subscription Tiers...");
     }
-    tbody.innerHTML = data.tiers.map(t => `
-        <tr>
-            <td><strong style="color: #fff;">${t.name}</strong></td>
-            <td><span class="badge badge-cyan">Level ${t.level_rank}</span></td>
-            <td><span style="color: var(--text-secondary);">${t.description || 'Standard Tier'}</span></td>
-            <td>
-                <button class="btn btn-danger btn-sm" onclick="deleteTier(${t.id})">🗑️ Delete</button>
-            </td>
-        </tr>
-    `).join("");
+
+    const data = await apiFetch(`/api/v1/admin/tiers?app_id=${currentAppId}`);
+    if (data && data.tiers) {
+        window.tabDataCache.tiers[currentAppId] = data.tiers;
+        renderTiersData(data.tiers);
+    } else if (!cached) {
+        renderTiersData([]);
+    }
 }
 
 async function createTierSubmit() {
@@ -1903,6 +2029,26 @@ async function deleteTier(tierId) {
 }
 
 // 6. Cloud Variables
+function renderVariablesData(variables) {
+    const tbody = document.getElementById("variables-table-body");
+    if (!tbody) return;
+    if (!variables || variables.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="4" style="text-align: center; color: var(--text-muted); padding: 40px;">No cloud variables defined yet.</td></tr>`;
+        return;
+    }
+
+    tbody.innerHTML = variables.map(v => `
+        <tr>
+            <td><strong class="mono" style="color: var(--brand-sky);">${escapeHtml(v.name)}</strong></td>
+            <td><span class="mono" style="color: #fff; max-width: 300px; display: inline-block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${escapeHtml(v.value)}</span></td>
+            <td><span class="badge badge-success"><span class="badge-dot"></span> Encrypted</span></td>
+            <td>
+                <button class="btn btn-danger btn-sm" onclick="deleteVariable(${v.id})">🗑️ Delete</button>
+            </td>
+        </tr>
+    `).join("");
+}
+
 async function loadVariables() {
     const tbody = document.getElementById("variables-table-body");
     if (!tbody) return;
@@ -1912,22 +2058,20 @@ async function loadVariables() {
         return;
     }
 
-    const data = await apiFetch(`/api/v1/admin/variables?app_id=${currentAppId}`);
-    if (!data || !data.variables || data.variables.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="4" style="text-align: center; color: var(--text-muted); padding: 40px;">No cloud variables defined yet.</td></tr>`;
-        return;
+    const cached = window.tabDataCache.variables[currentAppId];
+    if (cached && cached.length > 0) {
+        renderVariablesData(cached);
+    } else if (!tbody.children.length || tbody.innerHTML.includes("No cloud variables")) {
+        tbody.innerHTML = getTableSkeletonHtml(4, "Loading Cloud Variables...");
     }
 
-    tbody.innerHTML = data.variables.map(v => `
-        <tr>
-            <td><strong class="mono" style="color: var(--brand-sky);">${v.name}</strong></td>
-            <td><span class="mono" style="color: #fff; max-width: 300px; display: inline-block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${v.value}</span></td>
-            <td><span class="badge badge-success"><span class="badge-dot"></span> Encrypted</span></td>
-            <td>
-                <button class="btn btn-danger btn-sm" onclick="deleteVariable(${v.id})">🗑️ Delete</button>
-            </td>
-        </tr>
-    `).join("");
+    const data = await apiFetch(`/api/v1/admin/variables?app_id=${currentAppId}`);
+    if (data && data.variables) {
+        window.tabDataCache.variables[currentAppId] = data.variables;
+        renderVariablesData(data.variables);
+    } else if (!cached) {
+        renderVariablesData([]);
+    }
 }
 
 async function createVariableSubmit() {
@@ -1961,6 +2105,26 @@ async function deleteVariable(varId) {
 }
 
 // 7. Files & CDN Loader
+function renderFilesData(files) {
+    const tbody = document.getElementById("files-table-body");
+    if (!tbody) return;
+    if (!files || files.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 30px;">No files uploaded. Click "+ Add File" to distribute binaries.</td></tr>`;
+        return;
+    }
+    tbody.innerHTML = files.map(f => `
+        <tr>
+            <td><strong class="mono" style="color: var(--brand-sky);">${escapeHtml(f.file_id)}</strong></td>
+            <td><strong style="color: #fff;">${escapeHtml(f.file_name)}</strong></td>
+            <td><a href="${escapeHtml(f.file_url)}" target="_blank" style="color: var(--brand-indigo); font-size: 12px; word-break: break-all;">${escapeHtml(f.file_url)}</a></td>
+            <td><span class="badge badge-success"><span class="badge-dot"></span> Protected</span></td>
+            <td>
+                <button class="btn btn-danger btn-sm" onclick="deleteFile(${f.id})">🗑️ Delete</button>
+            </td>
+        </tr>
+    `).join("");
+}
+
 async function loadFiles() {
     const tbody = document.getElementById("files-table-body");
     if (!tbody) return;
@@ -1968,22 +2132,21 @@ async function loadFiles() {
         tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 30px;">No application selected.</td></tr>`;
         return;
     }
-    const data = await apiFetch(`/api/v1/admin/files?app_id=${currentAppId}`);
-    if (!data || !data.files || data.files.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 30px;">No files uploaded. Click "+ Add File" to distribute binaries.</td></tr>`;
-        return;
+
+    const cached = window.tabDataCache.files[currentAppId];
+    if (cached && cached.length > 0) {
+        renderFilesData(cached);
+    } else if (!tbody.children.length || tbody.innerHTML.includes("No files uploaded")) {
+        tbody.innerHTML = getTableSkeletonHtml(5, "Loading Application Files...");
     }
-    tbody.innerHTML = data.files.map(f => `
-        <tr>
-            <td><strong class="mono" style="color: var(--brand-sky);">${f.file_id}</strong></td>
-            <td><strong style="color: #fff;">${f.file_name}</strong></td>
-            <td><a href="${f.file_url}" target="_blank" style="color: var(--brand-indigo); font-size: 12px; word-break: break-all;">${f.file_url}</a></td>
-            <td><span class="badge badge-success"><span class="badge-dot"></span>tected</span></td>
-            <td>
-                <button class="btn btn-danger btn-sm" onclick="deleteFile(${f.id})">🗑️ Delete</button>
-            </td>
-        </tr>
-    `).join("");
+
+    const data = await apiFetch(`/api/v1/admin/files?app_id=${currentAppId}`);
+    if (data && data.files) {
+        window.tabDataCache.files[currentAppId] = data.files;
+        renderFilesData(data.files);
+    } else if (!cached) {
+        renderFilesData([]);
+    }
 }
 
 async function createFileSubmit() {
@@ -2017,6 +2180,26 @@ async function deleteFile(fileId) {
 }
 
 // 8. Blacklists
+function renderBlacklistsData(blacklists) {
+    const tbody = document.getElementById("blacklists-table-body");
+    if (!tbody) return;
+    if (!blacklists || blacklists.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 30px;">No active blacklists.</td></tr>`;
+        return;
+    }
+    tbody.innerHTML = blacklists.map(b => `
+        <tr>
+            <td><span class="badge badge-danger">${escapeHtml(b.type.toUpperCase())}</span></td>
+            <td><strong class="mono" style="color: #fff;">${escapeHtml(b.data)}</strong></td>
+            <td><span>${escapeHtml(b.reason)}</span></td>
+            <td><span style="font-size: 12px; color: var(--text-muted);">${escapeHtml(b.created_at.substring(0, 10))}</span></td>
+            <td>
+                <button class="btn btn-danger btn-sm" onclick="deleteBlacklist(${b.id})">🗑️ Remove</button>
+            </td>
+        </tr>
+    `).join("");
+}
+
 async function loadBlacklists() {
     const tbody = document.getElementById("blacklists-table-body");
     if (!tbody) return;
@@ -2024,22 +2207,21 @@ async function loadBlacklists() {
         tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 30px;">No application selected.</td></tr>`;
         return;
     }
-    const data = await apiFetch(`/api/v1/admin/blacklists?app_id=${currentAppId}`);
-    if (!data || !data.blacklists || data.blacklists.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 30px;">No active blacklists.</td></tr>`;
-        return;
+
+    const cached = window.tabDataCache.blacklists[currentAppId];
+    if (cached && cached.length > 0) {
+        renderBlacklistsData(cached);
+    } else if (!tbody.children.length || tbody.innerHTML.includes("No active blacklists")) {
+        tbody.innerHTML = getTableSkeletonHtml(5, "Loading Blacklist Records...");
     }
-    tbody.innerHTML = data.blacklists.map(b => `
-        <tr>
-            <td><span class="badge badge-danger">${b.type.toUpperCase()}</span></td>
-            <td><strong class="mono" style="color: #fff;">${b.data}</strong></td>
-            <td><span>${b.reason}</span></td>
-            <td><span style="font-size: 12px; color: var(--text-muted);">${b.created_at.substring(0, 10)}</span></td>
-            <td>
-                <button class="btn btn-danger btn-sm" onclick="deleteBlacklist(${b.id})">🗑️ Remove</button>
-            </td>
-        </tr>
-    `).join("");
+
+    const data = await apiFetch(`/api/v1/admin/blacklists?app_id=${currentAppId}`);
+    if (data && data.blacklists) {
+        window.tabDataCache.blacklists[currentAppId] = data.blacklists;
+        renderBlacklistsData(data.blacklists);
+    } else if (!cached) {
+        renderBlacklistsData([]);
+    }
 }
 
 async function createBlacklistSubmit() {
@@ -2086,41 +2268,14 @@ function onIndividualResellerAppChange() {
     }
 }
 
-async function loadResellers() {
+function renderResellersData(resellers) {
     const tbody = document.getElementById("resellers-table-body");
     if (!tbody) return;
-
-    // Populate multi-app checkboxes in modal
-    const indContainer = document.getElementById("reseller-individual-apps");
-    if (indContainer) {
-        indContainer.innerHTML = "";
-        appsList.forEach(a => {
-            const lbl = document.createElement("label");
-            lbl.style.cssText = "display: flex; align-items: center; gap: 8px; cursor: pointer; margin: 0; font-size: 13px;";
-            lbl.innerHTML = `
-                <input type="checkbox" class="reseller-indiv-app-chk" value="${a.name}" onchange="onIndividualResellerAppChange()" disabled style="width: 15px; height: 15px; accent-color: var(--brand-rose);">
-                <span style="color: #fff; font-weight: 700;">📱 ${a.name} (v${a.version})</span>
-            `;
-            indContainer.appendChild(lbl);
-        });
-    }
-
-    tbody.innerHTML = `
-        <tr>
-            <td colspan="5">
-                <div class="cyber-loader-wrap">
-                    <div class="cyber-spinner"></div>
-                    <span style="color: #ff4d79; font-size: 13px; font-weight: 700; letter-spacing: 0.5px;">Loading Reseller Accounts...</span>
-                </div>
-            </td>
-        </tr>
-    `;
-    const data = await apiFetch("/api/v1/admin/resellers");
-    if (!data || !data.resellers || data.resellers.length === 0) {
+    if (!resellers || resellers.length === 0) {
         tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 30px;">No reseller accounts created yet. Click "+ Add Reseller" to create one.</td></tr>`;
         return;
     }
-    tbody.innerHTML = data.resellers.map(r => {
+    tbody.innerHTML = resellers.map(r => {
         const appDisplay = (r.allowed_apps === 'all' || !r.allowed_apps) 
             ? '<span class="badge badge-cyan" style="font-size: 11px;">🌐 All Apps</span>'
             : r.allowed_apps.split(',').map(id => {
@@ -2168,6 +2323,42 @@ async function loadResellers() {
         </tr>
         `;
     }).join("");
+}
+
+async function loadResellers() {
+    const tbody = document.getElementById("resellers-table-body");
+    if (!tbody) return;
+
+    // Populate multi-app checkboxes in modal
+    const indContainer = document.getElementById("reseller-individual-apps");
+    if (indContainer) {
+        indContainer.innerHTML = "";
+        appsList.forEach(a => {
+            const lbl = document.createElement("label");
+            lbl.style.cssText = "display: flex; align-items: center; gap: 8px; cursor: pointer; margin: 0; font-size: 13px;";
+            lbl.innerHTML = `
+                <input type="checkbox" class="reseller-indiv-app-chk" value="${a.name}" onchange="onIndividualResellerAppChange()" disabled style="width: 15px; height: 15px; accent-color: var(--brand-rose);">
+                <span style="color: #fff; font-weight: 700;">📱 ${a.name} (v${a.version})</span>
+            `;
+            indContainer.appendChild(lbl);
+        });
+    }
+
+    const cached = window.tabDataCache.resellers;
+    if (cached && cached.length > 0) {
+        renderResellersData(cached);
+    } else if (!tbody.children.length || tbody.innerHTML.includes("No reseller accounts")) {
+        tbody.innerHTML = getTableSkeletonHtml(5, "Loading Reseller Accounts...");
+    }
+
+    const data = await apiFetch("/api/v1/admin/resellers");
+    if (data && data.resellers) {
+        resellersList = data.resellers;
+        window.tabDataCache.resellers = resellersList;
+        renderResellersData(data.resellers);
+    } else if (!cached) {
+        renderResellersData([]);
+    }
 }
 
 function openManageResellerCreditsModal(id, username, currentBalance) {
@@ -2507,22 +2698,12 @@ async function submitEditNotification() {
     }
 }
 
-async function loadNotifications() {
+function renderNotificationsData(notifications) {
     const tbody = document.getElementById("notifications-table-body");
-
-    if (!currentAppId) {
-        if (tbody) tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: var(--text-muted); padding: 40px;">No application selected. Select or create an app first.</td></tr>`;
-        renderOverviewBroadcasts([]);
-        return;
-    }
-
-    const data = await apiFetch(`/api/v1/admin/notifications?app_id=${currentAppId}`);
-    rawNotificationsList = (data && data.notifications) || [];
-    renderOverviewBroadcasts(rawNotificationsList);
-
+    renderOverviewBroadcasts(notifications || []);
     if (!tbody) return;
 
-    if (!data || !data.notifications || data.notifications.length === 0) {
+    if (!notifications || notifications.length === 0) {
         tbody.innerHTML = `
             <tr>
                 <td colspan="6" style="text-align: center; color: var(--text-muted); padding: 40px;">
@@ -2533,7 +2714,7 @@ async function loadNotifications() {
         return;
     }
 
-    tbody.innerHTML = data.notifications.map(n => {
+    tbody.innerHTML = notifications.map(n => {
         let badgeType = "badge-info";
         let icon = "ℹ️";
         if (n.type === "success") { badgeType = "badge-success"; icon = "🟢"; }
@@ -2567,9 +2748,9 @@ async function loadNotifications() {
                             ✏️ Edit
                         </button>
                         <button class="btn btn-secondary btn-sm" onclick="toggleNotificationStatus(${n.id})" title="Toggle Active/Disabled">
-                            ${n.is_active ? '⏸️ Pause' : '▶️ Activate'}
+                            ${n.is_active ? '⏸️ Disable' : '▶️ Enable'}
                         </button>
-                        <button class="btn btn-danger btn-sm" onclick="deleteNotification(${n.id})" title="Delete Notification">
+                        <button class="btn btn-danger btn-sm" onclick="deleteNotification(${n.id})" title="Delete Notice">
                             🗑️
                         </button>
                     </div>
@@ -2577,6 +2758,34 @@ async function loadNotifications() {
             </tr>
         `;
     }).join("");
+}
+
+async function loadNotifications() {
+    const tbody = document.getElementById("notifications-table-body");
+
+    if (!currentAppId) {
+        if (tbody) tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: var(--text-muted); padding: 40px;">No application selected. Select or create an app first.</td></tr>`;
+        renderOverviewBroadcasts([]);
+        return;
+    }
+
+    const cached = window.tabDataCache.notifications[currentAppId];
+    if (cached && cached.length > 0) {
+        rawNotificationsList = cached;
+        renderNotificationsData(cached);
+    } else if (tbody && (!tbody.children.length || tbody.innerHTML.includes("No warnings"))) {
+        tbody.innerHTML = getTableSkeletonHtml(6, "Loading Application Notices...");
+    }
+
+    const data = await apiFetch(`/api/v1/admin/notifications?app_id=${currentAppId}`);
+    if (data && data.notifications) {
+        rawNotificationsList = data.notifications || [];
+        window.tabDataCache.notifications[currentAppId] = rawNotificationsList;
+        renderNotificationsData(rawNotificationsList);
+    } else if (!cached) {
+        rawNotificationsList = [];
+        renderNotificationsData([]);
+    }
 }
 
 async function createNotificationSubmit() {
@@ -3126,6 +3335,11 @@ function renderAllAppsList() {
                         </div>
                     </div>
 
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; font-size: 11.5px; color: var(--text-secondary); background: rgba(255,255,255,0.03); padding: 6px 10px; border-radius: 6px;">
+                        <span>👥 <strong style="color: #fff;">${app.stats?.total_users || 0}</strong> Users</span>
+                        <span>🔑 <strong style="color: #fff;">${app.stats?.total_licenses || 0}</strong> Keys</span>
+                    </div>
+
                     <div style="display: flex; gap: 6px;">
                         <button class="btn btn-secondary btn-sm" style="flex: 1; padding: 5px; font-size: 11px; justify-content: center;" onclick="goToAppKeys(${app.id})">🔑 Keys</button>
                         <button class="btn btn-primary btn-sm" style="flex: 1; padding: 5px; font-size: 11px; justify-content: center;" onclick="goToAppSettings(${app.id})">⚙️ Settings</button>
@@ -3376,26 +3590,15 @@ async function deleteApp(appId) {
 }
 
 // 13. Live Audit & IP Logs
-async function loadAuditLogs() {
+function renderAuditLogsData(logs) {
     const tbody = document.getElementById("logs-table-body");
     if (!tbody) return;
-
-    if (!currentAppId) {
-        tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: var(--text-muted); padding: 40px;">No application selected.</td></tr>`;
-        return;
-    }
-
-    const search = document.getElementById("logs-search-input")?.value || "";
-    let url = `/api/v1/admin/logs?app_id=${currentAppId}`;
-    if (search) url += `&search=${encodeURIComponent(search)}`;
-
-    const data = await apiFetch(url);
-    if (!data || !data.logs || data.logs.length === 0) {
+    if (!logs || logs.length === 0) {
         tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: var(--text-muted); padding: 40px;">No audit events recorded yet.</td></tr>`;
         return;
     }
 
-    tbody.innerHTML = data.logs.map(log => {
+    tbody.innerHTML = logs.map(log => {
         let badgeClass = "success";
         if (log.status === "WARNING") badgeClass = "warning";
         if (log.status === "DANGER" || log.status === "ERROR") badgeClass = "danger";
@@ -3411,6 +3614,35 @@ async function loadAuditLogs() {
             </tr>
         `;
     }).join("");
+}
+
+async function loadAuditLogs() {
+    const tbody = document.getElementById("logs-table-body");
+    if (!tbody) return;
+
+    if (!currentAppId) {
+        tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: var(--text-muted); padding: 40px;">No application selected.</td></tr>`;
+        return;
+    }
+
+    const cached = window.tabDataCache.logs[currentAppId];
+    if (cached && cached.length > 0) {
+        renderAuditLogsData(cached);
+    } else if (!tbody.children.length || tbody.innerHTML.includes("No audit events")) {
+        tbody.innerHTML = getTableSkeletonHtml(6, "Loading Audit Logs...");
+    }
+
+    const search = document.getElementById("logs-search-input")?.value || "";
+    let url = `/api/v1/admin/logs?app_id=${currentAppId}`;
+    if (search) url += `&search=${encodeURIComponent(search)}`;
+
+    const data = await apiFetch(url);
+    if (data && data.logs) {
+        window.tabDataCache.logs[currentAppId] = data.logs;
+        renderAuditLogsData(data.logs);
+    } else if (!cached) {
+        renderAuditLogsData([]);
+    }
 }
 
 async function clearAuditLogs() {

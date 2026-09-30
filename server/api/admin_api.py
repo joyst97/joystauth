@@ -3,7 +3,7 @@ import datetime
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Header, UploadFile, File
 from sqlalchemy.orm import Session
-from sqlalchemy import desc
+from sqlalchemy import desc, func
 from pydantic import BaseModel
 
 from ..database import get_db, Application, User, License, AppVariable, AppFile, AuditLog, Developer, SubscriptionTier, Blacklist, Reseller, PlanKey, AppNotification, CustomClient
@@ -206,6 +206,14 @@ async def list_apps(dev: Developer = Depends(get_current_developer), db: Session
         app_names = [x for x in allowed if not x.isdigit()]
         query = query.filter((Application.id.in_(app_ids)) | (Application.name.in_(app_names)))
     apps = query.all()
+    app_ids = [app.id for app in apps]
+
+    user_counts = dict(db.query(User.app_id, func.count(User.id)).filter(User.app_id.in_(app_ids)).group_by(User.app_id).all()) if app_ids else {}
+    license_counts = dict(db.query(License.app_id, func.count(License.id)).filter(License.app_id.in_(app_ids)).group_by(License.app_id).all()) if app_ids else {}
+    unused_license_counts = dict(db.query(License.app_id, func.count(License.id)).filter(License.app_id.in_(app_ids), License.status == "unused").group_by(License.app_id).all()) if app_ids else {}
+    file_counts = dict(db.query(AppFile.app_id, func.count(AppFile.id)).filter(AppFile.app_id.in_(app_ids)).group_by(AppFile.app_id).all()) if app_ids else {}
+    var_counts = dict(db.query(AppVariable.app_id, func.count(AppVariable.id)).filter(AppVariable.app_id.in_(app_ids)).group_by(AppVariable.app_id).all()) if app_ids else {}
+
     result = []
     for app in apps:
         result.append({
@@ -253,11 +261,11 @@ async def list_apps(dev: Developer = Depends(get_current_developer), db: Session
             "webhook_on_ban": getattr(app, "webhook_on_ban", True),
             "created_at": app.created_at.isoformat(),
             "stats": {
-                "total_users": 0,
-                "total_licenses": 0,
-                "unused_licenses": 0,
-                "total_files": 0,
-                "total_vars": 0
+                "total_users": user_counts.get(app.id, 0),
+                "total_licenses": license_counts.get(app.id, 0),
+                "unused_licenses": unused_license_counts.get(app.id, 0),
+                "total_files": file_counts.get(app.id, 0),
+                "total_vars": var_counts.get(app.id, 0)
             }
         })
     return {"success": True, "owner_id": dev.owner_id, "apps": result}
@@ -1563,7 +1571,7 @@ async def clear_audit_logs(app_id: int, dev: Developer = Depends(get_current_dev
 
 @router.get("/stats")
 async def get_developer_stats(dev: Developer = Depends(get_current_developer), db: Session = Depends(get_db)):
-    query = db.query(Application).filter(Application.developer_id == dev.id)
+    query = db.query(Application).filter((Application.developer_id == dev.id) | (Application.owner_id == dev.owner_id))
     if getattr(dev, "is_custom_client", False):
         allowed = getattr(dev, "allowed_apps_list", [])
         app_ids_allowed = [int(x) for x in allowed if x.isdigit()]
