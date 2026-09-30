@@ -11,7 +11,8 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/static/css/dashboard.css?v=3.1.0">
+    <link rel="stylesheet" href="/static/css/dashboard.css?v=3.2.0">
+    <script src="/static/js/theme.js"></script>
     <!-- Official Google Identity Services SDK -->
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <style>
@@ -59,7 +60,7 @@
 
         .brand-title span {
             font-size: 10.5px !important;
-            color: #ff4d79 !important;
+            color: var(--brand-sky) !important;
             font-weight: 700 !important;
             letter-spacing: 0.4px !important;
         }
@@ -93,7 +94,7 @@
 
         .nav-menu a:hover {
             color: #ffffff !important;
-            text-shadow: 0 0 10px rgba(255, 42, 95, 0.6) !important;
+            text-shadow: 0 0 10px var(--shadow-glow) !important;
         }
 
         .btn {
@@ -113,9 +114,9 @@
         }
 
         .btn-primary {
-            background: linear-gradient(135deg, #ff2a5f, #e11d48) !important;
+            background: var(--gradient-primary) !important;
             color: #ffffff !important;
-            box-shadow: 0 0 18px rgba(255, 42, 95, 0.45) !important;
+            box-shadow: var(--shadow-glow) !important;
         }
 
         .btn-secondary {
@@ -542,7 +543,42 @@
             <li><a href="/status">System Status</a></li>
         </ul>
 
-        <div style="display: flex; align-items: center; gap: 12px;">
+        <div style="display: flex; align-items: center; gap: 10px;">
+            <!-- Live Theme Switcher Dropdown -->
+            <div class="theme-selector-dropdown-wrapper" style="position: relative;">
+                <button type="button" class="btn btn-secondary btn-sm" id="btn-theme-selector" onclick="toggleThemeDropdown(event)" title="Switch Visual Theme" style="display: flex; align-items: center; gap: 6px; padding: 7px 12px; font-size: 12px; font-weight: 700; border-radius: 9px; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.15);">
+                    <span id="current-theme-icon" style="font-size: 14px;">🎨</span>
+                    <span id="current-theme-label" style="color: #fff;">Theme</span>
+                    <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m6 9 6 6 6-6"/></svg>
+                </button>
+                <div class="theme-dropdown-menu" id="theme-dropdown-menu" style="display: none; position: absolute; right: 0; top: calc(100% + 8px); width: 200px; background: rgba(14, 8, 18, 0.96); backdrop-filter: blur(25px); border: 1px solid var(--border-highlight); border-radius: 12px; padding: 6px; box-shadow: 0 15px 40px rgba(0,0,0,0.85); z-index: 100000;">
+                    <div style="font-size: 10px; font-weight: 800; color: var(--text-muted); text-transform: uppercase; padding: 6px 10px 4px 10px; letter-spacing: 0.5px;">Theme Preset</div>
+                    <div class="theme-opt-item" onclick="setDashboardTheme('cyan')" style="display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 8px; cursor: pointer; color: #fff; font-size: 12px; font-weight: 700;">
+                        <span style="width: 12px; height: 12px; border-radius: 50%; background: #00f2fe; box-shadow: 0 0 8px #00f2fe; display: inline-block;"></span>
+                        <span>Neon Cyan</span>
+                    </div>
+                    <div class="theme-opt-item" onclick="setDashboardTheme('purple')" style="display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 8px; cursor: pointer; color: #fff; font-size: 12px; font-weight: 700;">
+                        <span style="width: 12px; height: 12px; border-radius: 50%; background: #a855f7; box-shadow: 0 0 8px #a855f7; display: inline-block;"></span>
+                        <span>Obsidian Violet</span>
+                    </div>
+                    <div class="theme-opt-item" onclick="setDashboardTheme('blue')" style="display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 8px; cursor: pointer; color: #fff; font-size: 12px; font-weight: 700;">
+                        <span style="width: 12px; height: 12px; border-radius: 50%; background: #2563eb; box-shadow: 0 0 8px #2563eb; display: inline-block;"></span>
+                        <span>Midnight Blue</span>
+                    </div>
+                    <div class="theme-opt-item" onclick="setDashboardTheme('emerald')" style="display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 8px; cursor: pointer; color: #fff; font-size: 12px; font-weight: 700;">
+                        <span style="width: 12px; height: 12px; border-radius: 50%; background: #10b981; box-shadow: 0 0 8px #10b981; display: inline-block;"></span>
+                        <span>Matrix Green</span>
+                    </div>
+                    <div class="theme-opt-item" onclick="setDashboardTheme('oled')" style="display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 8px; cursor: pointer; color: #fff; font-size: 12px; font-weight: 700;">
+                        <span style="width: 12px; height: 12px; border-radius: 50%; background: #ffffff; box-shadow: 0 0 8px #ffffff; display: inline-block;"></span>
+                        <span>Titanium OLED</span>
+                    </div>
+                    <div class="theme-opt-item" onclick="setDashboardTheme('crimson')" style="display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 8px; cursor: pointer; color: #fff; font-size: 12px; font-weight: 700;">
+                        <span style="width: 12px; height: 12px; border-radius: 50%; background: #ff2a5f; box-shadow: 0 0 8px #ff2a5f; display: inline-block;"></span>
+                        <span>Crimson Red</span>
+                    </div>
+                </div>
+            </div>
             <a href="/login" class="btn btn-secondary btn-sm">Sign In</a>
             <a href="/register" class="btn btn-primary btn-sm">Create Account</a>
         </div>
