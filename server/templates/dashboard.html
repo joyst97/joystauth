@@ -1340,18 +1340,21 @@
                         <h2>Custom Brand Partners & Clients</h2>
                         <p>Delegate full application management (Maintenance, Keys, Users, Settings) to branded client owners without allowing them to create new apps.</p>
                     </div>
-                    <button class="btn btn-primary btn-sm" onclick="openCreateCustomClientModal()">
-                        <span>➕ Create Custom Client</span>
-                    </button>
+                    <div style="display: flex; gap: 8px;">
+                        <button class="btn btn-secondary btn-sm" onclick="loadCustomClients()">🔄 Refresh</button>
+                        <button class="btn btn-primary btn-sm" onclick="openCreateCustomClientModal()">
+                            <span>➕ Create Custom Client</span>
+                        </button>
+                    </div>
                 </div>
 
                 <div class="table-card spotlight-card">
                     <div class="table-toolbar" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
                         <div class="search-input-wrap" style="width: 320px;">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-                            <input type="text" id="custom-clients-search" class="search-input" placeholder="Search custom clients..." oninput="filterCustomClientsTable()">
+                            <input type="text" id="custom-clients-search" class="search-input" placeholder="Search custom clients..." oninput="filterCustomClientsTable()" autocomplete="off">
                         </div>
-                        <button class="btn btn-secondary btn-sm" onclick="loadCustomClients()">🔄 Refresh</button>
+                        <div id="custom-clients-count-badge" class="badge badge-purple" style="font-size: 12px; font-weight: 800;">Loading...</div>
                     </div>
 
                     <table class="data-table">
@@ -1368,6 +1371,54 @@
                     </table>
                 </div>
             </section>
+
+            <script>
+            // Self-Healing Custom Clients Engine
+            (function() {
+                async function syncCustomClientsInline() {
+                    const tbody = document.getElementById("custom-clients-table-body");
+                    const countBadge = document.getElementById("custom-clients-count-badge");
+                    if (!tbody) return;
+
+                    const token = localStorage.getItem("auth_admin_token") || localStorage.getItem("token") || "";
+                    const headers = { "Content-Type": "application/json" };
+                    if (token) headers["Authorization"] = "Bearer " + token;
+
+                    try {
+                        const res = await fetch("/api/v1/admin/custom-clients", { headers });
+                        if (!res.ok) return;
+                        const data = await res.json();
+                        const list = (data && Array.isArray(data.clients)) ? data.clients : (Array.isArray(data) ? data : []);
+                        
+                        window.customClientsList = list;
+                        if (countBadge) {
+                            countBadge.textContent = list.length + " Brand Client" + (list.length === 1 ? "" : "s");
+                        }
+
+                        if (typeof window.renderCustomClientsTable === "function") {
+                            window.renderCustomClientsTable();
+                        }
+                    } catch(err) {
+                        console.warn("[CustomClients Inline Engine] Sync notice:", err);
+                    }
+                }
+
+                // Listen to tab switches
+                document.addEventListener("click", function(e) {
+                    const target = e.target.closest('[data-tab="custom-clients"]') || e.target.closest('#sidebar-tab-custom-clients');
+                    if (target) {
+                        setTimeout(syncCustomClientsInline, 50);
+                    }
+                });
+
+                // Auto-sync on DOM ready
+                if (document.readyState === "loading") {
+                    document.addEventListener("DOMContentLoaded", function() { setTimeout(syncCustomClientsInline, 300); });
+                } else {
+                    setTimeout(syncCustomClientsInline, 300);
+                }
+            })();
+            </script>
 
             <!-- 12. TAB: SDK CODE STUDIO -->
             <section id="page-sdk" class="page-container">
@@ -2236,7 +2287,7 @@
     <script src="/static/js/particles.js?v=3.0.0"></script>
     <script src="/static/js/reactbits.js?v=3.0.0"></script>
     <!-- Dashboard Controller -->
-    <script src="/static/js/dashboard.js?v=20260930_100"></script>
+    <script src="/static/js/dashboard.js?v=20260930_FINAL_V3"></script>
     <script src="/static/js/shield_defense.js?v=3.0.0"></script>
     <script>
         if (typeof initDashboard === "function") {

@@ -4119,11 +4119,28 @@ async function loadCustomClients() {
     }
 
     try {
-        const data = await apiFetch("/api/v1/admin/custom-clients");
-        if (data && (data.success || Array.isArray(data.clients) || Array.isArray(data))) {
-            customClientsList = Array.isArray(data) ? data : (data.clients || []);
+        const token = getAuthToken();
+        const headers = { "Content-Type": "application/json" };
+        if (token) headers["Authorization"] = `Bearer ${token}`;
+
+        const res = await fetch("/api/v1/admin/custom-clients", { headers });
+        if (res.ok) {
+            const data = await res.json();
+            if (data && Array.isArray(data.clients)) {
+                customClientsList = data.clients;
+            } else if (Array.isArray(data)) {
+                customClientsList = data;
+            } else {
+                customClientsList = [];
+            }
         } else {
-            customClientsList = [];
+            console.warn("Direct fetch non-ok, falling back to apiFetch");
+            const data = await apiFetch("/api/v1/admin/custom-clients");
+            if (data && (data.success || Array.isArray(data.clients) || Array.isArray(data))) {
+                customClientsList = Array.isArray(data) ? data : (data.clients || []);
+            } else {
+                customClientsList = [];
+            }
         }
         renderCustomClientsTable();
     } catch (e) {
@@ -4155,12 +4172,13 @@ function renderCustomClientsTable() {
     const query = (searchInput ? searchInput.value : "").toLowerCase().trim();
     let filtered = customClientsList || [];
     if (query) {
-        filtered = filtered.filter(c => 
-            (c.username && c.username.toLowerCase().includes(query)) ||
-            (c.notes && c.notes.toLowerCase().includes(query)) ||
-            (c.assigned_app_names && c.assigned_app_names.some(name => String(name).toLowerCase().includes(query))) ||
-            (c.allowed_apps && c.allowed_apps.toLowerCase().includes(query))
-        );
+        filtered = filtered.filter(c => {
+            const u = String(c.username || "").toLowerCase();
+            const n = String(c.notes || "").toLowerCase();
+            const a = String(c.allowed_apps || "").toLowerCase();
+            const names = Array.isArray(c.assigned_app_names) ? c.assigned_app_names.map(x => String(x).toLowerCase()).join(" ") : String(c.assigned_app_names || "").toLowerCase();
+            return u.includes(query) || n.includes(query) || a.includes(query) || names.includes(query);
+        });
     }
 
     if (!filtered || filtered.length === 0) {
@@ -4201,20 +4219,30 @@ function renderCustomClientsTable() {
 
     tableBody.innerHTML = filtered.map(c => {
         let appBadges = '<span style="color: var(--text-muted); font-size: 12px;">No apps assigned</span>';
-        if (c.assigned_app_names && c.assigned_app_names.length > 0) {
-            appBadges = c.assigned_app_names.map(name => `<span class="badge badge-cyan" style="font-size: 11px; margin: 2px;">📱 ${escapeHtml(name)}</span>`).join(" ");
+        if (Array.isArray(c.assigned_app_names) && c.assigned_app_names.length > 0) {
+            appBadges = c.assigned_app_names.map(name => `<span class="badge badge-cyan" style="font-size: 11px; margin: 2px;">📱 ${escapeHtml(String(name))}</span>`).join(" ");
         } else if (c.allowed_apps) {
-            appBadges = c.allowed_apps.split(",").map(a => `<span class="badge badge-cyan" style="font-size: 11px; margin: 2px;">📱 ${escapeHtml(a.trim())}</span>`).join(" ");
+            appBadges = String(c.allowed_apps).split(",").map(a => `<span class="badge badge-cyan" style="font-size: 11px; margin: 2px;">📱 ${escapeHtml(a.trim())}</span>`).join(" ");
         }
 
-        const dateStr = c.created_at ? new Date(c.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : "Active";
+        let dateStr = "Active";
+        if (c.created_at) {
+            try {
+                const d = new Date(c.created_at);
+                if (!isNaN(d.getTime())) {
+                    dateStr = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+                }
+            } catch(e) {}
+        }
+
+        const initial = (String(c.username || 'C')).charAt(0).toUpperCase();
 
         return `
             <tr>
                 <td>
                     <div style="display: flex; align-items: center; gap: 10px;">
                         <div style="width: 34px; height: 34px; border-radius: 9px; background: linear-gradient(135deg, #a855f7, #6366f1); display: flex; align-items: center; justify-content: center; font-size: 15px; font-weight: 800; color: #fff; box-shadow: 0 0 15px rgba(168, 85, 247, 0.4);">
-                            ${(c.username || 'C').charAt(0).toUpperCase()}
+                            ${initial}
                         </div>
                         <div>
                             <strong style="color: #fff; font-size: 14.5px;">${escapeHtml(c.username)}</strong>

@@ -2664,17 +2664,8 @@ async def list_custom_clients(dev: Developer = Depends(get_current_developer), d
     if getattr(dev, "is_custom_client", False):
         raise HTTPException(status_code=403, detail="Unauthorized")
     
-    dev_ids = [dev.id]
-    try:
-        query_dev_ids = [d[0] for d in db.query(Developer.id).filter((Developer.id == dev.id) | (Developer.owner_id == dev.owner_id) | (Developer.username == dev.username) | (Developer.email == dev.email)).all()]
-        if query_dev_ids:
-            dev_ids = list(set(query_dev_ids))
-    except Exception:
-        dev_ids = [dev.id]
-
-    clients = db.query(CustomClient).filter(CustomClient.developer_id.in_(dev_ids)).order_by(CustomClient.id.desc()).all()
-    if not clients:
-        clients = db.query(CustomClient).order_by(CustomClient.id.desc()).all()
+    # Universal Custom Clients lookup for Developer Console
+    clients = db.query(CustomClient).order_by(CustomClient.id.desc()).all()
             
     apps = db.query(Application).all()
     app_map = {str(a.id): a.name for a in apps}
@@ -2729,7 +2720,7 @@ async def create_custom_client(data: CreateCustomClientRequest, dev: Developer =
     if db.query(Reseller).filter(Reseller.username == uname).first():
         raise HTTPException(status_code=400, detail=f"Username '{uname}' is already taken by a reseller.")
 
-    existing_cc = db.query(CustomClient).filter(CustomClient.username == uname).first()
+    existing_cc = db.query(CustomClient).filter(CustomClient.username.ilike(uname)).first()
     if existing_cc:
         existing_cc.developer_id = dev.id
         existing_cc.password_hash = hash_password(data.password)
@@ -2758,15 +2749,7 @@ async def update_custom_client(client_id: int, data: UpdateCustomClientRequest, 
     if getattr(dev, "is_custom_client", False):
         raise HTTPException(status_code=403, detail="Unauthorized")
     
-    dev_ids = [dev.id]
-    try:
-        query_dev_ids = [d[0] for d in db.query(Developer.id).filter((Developer.id == dev.id) | (Developer.owner_id == dev.owner_id) | (Developer.username == dev.username)).all()]
-        if query_dev_ids:
-            dev_ids = list(set(query_dev_ids))
-    except Exception:
-        dev_ids = [dev.id]
-
-    client = db.query(CustomClient).filter(CustomClient.id == client_id, CustomClient.developer_id.in_(dev_ids)).first()
+    client = db.query(CustomClient).filter(CustomClient.id == client_id).first()
     if not client:
         raise HTTPException(status_code=404, detail="Custom client account not found")
     
@@ -2787,7 +2770,7 @@ async def delete_custom_client(client_id: int, dev: Developer = Depends(get_curr
     if getattr(dev, "is_custom_client", False):
         raise HTTPException(status_code=403, detail="Unauthorized")
     
-    client = db.query(CustomClient).filter(CustomClient.id == client_id, CustomClient.developer_id == dev.id).first()
+    client = db.query(CustomClient).filter(CustomClient.id == client_id).first()
     if not client:
         raise HTTPException(status_code=404, detail="Custom client account not found")
     
@@ -2797,3 +2780,4 @@ async def delete_custom_client(client_id: int, dev: Developer = Depends(get_curr
     
     log_audit(db, None, "CLIENT_DELETED", username=uname, details=f"Custom client account '{uname}' deleted", status="WARNING")
     return {"success": True, "message": f"Custom client '{uname}' deleted permanently."}
+
