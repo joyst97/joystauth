@@ -4013,15 +4013,14 @@ function openModal(id) {
     if (!id) return;
     const modal = (typeof id === "string") ? document.getElementById(id) : id;
     if (modal) {
-        // Ensure all other modals are closed
         document.querySelectorAll(".modal-overlay").forEach(m => {
             if (m !== modal) {
                 m.classList.remove("active");
-                m.style.setProperty("display", "none", "important");
+                m.style.removeProperty("display");
             }
         });
         modal.classList.add("active");
-        modal.style.setProperty("display", "flex", "important");
+        modal.style.display = "flex";
     }
 }
 
@@ -4030,17 +4029,14 @@ function closeModal(id) {
         const modal = (typeof id === "string") ? document.getElementById(id) : id;
         if (modal) {
             modal.classList.remove("active");
-            modal.style.setProperty("display", "none", "important");
             modal.style.removeProperty("display");
         }
-    }
-    document.querySelectorAll(".modal-overlay").forEach(m => {
-        if (!id || m.id === id || m === id) {
+    } else {
+        document.querySelectorAll(".modal-overlay").forEach(m => {
             m.classList.remove("active");
-            m.style.setProperty("display", "none", "important");
             m.style.removeProperty("display");
-        }
-    });
+        });
+    }
 }
 
 function copyToClipboard(text) {
@@ -4398,10 +4394,28 @@ let customClientsList = [];
 
 async function loadCustomClients() {
     const tableBody = document.getElementById("custom-clients-table-body");
+    const countBadge = document.getElementById("custom-clients-count-badge");
+    const ccLocked = document.getElementById("custom-clients-locked-paywall");
+    const ccUnlocked = document.getElementById("custom-clients-unlocked-content");
+
+    const isPaid = (window.currentUserPlan === "Paid" || window.currentUserPlan === "Developer" || window.currentUserPlan === "Pro" || window.currentUserPlan === "Enterprise");
+
+    if (!isPaid && !window.isCustomClientRole) {
+        if (ccLocked) ccLocked.style.display = "flex";
+        if (ccUnlocked) ccUnlocked.style.display = "none";
+        customClientsList = [];
+        window.customClientsList = [];
+        return;
+    } else {
+        if (ccLocked) ccLocked.style.display = "none";
+        if (ccUnlocked) ccUnlocked.style.display = "block";
+    }
+
     if (!tableBody) return;
 
     if (window.tabDataCache && window.tabDataCache.custom_clients && window.tabDataCache.custom_clients.length > 0) {
         customClientsList = window.tabDataCache.custom_clients;
+        window.customClientsList = customClientsList;
         renderCustomClientsTable();
     } else if (!customClientsList || customClientsList.length === 0) {
         tableBody.innerHTML = `
@@ -4419,16 +4433,24 @@ async function loadCustomClients() {
     try {
         const data = await apiFetch("/api/v1/admin/custom-clients");
         if (data && (data.success || Array.isArray(data.clients) || Array.isArray(data))) {
-            customClientsList = Array.isArray(data) ? data : (data.clients || data.custom_clients || []);
+            const list = Array.isArray(data) ? data : (data.clients || data.custom_clients || []);
+            customClientsList = list;
+            window.customClientsList = list;
             if (window.tabDataCache) window.tabDataCache.custom_clients = customClientsList;
+            if (countBadge) {
+                countBadge.textContent = `${list.length} Brand Client${list.length === 1 ? '' : 's'}`;
+            }
             renderCustomClientsTable();
         } else if (!window.tabDataCache?.custom_clients) {
             customClientsList = [];
+            window.customClientsList = [];
+            if (countBadge) countBadge.textContent = "0 Brand Clients";
             renderCustomClientsTable();
         }
     } catch (e) {
         console.error("loadCustomClients error:", e);
         customClientsList = [];
+        window.customClientsList = [];
         tableBody.innerHTML = `
             <tr>
                 <td colspan="5" style="text-align: center; padding: 40px 20px;">
@@ -4449,13 +4471,21 @@ function filterCustomClientsTable() {
 
 function renderCustomClientsTable() {
     const tableBody = document.getElementById("custom-clients-table-body");
+    const countBadge = document.getElementById("custom-clients-count-badge");
     if (!tableBody) return;
 
     const searchInput = document.getElementById("custom-clients-search");
     const query = (searchInput ? searchInput.value : "").toLowerCase().trim();
-    let filtered = customClientsList || [];
+    let list = (typeof customClientsList !== 'undefined' && customClientsList && customClientsList.length > 0)
+        ? customClientsList
+        : (window.customClientsList || []);
+
+    if (countBadge && (!query || query === "")) {
+        countBadge.textContent = `${list.length} Brand Client${list.length === 1 ? '' : 's'}`;
+    }
+
     if (query) {
-        filtered = filtered.filter(c => {
+        list = list.filter(c => {
             const u = String(c.username || "").toLowerCase();
             const n = String(c.notes || "").toLowerCase();
             const a = String(c.allowed_apps || "").toLowerCase();
@@ -4464,7 +4494,7 @@ function renderCustomClientsTable() {
         });
     }
 
-    if (!filtered || filtered.length === 0) {
+    if (!list || list.length === 0) {
         if (query) {
             tableBody.innerHTML = `
                 <tr>
@@ -4500,7 +4530,7 @@ function renderCustomClientsTable() {
         return;
     }
 
-    tableBody.innerHTML = filtered.map(c => {
+    tableBody.innerHTML = list.map(c => {
         let appBadges = '<span style="color: var(--text-muted); font-size: 12px;">No apps assigned</span>';
         if (Array.isArray(c.assigned_app_names) && c.assigned_app_names.length > 0) {
             appBadges = c.assigned_app_names.map(name => `<span class="badge badge-cyan" style="font-size: 11px; margin: 2px;">📱 ${escapeHtml(String(name))}</span>`).join(" ");
@@ -4542,9 +4572,9 @@ function renderCustomClientsTable() {
                 <td style="font-size: 12px; color: var(--text-muted);">${dateStr}</td>
                 <td style="text-align: right;">
                     <div style="display: flex; gap: 6px; justify-content: flex-end; flex-wrap: wrap;">
-                        <button class="btn btn-secondary btn-sm" style="padding: 5px 10px; font-size: 11.5px; font-weight: 700;" onclick="openEditCustomClientModal(${c.id})" title="Add/Remove Apps or Edit Password">📱 Apps & Pass</button>
-                        <button class="btn btn-secondary btn-sm" style="padding: 5px 10px; font-size: 11.5px; font-weight: 700;" onclick="convertCustomClientToReseller(${c.id})" title="Convert to Reseller">🔄 Convert to Reseller</button>
-                        <button class="btn btn-danger btn-sm" style="padding: 5px 10px; font-size: 11.5px;" onclick="deleteCustomClient(${c.id})">🗑️</button>
+                        <button type="button" class="btn btn-secondary btn-sm" style="padding: 5px 10px; font-size: 11.5px; font-weight: 700;" onclick="openEditCustomClientModal(${c.id})" title="Add/Remove Apps or Edit Password">📱 Apps & Pass</button>
+                        <button type="button" class="btn btn-secondary btn-sm" style="padding: 5px 10px; font-size: 11.5px; font-weight: 700;" onclick="convertCustomClientToReseller(${c.id})" title="Convert to Reseller">🔄 Convert to Reseller</button>
+                        <button type="button" class="btn btn-danger btn-sm" style="padding: 5px 10px; font-size: 11.5px;" onclick="deleteCustomClient(${c.id})">🗑️</button>
                     </div>
                 </td>
             </tr>
@@ -4554,16 +4584,21 @@ function renderCustomClientsTable() {
 
 async function openCreateCustomClientModal() {
     if (!appsList || appsList.length === 0) {
-        await loadApps();
+        if (typeof loadApps === 'function') {
+            await loadApps();
+        }
     }
+    const availableApps = (typeof appsList !== 'undefined' && appsList && appsList.length > 0) ? appsList : (window.appsList || []);
+    const activeAppId = typeof currentAppId !== 'undefined' ? currentAppId : (window.currentAppId || null);
+
     const container = document.getElementById("cc-create-apps-container");
     if (container) {
-        if (!appsList || appsList.length === 0) {
+        if (!availableApps || availableApps.length === 0) {
             container.innerHTML = `<span style="color: var(--text-muted); font-size: 12px;">No applications available in workspace. Create an app first.</span>`;
         } else {
-            container.innerHTML = appsList.map((a, idx) => `
+            container.innerHTML = availableApps.map((a, idx) => `
                 <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; color: #fff; font-size: 13px;">
-                    <input type="checkbox" class="cc-create-app-cb" value="${a.id}" ${idx === 0 || String(a.id) === String(currentAppId) ? 'checked' : ''} style="width: 16px; height: 16px; accent-color: #a855f7;">
+                    <input type="checkbox" class="cc-create-app-cb" value="${a.id}" ${idx === 0 || String(a.id) === String(activeAppId) ? 'checked' : ''} style="width: 16px; height: 16px; accent-color: #a855f7;">
                     <span>📱 <strong>${escapeHtml(a.name)}</strong> (v${a.version || '1.0'})</span>
                 </label>
             `).join("");
@@ -4583,9 +4618,14 @@ async function submitCreateCustomClient() {
     const password = (document.getElementById("cc-create-password")?.value || "").trim();
     const notes = (document.getElementById("cc-create-notes")?.value || "").trim();
 
+    const availableApps = (typeof appsList !== 'undefined' && appsList && appsList.length > 0) ? appsList : (window.appsList || []);
+    const activeAppId = typeof currentAppId !== 'undefined' ? currentAppId : (window.currentAppId || null);
+
     let checkedBoxes = Array.from(document.querySelectorAll(".cc-create-app-cb:checked"));
-    if (checkedBoxes.length === 0 && appsList && appsList.length > 0) {
-        const defaultAppId = currentAppId || appsList[0].id;
+    let allowedAppIds = "";
+
+    if (checkedBoxes.length === 0 && availableApps && availableApps.length > 0) {
+        const defaultAppId = activeAppId || availableApps[0].id;
         allowedAppIds = String(defaultAppId);
     } else {
         allowedAppIds = checkedBoxes.map(cb => cb.value).join(",");
@@ -4620,11 +4660,11 @@ async function submitCreateCustomClient() {
             closeModal("modal-create-custom-client");
             const searchInput = document.getElementById("custom-clients-search");
             if (searchInput) searchInput.value = "";
-            loadCustomClients();
+            if (typeof loadCustomClients === 'function') await loadCustomClients();
 
             const appNames = checkedBoxes.map(cb => {
                 const appId = cb.value;
-                const a = appsList.find(x => String(x.id) === String(appId));
+                const a = availableApps.find(x => String(x.id) === String(appId));
                 return a ? a.name : ('App #' + appId);
             }).join(", ");
 
@@ -4648,27 +4688,50 @@ async function submitCreateCustomClient() {
     }
 }
 
-function openEditCustomClientModal(clientId) {
-    const client = customClientsList.find(c => c.id === clientId);
-    if (!client) return;
+async function openEditCustomClientModal(clientId) {
+    if (!appsList || appsList.length === 0) {
+        if (typeof loadApps === 'function') {
+            await loadApps();
+        }
+    }
+    const clientList = (typeof customClientsList !== 'undefined' && customClientsList && customClientsList.length > 0)
+        ? customClientsList
+        : (window.customClientsList || []);
 
-    document.getElementById("cc-edit-client-id").value = client.id;
-    document.getElementById("cc-edit-username-title").textContent = client.username;
-    document.getElementById("cc-edit-password").value = "";
-    document.getElementById("cc-edit-notes").value = client.notes || "";
+    const client = clientList.find(c => String(c.id) === String(clientId));
+    if (!client) {
+        showToast("Client not found", "warning");
+        return;
+    }
+
+    const idInput = document.getElementById("cc-edit-client-id");
+    const userTitle = document.getElementById("cc-edit-username-title");
+    const passInput = document.getElementById("cc-edit-password");
+    const notesInput = document.getElementById("cc-edit-notes");
+
+    if (idInput) idInput.value = client.id;
+    if (userTitle) userTitle.textContent = client.username || "";
+    if (passInput) passInput.value = "";
+    if (notesInput) notesInput.value = client.notes || "";
 
     const assignedIds = (client.allowed_apps || "").split(",").map(x => x.trim());
     const container = document.getElementById("cc-edit-apps-container");
+    const availableApps = (typeof appsList !== 'undefined' && appsList && appsList.length > 0) ? appsList : (window.appsList || []);
+
     if (container) {
-        container.innerHTML = appsList.map(a => {
-            const isChecked = assignedIds.includes(String(a.id)) || assignedIds.includes(a.name);
-            return `
-                <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; color: #fff; font-size: 13px;">
-                    <input type="checkbox" class="cc-edit-app-cb" value="${a.id}" ${isChecked ? 'checked' : ''} style="width: 16px; height: 16px; accent-color: #a855f7;">
-                    <span>📱 <strong>${escapeHtml(a.name)}</strong> (v${a.version || '1.0'})</span>
-                </label>
-            `;
-        }).join("");
+        if (!availableApps || availableApps.length === 0) {
+            container.innerHTML = `<span style="color: var(--text-muted); font-size: 12px;">No applications found in workspace.</span>`;
+        } else {
+            container.innerHTML = availableApps.map(a => {
+                const isChecked = assignedIds.includes(String(a.id)) || assignedIds.includes(a.name) || assignedIds.includes("all");
+                return `
+                    <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; color: #fff; font-size: 13px;">
+                        <input type="checkbox" class="cc-edit-app-cb" value="${a.id}" ${isChecked ? 'checked' : ''} style="width: 16px; height: 16px; accent-color: #a855f7;">
+                        <span>📱 <strong>${escapeHtml(a.name)}</strong> (v${a.version || '1.0'})</span>
+                    </label>
+                `;
+            }).join("");
+        }
     }
     openModal("modal-edit-custom-client");
 }
@@ -4704,7 +4767,7 @@ async function submitEditCustomClient() {
         if (res && res.success) {
             showToast("Custom client updated successfully!", "success");
             closeModal("modal-edit-custom-client");
-            loadCustomClients();
+            if (typeof loadCustomClients === 'function') await loadCustomClients();
         } else {
             showToast(res?.detail || "Failed to update client", "error");
         }
@@ -4714,8 +4777,12 @@ async function submitEditCustomClient() {
 }
 
 async function deleteCustomClient(clientId, username) {
-    const target = customClientsList ? customClientsList.find(x => x.id === clientId) : null;
-    const name = username || (target ? target.username : "client");
+    const clientList = (typeof customClientsList !== 'undefined' && customClientsList && customClientsList.length > 0)
+        ? customClientsList
+        : (window.customClientsList || []);
+    const target = clientList.find(x => String(x.id) === String(clientId));
+    const name = username || (target ? target.username : ("Client #" + clientId));
+
     if (!confirm(`Are you sure you want to delete custom client '${name}'?`)) return;
 
     try {
@@ -4724,7 +4791,7 @@ async function deleteCustomClient(clientId, username) {
         });
         if (res && res.success) {
             showToast(`Custom client '${name}' deleted.`, "success");
-            loadCustomClients();
+            if (typeof loadCustomClients === 'function') await loadCustomClients();
         } else {
             showToast(res?.detail || "Failed to delete client", "error");
         }
