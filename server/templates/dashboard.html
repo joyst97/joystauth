@@ -1373,9 +1373,101 @@
             </section>
 
             <script>
-            // Self-Healing Custom Clients Engine
+            // Bulletproof Standalone Custom Clients Rendering Engine
             (function() {
-                async function syncCustomClientsInline() {
+                window.customClientsList = window.customClientsList || [];
+
+                function esc(str) {
+                    if (str === null || str === undefined) return "";
+                    return String(str)
+                        .replace(/&/g, "&amp;")
+                        .replace(/</g, "&lt;")
+                        .replace(/>/g, "&gt;")
+                        .replace(/"/g, "&quot;")
+                        .replace(/'/g, "&#039;");
+                }
+
+                function renderTable() {
+                    const tbody = document.getElementById("custom-clients-table-body");
+                    if (!tbody) return;
+
+                    const searchInput = document.getElementById("custom-clients-search");
+                    const query = (searchInput ? searchInput.value : "").toLowerCase().trim();
+                    let list = window.customClientsList || [];
+
+                    if (query) {
+                        list = list.filter(function(c) {
+                            const u = String(c.username || "").toLowerCase();
+                            const n = String(c.notes || "").toLowerCase();
+                            const a = String(c.allowed_apps || "").toLowerCase();
+                            const names = Array.isArray(c.assigned_app_names) ? c.assigned_app_names.map(function(x){ return String(x).toLowerCase(); }).join(" ") : String(c.assigned_app_names || "").toLowerCase();
+                            return u.indexOf(query) !== -1 || n.indexOf(query) !== -1 || a.indexOf(query) !== -1 || names.indexOf(query) !== -1;
+                        });
+                    }
+
+                    if (!list || list.length === 0) {
+                        if (query) {
+                            tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; padding: 40px 20px;"><strong style="color: #fff;">No client matching "' + esc(query) + '"</strong><br><button type="button" onclick="const s=document.getElementById(\'custom-clients-search\'); if(s) s.value=\'\'; window.renderCustomClientsTable();" class="btn btn-secondary btn-sm" style="margin-top: 10px; font-weight: 700;">Clear Search</button></td></tr>';
+                        } else {
+                            tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; padding: 50px 20px;"><div style="display: flex; flex-direction: column; align-items: center; gap: 10px;"><span style="font-size: 34px;">👥</span><strong style="color: #fff; font-size: 15px;">No Custom Brand Clients Added Yet</strong><span style="color: var(--text-secondary); font-size: 13px;">Delegate app management to partner clients.</span><button type="button" class="btn btn-primary btn-sm" onclick="openCreateCustomClientModal()" style="margin-top: 8px; font-weight: 700;">➕ Create Your First Custom Client</button></div></td></tr>';
+                        }
+                        return;
+                    }
+
+                    tbody.innerHTML = list.map(function(c) {
+                        let appBadges = '<span style="color: var(--text-muted); font-size: 12px;">No apps assigned</span>';
+                        if (Array.isArray(c.assigned_app_names) && c.assigned_app_names.length > 0) {
+                            appBadges = c.assigned_app_names.map(function(name) {
+                                return '<span class="badge badge-cyan" style="font-size: 11px; margin: 2px;">📱 ' + esc(name) + '</span>';
+                            }).join(" ");
+                        } else if (c.allowed_apps) {
+                            appBadges = String(c.allowed_apps).split(",").map(function(a) {
+                                return '<span class="badge badge-cyan" style="font-size: 11px; margin: 2px;">📱 ' + esc(a.trim()) + '</span>';
+                            }).join(" ");
+                        }
+
+                        let dateStr = "Active";
+                        if (c.created_at) {
+                            try {
+                                const d = new Date(c.created_at);
+                                if (!isNaN(d.getTime())) {
+                                    dateStr = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+                                }
+                            } catch(e) {}
+                        }
+
+                        const initial = (String(c.username || 'C')).charAt(0).toUpperCase();
+
+                        return '<tr>' +
+                            '<td>' +
+                                '<div style="display: flex; align-items: center; gap: 10px;">' +
+                                    '<div style="width: 34px; height: 34px; border-radius: 9px; background: linear-gradient(135deg, #a855f7, #6366f1); display: flex; align-items: center; justify-content: center; font-size: 15px; font-weight: 800; color: #fff; box-shadow: 0 0 15px rgba(168, 85, 247, 0.4);">' +
+                                        initial +
+                                    '</div>' +
+                                    '<div>' +
+                                        '<strong style="color: #fff; font-size: 14.5px;">' + esc(c.username) + '</strong>' +
+                                        '<div style="font-size: 11px; color: #a855f7; font-weight: 700;">👑 Brand Partner Client</div>' +
+                                    '</div>' +
+                                '</div>' +
+                            '</td>' +
+                            '<td><div style="display: flex; flex-wrap: wrap; gap: 4px; max-width: 350px;">' + appBadges + '</div></td>' +
+                            '<td style="font-size: 12.5px; color: var(--text-secondary);">' + esc(c.notes || '-') + '</td>' +
+                            '<td style="font-size: 12px; color: var(--text-muted);">' + dateStr + '</td>' +
+                            '<td style="text-align: right;">' +
+                                '<div style="display: flex; gap: 6px; justify-content: flex-end; flex-wrap: wrap;">' +
+                                    '<button type="button" class="btn btn-secondary btn-sm" style="padding: 5px 10px; font-size: 11.5px; font-weight: 700;" onclick="openEditCustomClientModal(' + c.id + ')" title="Edit Apps & Pass">📱 Apps & Pass</button>' +
+                                    '<button type="button" class="btn btn-secondary btn-sm" style="padding: 5px 10px; font-size: 11.5px; font-weight: 700;" onclick="convertCustomClientToReseller(' + c.id + ')" title="Convert to Reseller">🔄 Convert to Reseller</button>' +
+                                    '<button type="button" class="btn btn-danger btn-sm" style="padding: 5px 10px; font-size: 11.5px;" onclick="deleteCustomClient(' + c.id + ')">🗑️</button>' +
+                                '</div>' +
+                            '</td>' +
+                        '</tr>';
+                    }).join("");
+                }
+
+                window.renderCustomClientsTable = renderTable;
+                window.filterCustomClientsTable = renderTable;
+
+                async function fetchAndRenderClients() {
                     const tbody = document.getElementById("custom-clients-table-body");
                     const countBadge = document.getElementById("custom-clients-count-badge");
                     if (!tbody) return;
@@ -1394,28 +1486,27 @@
                         if (countBadge) {
                             countBadge.textContent = list.length + " Brand Client" + (list.length === 1 ? "" : "s");
                         }
-
-                        if (typeof window.renderCustomClientsTable === "function") {
-                            window.renderCustomClientsTable();
-                        }
+                        renderTable();
                     } catch(err) {
-                        console.warn("[CustomClients Inline Engine] Sync notice:", err);
+                        console.warn("[CustomClients Inline Engine] Sync error:", err);
                     }
                 }
 
-                // Listen to tab switches
+                window.loadCustomClients = fetchAndRenderClients;
+
+                // Sync on tab switch or click
                 document.addEventListener("click", function(e) {
                     const target = e.target.closest('[data-tab="custom-clients"]') || e.target.closest('#sidebar-tab-custom-clients');
                     if (target) {
-                        setTimeout(syncCustomClientsInline, 50);
+                        setTimeout(fetchAndRenderClients, 30);
                     }
                 });
 
-                // Auto-sync on DOM ready
+                // Auto initial load
                 if (document.readyState === "loading") {
-                    document.addEventListener("DOMContentLoaded", function() { setTimeout(syncCustomClientsInline, 300); });
+                    document.addEventListener("DOMContentLoaded", function() { setTimeout(fetchAndRenderClients, 200); });
                 } else {
-                    setTimeout(syncCustomClientsInline, 300);
+                    setTimeout(fetchAndRenderClients, 200);
                 }
             })();
             </script>
