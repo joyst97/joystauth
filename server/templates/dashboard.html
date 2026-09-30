@@ -780,7 +780,8 @@
                                 <th>Level / Rank</th>
                                 <th>Duration</th>
                                 <th>Status</th>
-                                <th>Used By</th>
+                                <th>Used By & Last Login</th>
+                                <th>HWID Lock</th>
                                 <th>Actions</th>
                             </tr>
                         </thead>
@@ -858,8 +859,8 @@
                                 <th style="width: 40px; text-align: center;">
                                     <input type="checkbox" id="users-select-all-chk" onchange="toggleSelectAllUsers(this)" style="width: 16px; height: 16px; accent-color: #ff2a5f; cursor: pointer;">
                                 </th>
-                                <th>User / IP Address</th>
-                                <th>HWID Status</th>
+                                <th>User / IP / Last Login</th>
+                                <th>HWID & Lock Mode</th>
                                 <th>Rank (Level)</th>
                                 <th>Time Left / Expiry</th>
                                 <th>Status</th>
@@ -1861,6 +1862,15 @@
                     <label>Hardware ID (Optional - Leave blank to lock on 1st login)</label>
                     <input type="text" id="manual-user-hwid" class="form-control mono" placeholder="Auto-binds on first PC">
                 </div>
+                <div class="form-group" style="display: flex; align-items: center; justify-content: space-between; background: rgba(0,0,0,0.35); border: 1px solid var(--border-glass); padding: 12px 14px; border-radius: 10px; margin-top: 10px;">
+                    <div>
+                        <strong style="color: #fff; font-size: 13.5px; display: flex; align-items: center; gap: 6px;">🔒 Enforce HWID Lock</strong>
+                        <div style="font-size: 11px; color: var(--text-muted); margin-top: 2px;">Bind strictly to 1 PC. Uncheck to allow login on any PC (Multi-Device).</div>
+                    </div>
+                    <label style="cursor: pointer; display: flex; align-items: center; gap: 8px; margin: 0;">
+                        <input type="checkbox" id="manual-user-hwid-lock" checked style="width: 18px; height: 18px; accent-color: #ff2a5f; cursor: pointer;">
+                    </label>
+                </div>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary btn-sm" data-close-modal>Cancel</button>
@@ -1897,6 +1907,15 @@
                     <label>Notes / Batch Tag (Optional)</label>
                     <input type="text" id="gen-notes" class="form-control" placeholder="e.g. Reseller Batch 1">
                 </div>
+                <div class="form-group" style="display: flex; align-items: center; justify-content: space-between; background: rgba(0,0,0,0.35); border: 1px solid var(--border-glass); padding: 12px 14px; border-radius: 10px; margin-top: 10px;">
+                    <div>
+                        <strong style="color: #fff; font-size: 13.5px; display: flex; align-items: center; gap: 6px;">🔒 Enforce HWID Lock on Activation</strong>
+                        <div style="font-size: 11px; color: var(--text-muted); margin-top: 2px;">Locks the key to the first PC that logs in.</div>
+                    </div>
+                    <label style="cursor: pointer; display: flex; align-items: center; gap: 8px; margin: 0;">
+                        <input type="checkbox" id="gen-hwid-lock" checked style="width: 18px; height: 18px; accent-color: #ff2a5f; cursor: pointer;">
+                    </label>
+                </div>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary btn-sm" data-close-modal>Cancel</button>
@@ -1904,6 +1923,7 @@
             </div>
         </div>
     </div>
+
 
     <!-- View Generated Keys Modal -->
     <div id="modal-view-generated" class="modal-overlay">

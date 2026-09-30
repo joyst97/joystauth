@@ -64,6 +64,27 @@ function formatDate(dateStr) {
     }
 }
 
+function formatRelativeTime(dateStr) {
+    if (!dateStr) return "Never";
+    try {
+        const d = new Date(dateStr);
+        if (isNaN(d.getTime())) return String(dateStr);
+        const diffMs = Date.now() - d.getTime();
+        if (diffMs < 0) return "Just now";
+        const diffSecs = Math.floor(diffMs / 1000);
+        if (diffSecs < 60) return "Just now";
+        const diffMins = Math.floor(diffSecs / 60);
+        if (diffMins < 60) return `${diffMins}m ago`;
+        const diffHours = Math.floor(diffMins / 60);
+        if (diffHours < 24) return `${diffHours}h ago`;
+        const diffDays = Math.floor(diffHours / 24);
+        if (diffDays < 30) return `${diffDays}d ago`;
+        return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+    } catch (e) {
+        return String(dateStr);
+    }
+}
+
 function showToast(messageOrOpts, typeArg = "info") {
     let message = "";
     let type = typeArg;
@@ -1057,7 +1078,7 @@ function renderLicensesData(licenses) {
     const tbody = document.getElementById("licenses-table-body");
     if (!tbody) return;
     if (!licenses || licenses.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: var(--text-muted); padding: 40px;">No license keys found. Click "+ Generate Keys" to create license keys.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: var(--text-muted); padding: 40px;">No license keys found. Click "+ Generate Keys" to create license keys.</td></tr>`;
         return;
     }
     tbody.innerHTML = licenses.map(lic => {
@@ -1065,6 +1086,21 @@ function renderLicensesData(licenses) {
         if (lic.status === "used") statusBadge = `<span class="badge badge-purple"><span class="badge-dot"></span> Used</span>`;
         if (lic.status === "paused") statusBadge = `<span class="badge badge-warning"><span class="badge-dot"></span> Paused</span>`;
         if (lic.status === "revoked") statusBadge = `<span class="badge badge-danger"><span class="badge-dot"></span> Revoked</span>`;
+
+        let hwidLockCell = `<span class="badge badge-secondary" style="font-size: 10px;">Locks on First Login</span>`;
+        if (lic.status === "used" || lic.used_by || lic.user_id) {
+            const isLocked = lic.hwid_lock_override !== false;
+            hwidLockCell = `
+                <div style="display: flex; flex-direction: column; gap: 4px; align-items: flex-start;">
+                    <button class="btn btn-secondary btn-sm" onclick="toggleLicenseHwidLock(${lic.id})" title="${isLocked ? 'Click to Unlock (Allow Multi-PC)' : 'Click to Lock strictly to 1 PC'}" style="font-size: 11px; padding: 3px 8px; ${isLocked ? 'color: #ff4d79; border-color: rgba(255, 77, 121, 0.4);' : 'color: #10b981; border-color: rgba(16, 185, 129, 0.4);'}">
+                        ${isLocked ? '🔒 Locked' : '🔓 Multi-PC (Unlocked)'}
+                    </button>
+                    ${lic.hwid ? `<button class="btn btn-secondary btn-sm" onclick="resetLicenseHwid(${lic.id}, '${lic.key}')" title="Reset HWID" style="font-size: 10px; padding: 2px 6px;">🔄 Reset HWID</button>` : '<span style="font-size: 10px; color: var(--text-muted);">No HWID bound</span>'}
+                </div>
+            `;
+        }
+
+        const lastLoginDisplay = lic.last_login ? formatRelativeTime(lic.last_login) : (lic.used_at ? formatRelativeTime(lic.used_at) : 'Never');
 
         return `
             <tr>
@@ -1077,7 +1113,17 @@ function renderLicensesData(licenses) {
                 <td><span class="badge badge-cyan">${lic.level} (Rank ${lic.level_rank})</span></td>
                 <td>${lic.duration_days === -1 || lic.duration_days > 90000 ? '<strong style="color: #10b981;">Lifetime</strong>' : `${lic.duration_days} Days`}</td>
                 <td>${statusBadge}</td>
-                <td>${lic.used_by ? `<strong style="color: #fff;">${lic.used_by}</strong>` : '<span style="color: var(--text-muted);">-</span>'}</td>
+                <td>
+                    ${lic.used_by ? `
+                        <div>
+                            <strong style="color: #fff; font-size: 13.5px;">${lic.used_by}</strong>
+                            <div style="font-size: 11px; color: #38bdf8; margin-top: 2px;">
+                                <span style="color: var(--text-muted);">Last Login:</span> <span style="color: #e2e8f0; font-weight: 600;">${lastLoginDisplay}</span>
+                            </div>
+                        </div>
+                    ` : '<span style="color: var(--text-muted);">-</span>'}
+                </td>
+                <td>${hwidLockCell}</td>
                 <td>
                     <div style="display: flex; gap: 6px;">
                         <button class="btn btn-secondary btn-sm" onclick="toggleLicensePause(${lic.id})" title="${lic.status === 'paused' ? 'Unpause' : 'Pause'}">
@@ -1096,7 +1142,7 @@ async function loadLicenses() {
     if (!tbody) return;
 
     if (!currentAppId) {
-        tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: var(--text-muted); padding: 40px;">No application selected. Create an application first.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: var(--text-muted); padding: 40px;">No application selected. Create an application first.</td></tr>`;
         return;
     }
 
@@ -1105,7 +1151,7 @@ async function loadLicenses() {
     if (cached && cached.length > 0) {
         renderLicensesData(cached);
     } else if (!tbody.children.length || tbody.innerHTML.includes("No license keys found")) {
-        tbody.innerHTML = getTableSkeletonHtml(6, "Loading License Keys...");
+        tbody.innerHTML = getTableSkeletonHtml(7, "Loading License Keys...");
     }
 
     const search = document.getElementById("license-search-input")?.value || "";
@@ -1135,6 +1181,7 @@ async function generateKeysSubmit() {
     const level = document.getElementById("gen-level").value || "default";
     const mask = document.getElementById("gen-mask").value || "JOYST-XXXX-XXXX-XXXX";
     const notes = document.getElementById("gen-notes").value || "";
+    const hwidLock = document.getElementById("gen-hwid-lock") ? document.getElementById("gen-hwid-lock").checked : true;
 
     const payload = {
         app_id: currentAppId,
@@ -1143,7 +1190,8 @@ async function generateKeysSubmit() {
         level: level,
         level_rank: 1,
         mask: mask,
-        notes: notes
+        notes: notes,
+        hwid_lock: hwidLock
     };
 
     const genBtn = document.querySelector("#modal-generate-keys .btn-primary") || document.querySelector("[onclick='generateKeysSubmit()']");
@@ -1168,53 +1216,51 @@ async function generateKeysSubmit() {
                 const appName = appsList.find(a => a.id === currentAppId)?.name || "Joyst Auth";
                 const nowStr = new Date().toLocaleString();
                 const durStr = duration > 90000 ? "Lifetime" : `${duration} Days`;
-                const keysRaw = res.keys.join("\n");
 
-                const isSameKey = (username === password) || (res && res.is_same_key);
+                if (res.keys.length === 1) {
+                    const key = res.keys[0];
+                    const rawDiscordText = `**JOYST CORPORATION**\n` +
+                        `**${appName.toUpperCase()} LICENSE KEY**\n\n` +
+                        `• **Key:** \`${key}\`\n` +
+                        `• **Duration:** \`${durStr}\`\n` +
+                        `• **Rank Tier:** \`${level}\`\n` +
+                        `• **HWID Lock:** \`${hwidLock ? 'Enforced' : 'Disabled (Multi-PC)'}\`\n` +
+                        `• **Created At:** \`${nowStr}\`\n\n` +
+                        `*Thank you for choosing JOYST CORPORATION!*`;
 
-            if (isSameKey) {
-                const rawDiscordText = `**JOYST CORPORATION**\n` +
-                    `**${appName.toUpperCase()} LICENSE KEY**\n\n` +
-                    `• **Key:** \`${username}\`\n` +
-                    `• **Duration:** \`${days > 90000 ? 'Lifetime' : days + ' Days'}\`\n` +
-                    `• **Expiry Date:** \`${expStr}\`\n` +
-                    `• **Rank Tier:** \`${tier}\`\n\n` +
-                    `*💡 Note: You can sign in using this Key directly or using it as Username/Password!*`;
+                    const formattedHtml = `• <strong>Key:</strong> <code style="background:#1e1f22; padding:2px 6px; border-radius:4px; color:#ff4d79; font-weight:800;">${escapeHtml(key)}</code><br>` +
+                        `• <strong>Duration:</strong> <code style="background:#1e1f22; padding:2px 6px; border-radius:4px; color:#10b981;">${durStr}</code><br>` +
+                        `• <strong>Rank Tier:</strong> <code style="background:#1e1f22; padding:2px 6px; border-radius:4px; color:#38bdf8;">${escapeHtml(level)}</code><br>` +
+                        `• <strong>HWID Lock:</strong> <code style="background:#1e1f22; padding:2px 6px; border-radius:4px; color:${hwidLock ? '#ff4d79' : '#10b981'};">${hwidLock ? '🔒 Enforced' : '🔓 Multi-PC (No Lock)'}</code><br>` +
+                        `• <strong>Created At:</strong> <code style="background:#1e1f22; padding:2px 6px; border-radius:4px;">${nowStr}</code>`;
 
-                const formattedHtml = `• <strong>Key:</strong> <code style="background:#1e1f22; padding:2px 6px; border-radius:4px; color:#ff4d79; font-weight:800;">${escapeHtml(username)}</code><br>` +
-                    `• <strong>Duration:</strong> <code style="background:#1e1f22; padding:2px 6px; border-radius:4px; color:#10b981;">${days > 90000 ? 'Lifetime' : days + ' Days'}</code><br>` +
-                    `• <strong>Expiry Date:</strong> <code style="background:#1e1f22; padding:2px 6px; border-radius:4px;">${expStr}</code><br>` +
-                    `• <strong>Rank Tier:</strong> <code style="background:#1e1f22; padding:2px 6px; border-radius:4px; color:#38bdf8;">${escapeHtml(tier)}</code>`;
+                    showDiscordOutputModal({
+                        header: `JOYST CORPORATION`,
+                        title: `${appName.toUpperCase()} LICENSE KEY`,
+                        rawText: rawDiscordText,
+                        formattedHtml: formattedHtml
+                    });
+                } else {
+                    const rawDiscordText = `**JOYST CORPORATION**\n` +
+                        `**${appName.toUpperCase()} LICENSE KEYS (${res.keys.length})**\n\n` +
+                        res.keys.map(k => `• \`${k}\``).join("\n") +
+                        `\n\n• **Duration:** \`${durStr}\`\n• **Rank Tier:** \`${level}\`\n• **HWID Lock:** \`${hwidLock ? 'Enforced' : 'Disabled (Multi-PC)'}\`\n• **Created At:** \`${nowStr}\``;
 
-                showDiscordOutputModal({
-                    header: `JOYST CORPORATION`,
-                    title: `${appName.toUpperCase()} LICENSE KEY`,
-                    rawText: rawDiscordText,
-                    formattedHtml: formattedHtml
-                });
-                return;
-            }
+                    const formattedHtml = `• <strong>Keys Generated:</strong> <span class="badge badge-success">${res.keys.length} Keys</span><br>` +
+                        `• <strong>Duration:</strong> <code style="background:#1e1f22; padding:2px 6px; border-radius:4px; color:#10b981;">${durStr}</code><br>` +
+                        `• <strong>Rank Tier:</strong> <code style="background:#1e1f22; padding:2px 6px; border-radius:4px; color:#38bdf8;">${escapeHtml(level)}</code><br>` +
+                        `• <strong>HWID Lock:</strong> <code style="background:#1e1f22; padding:2px 6px; border-radius:4px; color:${hwidLock ? '#ff4d79' : '#10b981'};">${hwidLock ? '🔒 Enforced' : '🔓 Multi-PC (No Lock)'}</code><br>` +
+                        `<div style="max-height: 160px; overflow-y: auto; background: #111; padding: 10px; border-radius: 6px; margin-top: 8px; font-family: monospace; font-size: 12px; color: #fff;">` +
+                        res.keys.map(k => escapeHtml(k)).join("<br>") +
+                        `</div>`;
 
-            const rawDiscordText = `**JOYST CORPORATION**\n` +
-                `**${appName.toUpperCase()} REGISTRATION INFO**\n\n` +
-                `• **Username:** \`${username}\`\n` +
-                `• **Password:** \`${password}\`\n` +
-                `• **Duration:** \`${days} Days\`\n` +
-                `• **Expiry Date:** \`${expStr}\`\n` +
-                `• **Created At:** \`${nowStr}\`\n\n` +
-                `*Thank you for choosing JOYST CORPORATION!*`;
-
-            const formattedHtml = `• <strong>Username:</strong> <code style="background:#1e1f22; padding:2px 6px; border-radius:4px; color:#fff;">${escapeHtml(username)}</code><br>` +
-                `• <strong>Password:</strong> <code style="background:#1e1f22; padding:2px 6px; border-radius:4px; color:#38bdf8;">${escapeHtml(password)}</code><br>` +
-                `• <strong>Duration:</strong> <code style="background:#1e1f22; padding:2px 6px; border-radius:4px; color:#10b981;">${days} Days</code><br>` +
-                `• <strong>Expiry Date:</strong> <code style="background:#1e1f22; padding:2px 6px; border-radius:4px;">${expStr}</code><br>` +
-                `• <strong>Created At:</strong> <code style="background:#1e1f22; padding:2px 6px; border-radius:4px;">${nowStr}</code>`;
-showDiscordOutputModal({
-                    header: `JOYST CORPORATION`,
-                    title: `${appName.toUpperCase()} LICENSE KEYS`,
-                    rawText: rawDiscordText,
-                    formattedHtml: formattedHtml
-                });
+                    showDiscordOutputModal({
+                        header: `JOYST CORPORATION`,
+                        title: `${appName.toUpperCase()} LICENSE KEYS`,
+                        rawText: rawDiscordText,
+                        formattedHtml: formattedHtml
+                    });
+                }
             }
         } else {
             showToast(res?.detail || "Failed to generate keys", "error");
@@ -1336,12 +1382,19 @@ function filterUsersTable() {
     }
 
     tbody.innerHTML = filtered.map(u => {
-        let hwidStatus = `<span class="badge badge-success"><span class="badge-dot"></span> Locked</span>`;
-        if (!u.hwid) hwidStatus = `<span class="badge badge-warning"><span class="badge-dot"></span> Open (Unbound)</span>`;
+        const isMultiPc = u.hwid_lock_override === false;
+        let hwidBadge = `<span class="badge badge-success"><span class="badge-dot"></span> 🔒 Locked</span>`;
+        if (isMultiPc) {
+            hwidBadge = `<span class="badge badge-purple" title="Multi-PC Login Allowed (HWID Lock Disabled)"><span class="badge-dot"></span> 🔓 Multi-PC</span>`;
+        } else if (!u.hwid) {
+            hwidBadge = `<span class="badge badge-warning" title="HWID Empty / Reset"><span class="badge-dot"></span> ⏳ Unbound</span>`;
+        }
 
         let banBadge = u.is_banned 
             ? `<span class="badge badge-danger"><span class="badge-dot"></span> Banned</span>` 
             : (u.is_expired ? `<span class="badge badge-warning"><span class="badge-dot"></span> Expired</span>` : `<span class="badge badge-success"><span class="badge-dot"></span> Active</span>`);
+
+        const lastLoginFormatted = u.last_login ? formatRelativeTime(u.last_login) : 'Never';
 
         return `
             <tr>
@@ -1350,12 +1403,18 @@ function filterUsersTable() {
                 </td>
                 <td>
                     <strong style="color: #fff; font-size: 14px;">${u.username}</strong>
-                    <div style="font-size: 11px; color: var(--text-muted);">IP: <span style="color: #38bdf8;">${u.last_ip || u.registered_ip || 'N/A'}</span></div>
+                    <div style="font-size: 11px; color: var(--text-muted); margin-top: 2px;">IP: <span style="color: #38bdf8;">${u.last_ip || u.registered_ip || 'N/A'}</span></div>
+                    <div style="font-size: 11px; color: #a78bfa; margin-top: 1px;"><span style="color: var(--text-muted);">Last Login:</span> <span style="color: #e2e8f0; font-weight: 600;">${lastLoginFormatted}</span></div>
                 </td>
                 <td>
-                    <div style="display: flex; flex-direction: column; gap: 4px;">
-                        ${hwidStatus}
-                        <span class="mono" style="font-size: 10.5px; color: var(--text-muted); max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${u.hwid || 'Will bind on login'}</span>
+                    <div style="display: flex; flex-direction: column; gap: 4px; align-items: flex-start;">
+                        ${hwidBadge}
+                        <span class="mono" style="font-size: 10.5px; color: var(--text-muted); max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${u.hwid || (isMultiPc ? 'Multi-PC Enabled' : 'Will bind on login')}">
+                            ${u.hwid || (isMultiPc ? 'Multi-PC Enabled' : 'Will bind on login')}
+                        </span>
+                        <button class="btn btn-secondary btn-sm" style="font-size: 10.5px; padding: 2px 7px; margin-top: 2px; ${isMultiPc ? 'color: #ff4d79;' : 'color: #10b981;'}" onclick="toggleUserHwidLock(${u.id}, '${u.username}')" title="Toggle HWID Lock for this specific user">
+                            ${isMultiPc ? '🔒 Force HWID Lock' : '🔓 Allow Multi-PC'}
+                        </button>
                     </div>
                 </td>
                 <td><span class="badge badge-purple">${u.subscription} (Lv.${u.level || 1})</span></td>
@@ -1363,7 +1422,7 @@ function filterUsersTable() {
                 <td>${banBadge}</td>
                 <td>
                     <div style="display: flex; gap: 6px; flex-wrap: wrap;">
-                        <button class="btn btn-secondary btn-sm" onclick="resetUserHwid(${u.id}, '${u.username}')" title="Reset HWID">🔒 Reset HWID</button>
+                        <button class="btn btn-secondary btn-sm" onclick="resetUserHwid(${u.id}, '${u.username}')" title="Reset HWID">🔄 Reset HWID</button>
                         <button class="btn btn-secondary btn-sm" onclick="openExtendModal(${u.id}, '${u.username}')" title="Add Time">⏳ Extend</button>
                         <button class="btn ${u.is_banned ? 'btn-success' : 'btn-danger'} btn-sm" onclick="toggleUserBan(${u.id}, '${u.username}', ${u.is_banned})">${u.is_banned ? '🔓 Unban' : '🚫 Ban'}</button>
                         <button class="btn btn-danger btn-sm" onclick="deleteUser(${u.id})" title="Delete">🗑️</button>
@@ -1602,6 +1661,7 @@ async function submitManualUser() {
     const days = parseInt(document.getElementById("manual-user-days").value) || 30;
     const tier = document.getElementById("manual-user-tier").value.trim() || "default";
     const hwid = document.getElementById("manual-user-hwid").value.trim();
+    const hwidLock = document.getElementById("manual-user-hwid-lock") ? document.getElementById("manual-user-hwid-lock").checked : true;
 
     if (!username || !password) {
         showToast("Username and Password are required", "warning");
@@ -1624,7 +1684,8 @@ async function submitManualUser() {
                 duration_days: days,
                 subscription_tier: tier,
                 level: 1,
-                hwid: hwid || null
+                hwid: hwid || null,
+                hwid_lock: hwidLock
             })
         });
 
@@ -1650,13 +1711,15 @@ async function submitManualUser() {
                     `• **Key:** \`${username}\`\n` +
                     `• **Duration:** \`${days > 90000 ? 'Lifetime' : days + ' Days'}\`\n` +
                     `• **Expiry Date:** \`${expStr}\`\n` +
-                    `• **Rank Tier:** \`${tier}\`\n\n` +
+                    `• **Rank Tier:** \`${tier}\`\n` +
+                    `• **HWID Lock:** \`${hwidLock ? 'Enforced' : 'Disabled (Multi-PC)'}\`\n\n` +
                     `*Thank you for choosing JOYST CORPORATION!*`;
 
                 const formattedHtml = `• <strong>Key:</strong> <code style="background:#1e1f22; padding:2px 6px; border-radius:4px; color:#ff4d79; font-weight:800;">${escapeHtml(username)}</code><br>` +
                     `• <strong>Duration:</strong> <code style="background:#1e1f22; padding:2px 6px; border-radius:4px; color:#10b981;">${days > 90000 ? 'Lifetime' : days + ' Days'}</code><br>` +
                     `• <strong>Expiry Date:</strong> <code style="background:#1e1f22; padding:2px 6px; border-radius:4px;">${expStr}</code><br>` +
-                    `• <strong>Rank Tier:</strong> <code style="background:#1e1f22; padding:2px 6px; border-radius:4px; color:#38bdf8;">${escapeHtml(tier)}</code>`;
+                    `• <strong>Rank Tier:</strong> <code style="background:#1e1f22; padding:2px 6px; border-radius:4px; color:#38bdf8;">${escapeHtml(tier)}</code><br>` +
+                    `• <strong>HWID Lock:</strong> <code style="background:#1e1f22; padding:2px 6px; border-radius:4px; color:${hwidLock ? '#ff4d79' : '#10b981'};">${hwidLock ? '🔒 Enforced' : '🔓 Multi-PC (No Lock)'}</code>`;
 
                 showDiscordOutputModal({
                     header: `JOYST CORPORATION`,
@@ -1673,6 +1736,7 @@ async function submitManualUser() {
                 `• **Password:** \`${password}\`\n` +
                 `• **Duration:** \`${days} Days\`\n` +
                 `• **Expiry Date:** \`${expStr}\`\n` +
+                `• **HWID Lock:** \`${hwidLock ? 'Enforced' : 'Disabled (Multi-PC)'}\`\n` +
                 `• **Created At:** \`${nowStr}\`\n\n` +
                 `*Thank you for choosing JOYST CORPORATION!*`;
 
@@ -1680,6 +1744,7 @@ async function submitManualUser() {
                 `• <strong>Password:</strong> <code style="background:#1e1f22; padding:2px 6px; border-radius:4px; color:#38bdf8;">${escapeHtml(password)}</code><br>` +
                 `• <strong>Duration:</strong> <code style="background:#1e1f22; padding:2px 6px; border-radius:4px; color:#10b981;">${days} Days</code><br>` +
                 `• <strong>Expiry Date:</strong> <code style="background:#1e1f22; padding:2px 6px; border-radius:4px;">${expStr}</code><br>` +
+                `• <strong>HWID Lock:</strong> <code style="background:#1e1f22; padding:2px 6px; border-radius:4px; color:${hwidLock ? '#ff4d79' : '#10b981'};">${hwidLock ? '🔒 Enforced' : '🔓 Multi-PC (No Lock)'}</code><br>` +
                 `• <strong>Created At:</strong> <code style="background:#1e1f22; padding:2px 6px; border-radius:4px;">${nowStr}</code>`;
 
             showDiscordOutputModal({
@@ -1703,6 +1768,31 @@ async function resetUserHwid(userId, username) {
     if (res && res.success) {
         showToast(res.message, "success");
         loadUsers();
+    }
+}
+
+async function toggleUserHwidLock(userId, username) {
+    const res = await apiFetch(`/api/v1/admin/users/${userId}/toggle-hwid-lock`, { method: "POST" });
+    if (res && res.success) {
+        showToast(res.message, "success");
+        loadUsers();
+    }
+}
+
+async function resetLicenseHwid(licenseId, keyName) {
+    if (!await showConfirmDialog({ title: 'Reset HWID for Key', message: `Reset HWID lock for license '${keyName}'? Next machine login will bind new HWID.`, icon: '🔄', okText: 'Reset HWID', isDanger: false })) return;
+    const res = await apiFetch(`/api/v1/admin/licenses/${licenseId}/reset-hwid`, { method: "POST" });
+    if (res && res.success) {
+        showToast(res.message, "success");
+        loadLicenses();
+    }
+}
+
+async function toggleLicenseHwidLock(licenseId) {
+    const res = await apiFetch(`/api/v1/admin/licenses/${licenseId}/toggle-hwid-lock`, { method: "POST" });
+    if (res && res.success) {
+        showToast(res.message, "success");
+        loadLicenses();
     }
 }
 
@@ -4581,6 +4671,9 @@ window.convertCustomClientToReseller = typeof convertCustomClientToReseller !== 
 window.openManageResellerAppsModal = typeof openManageResellerAppsModal !== 'undefined' ? openManageResellerAppsModal : () => {};
 window.submitSaveResellerApps = typeof submitSaveResellerApps !== 'undefined' ? submitSaveResellerApps : () => {};
 window.batchExtendSelected = typeof openBulkExtendUsersModal !== 'undefined' ? openBulkExtendUsersModal : () => {};
-window.submitResellerPasswordReset = typeof submitResellerPassReset !== 'undefined' ? submitResellerPassReset : () => {};
+window.toggleUserHwidLock = typeof toggleUserHwidLock !== 'undefined' ? toggleUserHwidLock : () => {};
+window.resetLicenseHwid = typeof resetLicenseHwid !== 'undefined' ? resetLicenseHwid : () => {};
+window.toggleLicenseHwidLock = typeof toggleLicenseHwidLock !== 'undefined' ? toggleLicenseHwidLock : () => {};
 window.openModal = typeof openModal !== 'undefined' ? openModal : (id) => { const m = document.getElementById(id); if (m) m.classList.add('active'); };
 window.closeModal = typeof closeModal !== 'undefined' ? closeModal : (id) => { if (!id) { document.querySelectorAll('.modal-overlay.active').forEach(m => m.classList.remove('active')); } else { const m = document.getElementById(id); if (m) m.classList.remove('active'); } };
+

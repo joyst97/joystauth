@@ -100,6 +100,7 @@ class CreateUserManualRequest(BaseModel):
     subscription_tier: str = "default"
     level: int = 1
     hwid: Optional[str] = None
+    hwid_lock: Optional[bool] = True
 
 class BanUserRequest(BaseModel):
     reason: Optional[str] = "Violation of terms"
@@ -573,25 +574,53 @@ async def list_licenses(
         )
     
     licenses = query.order_by(desc(License.id)).limit(500).all()
-    return {
-        "success": True,
-        "licenses": [
-            {
-                "id": lic.id,
-                "app_id": lic.app_id,
-                "key": lic.license_key,
-                "duration_days": lic.duration_days,
-                "level": lic.level,
-                "level_rank": lic.level_rank,
-                "status": lic.status,
-                "used_by": lic.used_by_username,
-                "used_at": lic.used_at.isoformat() if lic.used_at else None,
-                "created_at": lic.created_at.isoformat(),
-                "notes": lic.notes
-            }
-            for lic in licenses
-        ]
-    }
+
+    # Pre-fetch users for these keys to get their HWID, last_login, and last_ip
+    user_names = [l.used_by_username for l in licenses if l.used_by_username]
+    key_codes = [l.license_key for l in licenses]
+    user_map = {}
+    if user_names or key_codes:
+        matched_users = db.query(User).filter(
+            User.app_id == app_id,
+            (User.username.in_(user_names)) | (User.key_used.in_(key_codes)) | (User.username.in_(key_codes))
+        ).all()
+        for u in matched_users:
+            if u.username: user_map[u.username.lower()] = u
+            if u.key_used: user_map[u.key_used.lower()] = u
+
+    results = []
+    for lic in licenses:
+        u = None
+        if lic.used_by_username and lic.used_by_username.lower() in user_map:
+            u = user_map[lic.used_by_username.lower()]
+        elif lic.license_key.lower() in user_map:
+            u = user_map[lic.license_key.lower()]
+
+        last_login_str = None
+        if u and u.last_login:
+            last_login_str = u.last_login.isoformat()
+        elif lic.used_at:
+            last_login_str = lic.used_at.isoformat()
+
+        results.append({
+            "id": lic.id,
+            "app_id": lic.app_id,
+            "key": lic.license_key,
+            "duration_days": lic.duration_days,
+            "level": lic.level,
+            "level_rank": lic.level_rank,
+            "status": lic.status,
+            "used_by": lic.used_by_username or (u.username if u else ""),
+            "used_at": lic.used_at.isoformat() if lic.used_at else None,
+            "last_login": last_login_str,
+            "hwid": u.hwid if u else None,
+            "hwid_lock_override": u.hwid_lock_override if u else None,
+            "user_id": u.id if u else None,
+            "created_at": lic.created_at.isoformat(),
+            "notes": lic.notes
+        })
+
+    return {"success": True, "licenses": results}
 
 @router.post("/licenses")
 async def generate_licenses(
@@ -695,6 +724,55 @@ async def toggle_license_pause(license_id: int, dev: Developer = Depends(get_cur
     db.commit()
     return {"success": True, "message": f"License status updated to {lic.status}", "new_status": lic.status}
 
+@router.post("/licenses/{license_id}/reset-hwid")
+async def reset_license_hwid(license_id: int, dev: Developer = Depends(get_current_developer), db: Session = Depends(get_db)):
+    lic = db.query(License).join(Application).filter(
+        License.id == license_id,
+        Application.developer_id == dev.id
+    ).first()
+    if not lic:
+        raise HTTPException(status_code=404, detail="License not found")
+    
+    # Find user associated with this license
+    user = None
+    if lic.used_by_username:
+        user = db.query(User).filter(User.app_id == lic.app_id, User.username == lic.used_by_username).first()
+    if not user:
+        user = db.query(User).filter(User.app_id == lic.app_id, (User.key_used == lic.license_key) | (User.username == lic.license_key)).first()
+    
+    if user:
+        user.hwid = None
+        db.commit()
+        log_audit(db, lic.app_id, "RESET_HWID", username=user.username, details=f"HWID reset via license key '{lic.license_key}'", status="SUCCESS")
+        return {"success": True, "message": f"HWID for user '{user.username}' (Key: {lic.license_key}) reset successfully."}
+    
+    return {"success": True, "message": f"HWID for key '{lic.license_key}' reset."}
+
+@router.post("/licenses/{license_id}/toggle-hwid-lock")
+async def toggle_license_hwid_lock(license_id: int, dev: Developer = Depends(get_current_developer), db: Session = Depends(get_db)):
+    lic = db.query(License).join(Application).filter(
+        License.id == license_id,
+        Application.developer_id == dev.id
+    ).first()
+    if not lic:
+        raise HTTPException(status_code=404, detail="License not found")
+    
+    user = None
+    if lic.used_by_username:
+        user = db.query(User).filter(User.app_id == lic.app_id, User.username == lic.used_by_username).first()
+    if not user:
+        user = db.query(User).filter(User.app_id == lic.app_id, (User.key_used == lic.license_key) | (User.username == lic.license_key)).first()
+    
+    if user:
+        current_state = True if user.hwid_lock_override is None else user.hwid_lock_override
+        user.hwid_lock_override = not current_state
+        db.commit()
+        status_label = "🔒 LOCKED" if user.hwid_lock_override else "🔓 UNLOCKED (Multi-PC Allowed)"
+        log_audit(db, lic.app_id, "HWID_LOCK_TOGGLE", username=user.username, details=f"HWID lock set to {status_label}", status="INFO")
+        return {"success": True, "message": f"HWID Lock is now {status_label} for '{user.username}'", "is_locked": user.hwid_lock_override}
+    
+    return {"success": True, "message": "Key is unused. HWID lock will apply on activation."}
+
 # ==================== 3. USERS & HWID ====================
 @router.get("/users")
 async def list_users(
@@ -776,6 +854,7 @@ async def create_user_manual(data: CreateUserManualRequest, dev: Developer = Dep
         level=data.level or 1,
         expires_at=expires_at,
         hwid=data.hwid.strip() if data.hwid else None,
+        hwid_lock_override=data.hwid_lock,
         registered_ip="Manual Entry",
         key_used=uname if is_same_key else "Manual by Developer"
     )
@@ -828,6 +907,23 @@ async def reset_user_hwid(user_id: int, dev: Developer = Depends(get_current_dev
     db.commit()
     log_audit(db, user.app_id, "RESET_HWID", username=user.username, details="HWID reset by developer", status="SUCCESS")
     return {"success": True, "message": f"HWID for user '{user.username}' reset successfully."}
+
+@router.post("/users/{user_id}/toggle-hwid-lock")
+async def toggle_user_hwid_lock(user_id: int, dev: Developer = Depends(get_current_developer), db: Session = Depends(get_db)):
+    user = db.query(User).join(Application).filter(
+        User.id == user_id,
+        Application.developer_id == dev.id
+    ).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    current_state = True if user.hwid_lock_override is None else user.hwid_lock_override
+    user.hwid_lock_override = not current_state
+    db.commit()
+    status_label = "🔒 LOCKED" if user.hwid_lock_override else "🔓 UNLOCKED (Multi-PC Allowed)"
+    log_audit(db, user.app_id, "HWID_LOCK_TOGGLE", username=user.username, details=f"HWID lock set to {status_label}", status="INFO")
+    return {"success": True, "message": f"HWID Lock is now {status_label} for user '{user.username}'", "is_locked": user.hwid_lock_override}
+
 
 @router.post("/users/{user_id}/toggle-ban")
 async def toggle_ban_user(user_id: int, data: Optional[BanUserRequest] = None, dev: Developer = Depends(get_current_developer), db: Session = Depends(get_db)):
