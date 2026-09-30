@@ -133,7 +133,7 @@ class Application(Base):
 class User(Base):
     __tablename__ = "users"
     id = Column(Integer, primary_key=True, index=True)
-    app_id = Column(Integer, ForeignKey("applications.id"), nullable=False)
+    app_id = Column(Integer, ForeignKey("applications.id"), nullable=False, index=True)
     username = Column(String(100), index=True, nullable=False)
     password_hash = Column(String(255), nullable=True)
     hwid = Column(String(255), nullable=True, index=True)
@@ -145,7 +145,7 @@ class User(Base):
     expires_at = Column(DateTime, nullable=True)
     is_banned = Column(Boolean, default=False)
     ban_reason = Column(String(255), default="")
-    key_used = Column(String(100), default="")
+    key_used = Column(String(100), default="", index=True)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
     last_login = Column(DateTime, default=datetime.datetime.utcnow)
 
@@ -156,12 +156,12 @@ class License(Base):
     __tablename__ = "licenses"
     __table_args__ = (UniqueConstraint('app_id', 'license_key', name='uix_app_license_key'),)
     id = Column(Integer, primary_key=True, index=True)
-    app_id = Column(Integer, ForeignKey("applications.id"), nullable=False)
+    app_id = Column(Integer, ForeignKey("applications.id"), nullable=False, index=True)
     license_key = Column(String(100), index=True, nullable=False)
     duration_days = Column(Integer, default=30)
     level = Column(String(50), default="default")
     level_rank = Column(Integer, default=1)
-    status = Column(String(20), default="unused")
+    status = Column(String(20), default="unused", index=True)
     used_by_username = Column(String(100), default="")
     used_at = Column(DateTime, nullable=True)
     created_by_reseller = Column(String(100), default="")
@@ -173,7 +173,7 @@ class License(Base):
 class SubscriptionTier(Base):
     __tablename__ = "subscription_tiers"
     id = Column(Integer, primary_key=True, index=True)
-    app_id = Column(Integer, ForeignKey("applications.id"), nullable=False)
+    app_id = Column(Integer, ForeignKey("applications.id"), nullable=False, index=True)
     name = Column(String(50), nullable=False)
     level_rank = Column(Integer, default=1)
     description = Column(String(255), default="")
@@ -184,7 +184,7 @@ class SubscriptionTier(Base):
 class AppVariable(Base):
     __tablename__ = "app_variables"
     id = Column(Integer, primary_key=True, index=True)
-    app_id = Column(Integer, ForeignKey("applications.id"), nullable=False)
+    app_id = Column(Integer, ForeignKey("applications.id"), nullable=False, index=True)
     name = Column(String(100), index=True, nullable=False)
     value = Column(Text, nullable=False)
     is_encrypted = Column(Boolean, default=True)
@@ -196,7 +196,7 @@ class AppVariable(Base):
 class AppFile(Base):
     __tablename__ = "app_files"
     id = Column(Integer, primary_key=True, index=True)
-    app_id = Column(Integer, ForeignKey("applications.id"), nullable=False)
+    app_id = Column(Integer, ForeignKey("applications.id"), nullable=False, index=True)
     file_id = Column(String(100), unique=True, index=True, nullable=False)
     file_name = Column(String(255), nullable=False)
     file_size = Column(Integer, default=0)
@@ -211,7 +211,7 @@ class AppFile(Base):
 class Blacklist(Base):
     __tablename__ = "blacklists"
     id = Column(Integer, primary_key=True, index=True)
-    app_id = Column(Integer, ForeignKey("applications.id"), nullable=False)
+    app_id = Column(Integer, ForeignKey("applications.id"), nullable=False, index=True)
     type = Column(String(20), nullable=False)
     data = Column(String(255), nullable=False)
     reason = Column(String(255), default="Blacklisted by Admin")
@@ -222,7 +222,7 @@ class Blacklist(Base):
 class AppNotification(Base):
     __tablename__ = "app_notifications"
     id = Column(Integer, primary_key=True, index=True)
-    app_id = Column(Integer, ForeignKey("applications.id"), nullable=False)
+    app_id = Column(Integer, ForeignKey("applications.id"), nullable=False, index=True)
     title = Column(String(150), nullable=False)
     message = Column(Text, nullable=False)
     type = Column(String(20), default="info") # info, success, warning, danger
@@ -235,7 +235,7 @@ class AppNotification(Base):
 class Reseller(Base):
     __tablename__ = "resellers"
     id = Column(Integer, primary_key=True, index=True)
-    developer_id = Column(Integer, ForeignKey("developers.id"), nullable=False)
+    developer_id = Column(Integer, ForeignKey("developers.id"), nullable=False, index=True)
     username = Column(String(100), nullable=False)
     password_hash = Column(String(255), nullable=False)
     balance = Column(Integer, default=100)
@@ -247,7 +247,7 @@ class Reseller(Base):
 class CustomClient(Base):
     __tablename__ = "custom_clients"
     id = Column(Integer, primary_key=True, index=True)
-    developer_id = Column(Integer, ForeignKey("developers.id"), nullable=False)
+    developer_id = Column(Integer, ForeignKey("developers.id"), nullable=False, index=True)
     username = Column(String(100), unique=True, index=True, nullable=False)
     password_hash = Column(String(255), nullable=False)
     discord_id = Column(String(50), unique=True, index=True, nullable=True)
@@ -270,7 +270,7 @@ class Session(Base):
     __tablename__ = "sessions"
     id = Column(Integer, primary_key=True, index=True)
     session_token = Column(String(100), unique=True, index=True, nullable=False)
-    app_id = Column(Integer, ForeignKey("applications.id"), nullable=False)
+    app_id = Column(Integer, ForeignKey("applications.id"), nullable=False, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     hwid = Column(String(255), nullable=True)
     ip_address = Column(String(45), default="")
@@ -295,14 +295,14 @@ class ChangelogEntry(Base):
 class AuditLog(Base):
     __tablename__ = "audit_logs"
     id = Column(Integer, primary_key=True, index=True)
-    app_id = Column(Integer, ForeignKey("applications.id"), nullable=True)
+    app_id = Column(Integer, ForeignKey("applications.id"), nullable=True, index=True)
     username = Column(String(100), default="")
     action = Column(String(50), nullable=False)
     ip_address = Column(String(45), default="")
     hwid = Column(String(255), default="")
     details = Column(String(500), default="")
     status = Column(String(20), default="INFO")
-    timestamp = Column(DateTime, default=datetime.datetime.utcnow)
+    timestamp = Column(DateTime, default=datetime.datetime.utcnow, index=True)
 
     app = relationship("Application", back_populates="logs")
 

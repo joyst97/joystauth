@@ -53,6 +53,219 @@
     --shadow-crimson: 0 0 45px rgba(244, 63, 94, 0.45);
 }
 
+/* ==================== DYNAMIC THEME PRESETS ==================== */
+
+/* 1. Neon Cyan & Electric Blue (KeyAuth / High-Tech Cyber) */
+[data-theme="cyan"], html[data-theme="cyan"], body[data-theme="cyan"] {
+    --bg-main: #020617;
+    --bg-surface: rgba(15, 23, 42, 0.88);
+    --bg-glass-card: rgba(15, 23, 42, 0.65);
+    --bg-glass-card-hover: rgba(30, 41, 59, 0.9);
+    --bg-glass-heavy: rgba(10, 18, 36, 0.96);
+    
+    --border-subtle: rgba(255, 255, 255, 0.08);
+    --border-highlight: rgba(0, 242, 254, 0.35);
+    --border-glass: rgba(0, 242, 254, 0.18);
+    --border-glow: rgba(0, 242, 254, 0.6);
+    --border-crimson: rgba(14, 165, 233, 0.7);
+    --border-emerald: rgba(16, 185, 129, 0.65);
+
+    --text-primary: #f8fafc;
+    --text-secondary: #94a3b8;
+    --text-muted: #64748b;
+
+    --brand-primary: #0284c7;
+    --brand-ruby: #0ea5e9;
+    --brand-scarlet: #00f2fe;
+    --brand-rose: #7dd3fc;
+    --brand-sky: #38bdf8;
+    --brand-emerald: #10b981;
+    --brand-amber: #f59e0b;
+
+    --gradient-primary: linear-gradient(135deg, #00f2fe 0%, #0ea5e9 50%, #0369a1 100%);
+    --gradient-button: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+    --gradient-button-hover: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%);
+
+    --shadow-glow: 0 0 45px rgba(0, 242, 254, 0.4);
+    --shadow-crimson: 0 0 45px rgba(14, 165, 233, 0.4);
+}
+
+/* 2. Obsidian Violet & Neon Purple (Linear / Discord Style) */
+[data-theme="purple"], html[data-theme="purple"], body[data-theme="purple"] {
+    --bg-main: #090514;
+    --bg-surface: rgba(19, 11, 38, 0.88);
+    --bg-glass-card: rgba(26, 16, 51, 0.65);
+    --bg-glass-card-hover: rgba(43, 27, 82, 0.9);
+    --bg-glass-heavy: rgba(15, 8, 31, 0.96);
+    
+    --border-subtle: rgba(255, 255, 255, 0.08);
+    --border-highlight: rgba(168, 85, 247, 0.35);
+    --border-glass: rgba(168, 85, 247, 0.18);
+    --border-glow: rgba(168, 85, 247, 0.6);
+    --border-crimson: rgba(139, 92, 246, 0.7);
+    --border-emerald: rgba(16, 185, 129, 0.65);
+
+    --text-primary: #f8fafc;
+    --text-secondary: #c4b5fd;
+    --text-muted: #8b5cf6;
+
+    --brand-primary: #8b5cf6;
+    --brand-ruby: #a855f7;
+    --brand-scarlet: #c084fc;
+    --brand-rose: #d8b4fe;
+    --brand-sky: #a855f7;
+    --brand-emerald: #10b981;
+    --brand-amber: #f59e0b;
+
+    --gradient-primary: linear-gradient(135deg, #c084fc 0%, #8b5cf6 50%, #6d28d9 100%);
+    --gradient-button: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%);
+    --gradient-button-hover: linear-gradient(135deg, #a855f7 0%, #8b5cf6 100%);
+
+    --shadow-glow: 0 0 45px rgba(168, 85, 247, 0.45);
+    --shadow-crimson: 0 0 45px rgba(139, 92, 246, 0.45);
+}
+
+/* 3. Midnight Sapphire & Royal Blue (Enterprise Cloudflare Style) */
+[data-theme="blue"], html[data-theme="blue"], body[data-theme="blue"] {
+    --bg-main: #030712;
+    --bg-surface: rgba(11, 21, 48, 0.88);
+    --bg-glass-card: rgba(15, 28, 64, 0.65);
+    --bg-glass-card-hover: rgba(26, 46, 102, 0.9);
+    --bg-glass-heavy: rgba(8, 16, 38, 0.96);
+    
+    --border-subtle: rgba(255, 255, 255, 0.08);
+    --border-highlight: rgba(37, 99, 235, 0.35);
+    --border-glass: rgba(37, 99, 235, 0.18);
+    --border-glow: rgba(37, 99, 235, 0.6);
+    --border-crimson: rgba(59, 130, 246, 0.7);
+    --border-emerald: rgba(16, 185, 129, 0.65);
+
+    --text-primary: #f8fafc;
+    --text-secondary: #93c5fd;
+    --text-muted: #60a5fa;
+
+    --brand-primary: #2563eb;
+    --brand-ruby: #3b82f6;
+    --brand-scarlet: #60a5fa;
+    --brand-rose: #93c5fd;
+    --brand-sky: #38bdf8;
+    --brand-emerald: #10b981;
+    --brand-amber: #f59e0b;
+
+    --gradient-primary: linear-gradient(135deg, #60a5fa 0%, #2563eb 50%, #1d4ed8 100%);
+    --gradient-button: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+    --gradient-button-hover: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+
+    --shadow-glow: 0 0 45px rgba(37, 99, 235, 0.45);
+    --shadow-crimson: 0 0 45px rgba(59, 130, 246, 0.45);
+}
+
+/* 4. Matrix Emerald Green (Supabase / Hacker Style) */
+[data-theme="emerald"], html[data-theme="emerald"], body[data-theme="emerald"] {
+    --bg-main: #020b06;
+    --bg-surface: rgba(6, 26, 15, 0.88);
+    --bg-glass-card: rgba(10, 36, 21, 0.65);
+    --bg-glass-card-hover: rgba(16, 56, 33, 0.9);
+    --bg-glass-heavy: rgba(4, 20, 11, 0.96);
+    
+    --border-subtle: rgba(255, 255, 255, 0.08);
+    --border-highlight: rgba(16, 185, 129, 0.35);
+    --border-glass: rgba(16, 185, 129, 0.18);
+    --border-glow: rgba(16, 185, 129, 0.6);
+    --border-crimson: rgba(5, 150, 105, 0.7);
+    --border-emerald: rgba(52, 211, 153, 0.7);
+
+    --text-primary: #f8fafc;
+    --text-secondary: #a7f3d0;
+    --text-muted: #6ee7b7;
+
+    --brand-primary: #059669;
+    --brand-ruby: #10b981;
+    --brand-scarlet: #34d399;
+    --brand-rose: #6ee7b7;
+    --brand-sky: #10b981;
+    --brand-emerald: #34d399;
+    --brand-amber: #f59e0b;
+
+    --gradient-primary: linear-gradient(135deg, #34d399 0%, #10b981 50%, #047857 100%);
+    --gradient-button: linear-gradient(135deg, #059669 0%, #047857 100%);
+    --gradient-button-hover: linear-gradient(135deg, #10b981 0%, #059669 100%);
+
+    --shadow-glow: 0 0 45px rgba(16, 185, 129, 0.45);
+    --shadow-crimson: 0 0 45px rgba(52, 211, 153, 0.45);
+}
+
+/* 5. Titanium OLED Monochrome (Minimalist Clean Mode) */
+[data-theme="oled"], html[data-theme="oled"], body[data-theme="oled"] {
+    --bg-main: #000000;
+    --bg-surface: rgba(18, 18, 20, 0.92);
+    --bg-glass-card: rgba(24, 24, 27, 0.75);
+    --bg-glass-card-hover: rgba(39, 39, 42, 0.95);
+    --bg-glass-heavy: rgba(12, 12, 14, 0.98);
+    
+    --border-subtle: rgba(255, 255, 255, 0.1);
+    --border-highlight: rgba(255, 255, 255, 0.3);
+    --border-glass: rgba(255, 255, 255, 0.16);
+    --border-glow: rgba(255, 255, 255, 0.5);
+    --border-crimson: rgba(200, 200, 210, 0.6);
+    --border-emerald: rgba(16, 185, 129, 0.65);
+
+    --text-primary: #ffffff;
+    --text-secondary: #e2e8f0;
+    --text-muted: #94a3b8;
+
+    --brand-primary: #3f3f46;
+    --brand-ruby: #52525b;
+    --brand-scarlet: #ffffff;
+    --brand-rose: #cbd5e1;
+    --brand-sky: #38bdf8;
+    --brand-emerald: #10b981;
+    --brand-amber: #f59e0b;
+
+    --gradient-primary: linear-gradient(135deg, #ffffff 0%, #a1a1aa 50%, #52525b 100%);
+    --gradient-button: linear-gradient(135deg, #27272a 0%, #18181b 100%);
+    --gradient-button-hover: linear-gradient(135deg, #3f3f46 0%, #27272a 100%);
+
+    --shadow-glow: 0 0 35px rgba(255, 255, 255, 0.2);
+    --shadow-crimson: 0 0 35px rgba(200, 200, 210, 0.2);
+}
+
+/* 6. Crimson Red Cyberpunk (Original) */
+[data-theme="crimson"], html[data-theme="crimson"], body[data-theme="crimson"] {
+    --bg-main: #060204;
+    --bg-surface: rgba(18, 6, 11, 0.85);
+    --bg-glass-card: rgba(26, 8, 16, 0.62);
+    --bg-glass-card-hover: rgba(42, 12, 24, 0.88);
+    --bg-glass-heavy: rgba(18, 5, 11, 0.94);
+    
+    --border-subtle: rgba(255, 255, 255, 0.08);
+    --border-highlight: rgba(255, 255, 255, 0.18);
+    --border-glass: rgba(255, 255, 255, 0.14);
+    --border-glow: rgba(225, 29, 72, 0.65);
+    --border-crimson: rgba(244, 63, 94, 0.75);
+    --border-emerald: rgba(16, 185, 129, 0.65);
+
+    --text-primary: #f8fafc;
+    --text-secondary: #94a3b8;
+    --text-muted: #64748b;
+
+    --brand-primary: #e11d48;
+    --brand-ruby: #f43f5e;
+    --brand-scarlet: #ff2a5f;
+    --brand-rose: #fda4af;
+    --brand-sky: #ff4d79;
+    --brand-emerald: #10b981;
+    --brand-amber: #f59e0b;
+
+    --gradient-primary: linear-gradient(135deg, #ff2a5f 0%, #e11d48 50%, #9f1239 100%);
+    --gradient-glass: linear-gradient(135deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0.02) 100%);
+    --gradient-button: linear-gradient(135deg, #e11d48 0%, #be123c 100%);
+    --gradient-button-hover: linear-gradient(135deg, #f43f5e 0%, #e11d48 100%);
+
+    --shadow-glow: 0 0 45px rgba(225, 29, 72, 0.45);
+    --shadow-crimson: 0 0 45px rgba(244, 63, 94, 0.45);
+}
+
 * {
     box-sizing: border-box;
     margin: 0;

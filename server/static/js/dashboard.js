@@ -1,3 +1,51 @@
+// ==================== DYNAMIC THEME ENGINE ====================
+const THEME_NAMES = {
+    cyan: { label: "Neon Cyan", icon: "🌐", color: "#00f2fe" },
+    purple: { label: "Obsidian Violet", icon: "🔮", color: "#a855f7" },
+    blue: { label: "Midnight Blue", icon: "🌊", color: "#2563eb" },
+    emerald: { label: "Matrix Green", icon: "⚡", color: "#10b981" },
+    oled: { label: "Titanium OLED", icon: "🖤", color: "#ffffff" },
+    crimson: { label: "Crimson Red", icon: "🩸", color: "#ff2a5f" }
+};
+
+function initDashboardTheme() {
+    const saved = localStorage.getItem("dashboard_theme") || "cyan";
+    applyThemeToDocument(saved);
+}
+
+function applyThemeToDocument(theme) {
+    const validTheme = THEME_NAMES[theme] ? theme : "cyan";
+    document.documentElement.setAttribute("data-theme", validTheme);
+    if (document.body) document.body.setAttribute("data-theme", validTheme);
+    
+    const info = THEME_NAMES[validTheme];
+    const labelEl = document.getElementById("current-theme-label");
+    const iconEl = document.getElementById("current-theme-icon");
+    if (labelEl) labelEl.textContent = info.label;
+    if (iconEl) iconEl.textContent = info.icon;
+}
+
+function setDashboardTheme(theme) {
+    if (!THEME_NAMES[theme]) theme = "cyan";
+    localStorage.setItem("dashboard_theme", theme);
+    applyThemeToDocument(theme);
+    const menu = document.getElementById("theme-dropdown-menu");
+    if (menu) menu.style.display = "none";
+    showToast(`Visual theme switched to ${THEME_NAMES[theme].label}`, "success");
+}
+
+function toggleThemeDropdown(e) {
+    if (e) e.stopPropagation();
+    const menu = document.getElementById("theme-dropdown-menu");
+    if (!menu) return;
+    const isShown = menu.style.display === "block";
+    closeAllDropdowns();
+    menu.style.display = isShown ? "none" : "block";
+}
+
+// Auto-run theme initialization
+initDashboardTheme();
+
 // ==================== CORE PLATFORM UTILITIES & API CLIENT ====================
 
 let activeApiRequests = 0;
@@ -418,63 +466,6 @@ function toggleMobileSidebar() {
     }
 }
 
-let preloadingAppId = null;
-async function preloadAppData(appId) {
-    if (!appId || preloadingAppId === appId) return;
-    preloadingAppId = appId;
-
-    try {
-        await Promise.allSettled([
-            apiFetch(`/api/v1/admin/licenses?app_id=${appId}`, { background: true }).then(data => {
-                if (data && data.licenses) window.tabDataCache.licenses[appId] = data.licenses;
-            }),
-            apiFetch(`/api/v1/admin/users?app_id=${appId}`, { background: true }).then(data => {
-                if (data && data.users) {
-                    window.tabDataCache.users[appId] = data.users;
-                    if (currentAppId === appId) rawUsersList = data.users;
-                }
-            }),
-            apiFetch(`/api/v1/admin/tiers?app_id=${appId}`, { background: true }).then(data => {
-                if (data && data.tiers) window.tabDataCache.tiers[appId] = data.tiers;
-            }),
-            apiFetch(`/api/v1/admin/variables?app_id=${appId}`, { background: true }).then(data => {
-                if (data && data.variables) window.tabDataCache.variables[appId] = data.variables;
-            }),
-            apiFetch(`/api/v1/admin/files?app_id=${appId}`, { background: true }).then(data => {
-                if (data && data.files) window.tabDataCache.files[appId] = data.files;
-            }),
-            apiFetch(`/api/v1/admin/blacklists?app_id=${appId}`, { background: true }).then(data => {
-                if (data && data.blacklists) window.tabDataCache.blacklists[appId] = data.blacklists;
-            }),
-            apiFetch(`/api/v1/admin/notifications?app_id=${appId}`, { background: true }).then(data => {
-                if (data && data.notifications) {
-                    window.tabDataCache.notifications[appId] = data.notifications;
-                    if (currentAppId === appId) rawNotificationsList = data.notifications;
-                }
-            }),
-            apiFetch(`/api/v1/admin/logs?app_id=${appId}`, { background: true }).then(data => {
-                if (data && data.logs) window.tabDataCache.logs[appId] = data.logs;
-            }),
-            apiFetch(`/api/v1/admin/custom-clients`, { background: true }).then(data => {
-                if (data && (data.clients || data.custom_clients || Array.isArray(data))) {
-                    customClientsList = data.clients || data.custom_clients || data;
-                    window.tabDataCache.custom_clients = customClientsList;
-                }
-            }),
-            apiFetch(`/api/v1/admin/resellers`, { background: true }).then(data => {
-                if (data && data.resellers) {
-                    resellersList = data.resellers;
-                    window.tabDataCache.resellers = data.resellers;
-                }
-            })
-        ]);
-    } catch (e) {
-        console.warn("preloadAppData error:", e);
-    } finally {
-        preloadingAppId = null;
-    }
-}
-
 async function initDashboard() {
     initSidebarState();
     setupNavigation();
@@ -490,7 +481,7 @@ async function initDashboard() {
         } catch (e) {}
     }
 
-    // 2. Fetch fresh data in parallel
+    // 2. Fetch user profile and applications in parallel
     try {
         await Promise.all([
             loadUserProfile(),
@@ -500,12 +491,9 @@ async function initDashboard() {
     } catch (err) {
         console.error("Error during dashboard init:", err);
     }
-    loadActiveTab();
 
-    // 3. Background prefetch for instant 0ms tab switching
-    if (currentAppId) {
-        preloadAppData(currentAppId);
-    }
+    // 3. Load only the currently active tab on initial visit
+    loadActiveTab();
 }
 
 async function loadUserProfile() {
@@ -637,8 +625,6 @@ async function loadUserProfile() {
             }
         }
 
-        // Re-evaluate current active tab permissions
-        loadActiveTab();
     }
 }
 
@@ -788,32 +774,6 @@ function loadTabContent(tabId) {
     }
 }
 
-
-// ==================== GLOBAL PROGRESS BAR ====================
-function showGlobalProgress() {
-    let bar = document.getElementById("global-page-progress-bar");
-    if (!bar) {
-        bar = document.createElement("div");
-        bar.id = "global-page-progress-bar";
-        bar.className = "global-page-progress-bar";
-        document.body.appendChild(bar);
-    }
-    bar.style.transition = "width 0.25s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.2s ease";
-    bar.style.width = "0%";
-    bar.classList.add("active");
-    setTimeout(() => { bar.style.width = "75%"; }, 20);
-}
-
-function hideGlobalProgress() {
-    const bar = document.getElementById("global-page-progress-bar");
-    if (bar) {
-        bar.style.width = "100%";
-        setTimeout(() => {
-            bar.classList.remove("active");
-            setTimeout(() => { bar.style.width = "0%"; }, 250);
-        }, 200);
-    }
-}
 
 // ==================== TOP APPLICATION COMBOBOX ENGINE ====================
 function toggleTopAppDropdown(forceState) {
@@ -1110,10 +1070,6 @@ function updateBannerCredentials() {
             toggleBtn.style.boxShadow = "0 0 15px rgba(225, 29, 72, 0.4)";
             toggleBtn.innerHTML = `<span>⏸️ Activate Maintenance Mode</span>`;
         }
-    }
-
-    if (typeof loadNotifications === "function") {
-        loadNotifications();
     }
 }
 
@@ -1620,6 +1576,8 @@ function closeAllDropdowns() {
     document.querySelectorAll(".dropdown-menu-cyber").forEach(dd => {
         dd.style.display = "none";
     });
+    const themeMenu = document.getElementById("theme-dropdown-menu");
+    if (themeMenu) themeMenu.style.display = "none";
 }
 
 window.addEventListener("click", () => {
@@ -4427,7 +4385,10 @@ async function loadCustomClients() {
     const tableBody = document.getElementById("custom-clients-table-body");
     if (!tableBody) return;
 
-    if (!customClientsList || customClientsList.length === 0) {
+    if (window.tabDataCache && window.tabDataCache.custom_clients && window.tabDataCache.custom_clients.length > 0) {
+        customClientsList = window.tabDataCache.custom_clients;
+        renderCustomClientsTable();
+    } else if (!customClientsList || customClientsList.length === 0) {
         tableBody.innerHTML = `
             <tr>
                 <td colspan="5" style="text-align: center; padding: 40px 20px;">
@@ -4441,30 +4402,15 @@ async function loadCustomClients() {
     }
 
     try {
-        const token = getAuthToken();
-        const headers = { "Content-Type": "application/json" };
-        if (token) headers["Authorization"] = `Bearer ${token}`;
-
-        const res = await fetch("/api/v1/admin/custom-clients", { headers });
-        if (res.ok) {
-            const data = await res.json();
-            if (data && Array.isArray(data.clients)) {
-                customClientsList = data.clients;
-            } else if (Array.isArray(data)) {
-                customClientsList = data;
-            } else {
-                customClientsList = [];
-            }
-        } else {
-            console.warn("Direct fetch non-ok, falling back to apiFetch");
-            const data = await apiFetch("/api/v1/admin/custom-clients");
-            if (data && (data.success || Array.isArray(data.clients) || Array.isArray(data))) {
-                customClientsList = Array.isArray(data) ? data : (data.clients || []);
-            } else {
-                customClientsList = [];
-            }
+        const data = await apiFetch("/api/v1/admin/custom-clients");
+        if (data && (data.success || Array.isArray(data.clients) || Array.isArray(data))) {
+            customClientsList = Array.isArray(data) ? data : (data.clients || data.custom_clients || []);
+            if (window.tabDataCache) window.tabDataCache.custom_clients = customClientsList;
+            renderCustomClientsTable();
+        } else if (!window.tabDataCache?.custom_clients) {
+            customClientsList = [];
+            renderCustomClientsTable();
         }
-        renderCustomClientsTable();
     } catch (e) {
         console.error("loadCustomClients error:", e);
         customClientsList = [];
@@ -4908,4 +4854,6 @@ window.resetLicenseHwid = typeof resetLicenseHwid !== 'undefined' ? resetLicense
 window.toggleLicenseHwidLock = typeof toggleLicenseHwidLock !== 'undefined' ? toggleLicenseHwidLock : () => {};
 window.openModal = typeof openModal !== 'undefined' ? openModal : (id) => { const m = document.getElementById(id); if (m) m.classList.add('active'); };
 window.closeModal = typeof closeModal !== 'undefined' ? closeModal : (id) => { if (!id) { document.querySelectorAll('.modal-overlay.active').forEach(m => m.classList.remove('active')); } else { const m = document.getElementById(id); if (m) m.classList.remove('active'); } };
+window.setDashboardTheme = typeof setDashboardTheme !== 'undefined' ? setDashboardTheme : () => {};
+window.toggleThemeDropdown = typeof toggleThemeDropdown !== 'undefined' ? toggleThemeDropdown : () => {};
 

@@ -3,7 +3,7 @@ import datetime
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Header, UploadFile, File
 from sqlalchemy.orm import Session
-from sqlalchemy import desc, func
+from sqlalchemy import desc, func, or_
 from pydantic import BaseModel
 
 from ..database import get_db, Application, User, License, AppVariable, AppFile, AuditLog, Developer, SubscriptionTier, Blacklist, Reseller, PlanKey, AppNotification, CustomClient
@@ -583,14 +583,23 @@ async def list_licenses(
     
     licenses = query.order_by(desc(License.id)).limit(500).all()
 
-    # Pre-fetch users for these keys to get their HWID, last_login, and last_ip
+    # Pre-fetch users only for used keys or keys with assigned usernames
     user_names = [l.used_by_username for l in licenses if l.used_by_username]
-    key_codes = [l.license_key for l in licenses]
+    used_keys = [l.license_key for l in licenses if l.status == "used" and not l.used_by_username]
     user_map = {}
-    if user_names or key_codes:
-        matched_users = db.query(User).filter(
+    if user_names or used_keys:
+        conditions = []
+        if user_names:
+            conditions.append(User.username.in_(user_names))
+        if used_keys:
+            conditions.append(User.key_used.in_(used_keys))
+            conditions.append(User.username.in_(used_keys))
+        
+        matched_users = db.query(
+            User.id, User.username, User.key_used, User.hwid, User.hwid_lock_override, User.last_login
+        ).filter(
             User.app_id == app_id,
-            (User.username.in_(user_names)) | (User.key_used.in_(key_codes)) | (User.username.in_(key_codes))
+            or_(*conditions)
         ).all()
         for u in matched_users:
             if u.username: user_map[u.username.lower()] = u
@@ -624,7 +633,7 @@ async def list_licenses(
             "hwid": u.hwid if u else None,
             "hwid_lock_override": u.hwid_lock_override if u else None,
             "user_id": u.id if u else None,
-            "created_at": lic.created_at.isoformat(),
+            "created_at": lic.created_at.isoformat() if lic.created_at else None,
             "notes": lic.notes
         })
 
@@ -802,7 +811,7 @@ async def list_users(
             (User.key_used.contains(search))
         )
     
-    users = query.order_by(desc(User.last_login)).limit(500).all()
+    users = query.order_by(desc(User.id)).limit(500).all()
     result = []
     for u in users:
         is_expired = u.expires_at and datetime.datetime.utcnow() > u.expires_at
@@ -831,8 +840,8 @@ async def list_users(
             "is_banned": u.is_banned,
             "ban_reason": u.ban_reason,
             "key_used": u.key_used,
-            "created_at": u.created_at.isoformat(),
-            "last_login": u.last_login.isoformat()
+            "created_at": u.created_at.isoformat() if u.created_at else None,
+            "last_login": u.last_login.isoformat() if u.last_login else None
         })
     return {"success": True, "users": result}
 
