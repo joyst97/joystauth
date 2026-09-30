@@ -355,7 +355,7 @@ function showDiscordOutputModal(optionsOrTitle, jsonPayload) {
                 <button class="modal-close" onclick="document.getElementById('discord-output-modal').classList.remove('active')" style="color: #94a3b8; font-size: 18px; width: 26px; height: 26px; border-radius: 50%; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); display: flex; align-items: center; justify-content: center; cursor: pointer;">&times;</button>
             </div>
             <div style="padding: 14px 16px;">
-                <div style="background: #060205; border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; overflow: hidden; margin-bottom: 10px; box-shadow: inset 0 2px 8px rgba(0,0,0,0.8);">
+                <div style="background: var(--bg-main); border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; overflow: hidden; margin-bottom: 10px; box-shadow: inset 0 2px 8px rgba(0,0,0,0.8);">
                     <div style="background: #12060d; padding: 5px 10px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.06);">
                         <div style="display: flex; gap: 5px;">
                             <span style="width: 7px; height: 7px; border-radius: 50%; background: #ef4444; display: inline-block;"></span>
@@ -408,7 +408,7 @@ function getTableSkeletonHtml(colSpan, title = "Loading Application Records...")
         <tr>
             <td colspan="${colSpan}" style="text-align: center; padding: 50px 20px;">
                 <div style="display: inline-flex; flex-direction: column; align-items: center; gap: 14px;">
-                    <div style="width: 38px; height: 38px; border: 3.5px solid rgba(244, 63, 94, 0.2); border-top-color: #ff2a5f; border-radius: 50%; animation: spin 0.65s linear infinite;"></div>
+                    <div style="width: 38px; height: 38px; border: 3.5px solid rgba(244, 63, 94, 0.2); border-top-color: var(--brand-scarlet); border-radius: 50%; animation: spin 0.65s linear infinite;"></div>
                     <div style="display: flex; flex-direction: column; align-items: center; gap: 4px;">
                         <strong style="color: #fff; font-size: 14px; letter-spacing: 0.5px;">⚡ ${escapeHtml(title)}</strong>
                         <span style="color: var(--text-muted); font-size: 12px;">Fetching real-time records...</span>
@@ -740,6 +740,19 @@ function loadTabContent(tabId) {
         }
     }
 
+    // Manage Custom Clients Locked vs Unlocked visibility
+    const ccLocked = document.getElementById("custom-clients-locked-paywall");
+    const ccUnlocked = document.getElementById("custom-clients-unlocked-content");
+    if (ccLocked && ccUnlocked) {
+        if (isPaid && !window.isCustomClientRole) {
+            ccLocked.style.display = "none";
+            ccUnlocked.style.display = "block";
+        } else {
+            ccLocked.style.display = "flex";
+            ccUnlocked.style.display = "none";
+        }
+    }
+
     if (tabId === "overview") {
         loadGlobalStats();
         updateBannerCredentials();
@@ -770,7 +783,9 @@ function loadTabContent(tabId) {
     } else if (tabId === "sdk") {
         updateSdkSnippets();
     } else if (tabId === "custom-clients") {
-        loadCustomClients();
+        if (isPaid && !window.isCustomClientRole) {
+            loadCustomClients();
+        }
     }
 }
 
@@ -1045,7 +1060,7 @@ function updateBannerCredentials() {
             emergencyDeck.style.boxShadow = "0 0 35px rgba(239, 68, 68, 0.45)";
         } else {
             emergencyDeck.style.background = "linear-gradient(135deg, rgba(225, 29, 72, 0.12), rgba(0, 0, 0, 0.4))";
-            emergencyDeck.style.borderColor = "rgba(225, 29, 72, 0.35)";
+            emergencyDeck.style.borderColor = "var(--border-glow)";
             emergencyDeck.style.boxShadow = "none";
         }
     }
@@ -1067,7 +1082,7 @@ function updateBannerCredentials() {
             toggleBtn.style.color = "";
             toggleBtn.style.fontWeight = "800";
             toggleBtn.style.padding = "";
-            toggleBtn.style.boxShadow = "0 0 15px rgba(225, 29, 72, 0.4)";
+            toggleBtn.style.boxShadow = "var(--shadow-glow)";
             toggleBtn.innerHTML = `<span>⏸️ Activate Maintenance Mode</span>`;
         }
     }
@@ -1155,7 +1170,7 @@ function renderLicensesData(licenses) {
             const isLocked = lic.hwid_lock_override !== false;
             hwidLockCell = `
                 <div style="display: flex; flex-direction: column; gap: 4px; align-items: flex-start;">
-                    <button class="btn btn-secondary btn-sm" onclick="toggleLicenseHwidLock(${lic.id})" title="${isLocked ? 'Click to Unlock (Allow Multi-PC)' : 'Click to Lock strictly to 1 PC'}" style="font-size: 11px; padding: 3px 8px; ${isLocked ? 'color: #ff4d79; border-color: rgba(255, 77, 121, 0.4);' : 'color: #10b981; border-color: rgba(16, 185, 129, 0.4);'}">
+                    <button class="btn btn-secondary btn-sm" onclick="toggleLicenseHwidLock(${lic.id})" title="${isLocked ? 'Click to Unlock (Allow Multi-PC)' : 'Click to Lock strictly to 1 PC'}" style="font-size: 11px; padding: 3px 8px; ${isLocked ? 'color: var(--brand-sky); border-color: rgba(255, 77, 121, 0.4);' : 'color: #10b981; border-color: rgba(16, 185, 129, 0.4);'}">
                         ${isLocked ? '🔒 Locked' : '🔓 Multi-PC (Unlocked)'}
                     </button>
                     ${lic.hwid ? `<button class="btn btn-secondary btn-sm" onclick="resetLicenseHwid(${lic.id}, '${lic.key}')" title="Reset HWID" style="font-size: 10px; padding: 2px 6px;">🔄 Reset HWID</button>` : '<span style="font-size: 10px; color: var(--text-muted);">No HWID bound</span>'}
@@ -1291,7 +1306,7 @@ async function generateKeysSubmit() {
                         `• **Created At:** \`${nowStr}\`\n\n` +
                         `*Thank you for choosing JOYST CORPORATION!*`;
 
-                    const formattedHtml = `• <strong>Key:</strong> <code style="background:#1e1f22; padding:2px 6px; border-radius:4px; color:#ff4d79; font-weight:800;">${escapeHtml(key)}</code><br>` +
+                    const formattedHtml = `• <strong>Key:</strong> <code style="background:#1e1f22; padding:2px 6px; border-radius:4px; color: var(--brand-sky); font-weight:800;">${escapeHtml(key)}</code><br>` +
                         `• <strong>Duration:</strong> <code style="background:#1e1f22; padding:2px 6px; border-radius:4px; color:#10b981;">${durStr}</code><br>` +
                         `• <strong>Rank Tier:</strong> <code style="background:#1e1f22; padding:2px 6px; border-radius:4px; color:#38bdf8;">${escapeHtml(level)}</code><br>` +
                         `• <strong>HWID Lock:</strong> <code style="background:#1e1f22; padding:2px 6px; border-radius:4px; color:${hwidLock ? '#ff4d79' : '#10b981'};">${hwidLock ? '🔒 Enforced' : '🔓 Multi-PC (No Lock)'}</code><br>` +
@@ -1462,7 +1477,7 @@ function filterUsersTable() {
         return `
             <tr>
                 <td style="text-align: center;">
-                    <input type="checkbox" class="user-row-chk" value="${u.id}" onchange="onUserCheckboxChange()" style="width: 16px; height: 16px; accent-color: #ff2a5f; cursor: pointer;">
+                    <input type="checkbox" class="user-row-chk" value="${u.id}" onchange="onUserCheckboxChange()" style="width: 16px; height: 16px; accent-color: var(--brand-scarlet); cursor: pointer;">
                 </td>
                 <td>
                     <strong style="color: #fff; font-size: 14px;">${u.username}</strong>
@@ -1475,13 +1490,13 @@ function filterUsersTable() {
                         <span class="mono" style="font-size: 10.5px; color: var(--text-muted); max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${u.hwid || (isMultiPc ? 'Multi-PC Enabled' : 'Will bind on login')}">
                             ${u.hwid || (isMultiPc ? 'Multi-PC Enabled' : 'Will bind on login')}
                         </span>
-                        <button class="btn btn-secondary btn-sm" style="font-size: 10.5px; padding: 2px 7px; margin-top: 2px; ${isMultiPc ? 'color: #ff4d79;' : 'color: #10b981;'}" onclick="toggleUserHwidLock(${u.id}, '${u.username}')" title="Toggle HWID Lock for this specific user">
+                        <button class="btn btn-secondary btn-sm" style="font-size: 10.5px; padding: 2px 7px; margin-top: 2px; ${isMultiPc ? 'color: var(--brand-sky);' : 'color: #10b981;'}" onclick="toggleUserHwidLock(${u.id}, '${u.username}')" title="Toggle HWID Lock for this specific user">
                             ${isMultiPc ? '🔒 Force HWID Lock' : '🔓 Allow Multi-PC'}
                         </button>
                     </div>
                 </td>
                 <td><span class="badge badge-purple">${u.subscription} (Lv.${u.level || 1})</span></td>
-                <td><span style="${u.is_expired ? 'color: #ff4d79; font-weight: 800;' : 'color: #fff; font-weight: 600;'}">${u.time_left}</span></td>
+                <td><span style="${u.is_expired ? 'color: var(--brand-sky); font-weight: 800;' : 'color: #fff; font-weight: 600;'}">${u.time_left}</span></td>
                 <td>${banBadge}</td>
                 <td>
                     <div style="display: flex; gap: 6px; flex-wrap: wrap;">
@@ -1780,7 +1795,7 @@ async function submitManualUser() {
                     `• **HWID Lock:** \`${hwidLock ? 'Enforced' : 'Disabled (Multi-PC)'}\`\n\n` +
                     `*Thank you for choosing JOYST CORPORATION!*`;
 
-                const formattedHtml = `• <strong>Key:</strong> <code style="background:#1e1f22; padding:2px 6px; border-radius:4px; color:#ff4d79; font-weight:800;">${escapeHtml(username)}</code><br>` +
+                const formattedHtml = `• <strong>Key:</strong> <code style="background:#1e1f22; padding:2px 6px; border-radius:4px; color: var(--brand-sky); font-weight:800;">${escapeHtml(username)}</code><br>` +
                     `• <strong>Duration:</strong> <code style="background:#1e1f22; padding:2px 6px; border-radius:4px; color:#10b981;">${days > 90000 ? 'Lifetime' : days + ' Days'}</code><br>` +
                     `• <strong>Expiry Date:</strong> <code style="background:#1e1f22; padding:2px 6px; border-radius:4px;">${expStr}</code><br>` +
                     `• <strong>Rank Tier:</strong> <code style="background:#1e1f22; padding:2px 6px; border-radius:4px; color:#38bdf8;">${escapeHtml(tier)}</code><br>` +
@@ -2245,7 +2260,7 @@ function renderResellersData(resellers) {
         <tr>
             <td>
                 <div style="display: flex; align-items: center; gap: 10px;">
-                    <div style="width: 32px; height: 32px; border-radius: 8px; background: linear-gradient(135deg, #ff2a5f, #7928ca); display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 800; color: #fff;">
+                    <div style="width: 32px; height: 32px; border-radius: 8px; background: linear-gradient(135deg, var(--brand-scarlet), var(--brand-ruby)); display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 800; color: #fff;">
                         ${r.username.charAt(0).toUpperCase()}
                     </div>
                     <div>
@@ -2365,7 +2380,7 @@ async function openViewResellerKeysModal(id, username) {
 
     tbody.innerHTML = data.licenses.map(k => `
         <tr>
-            <td><span class="mono" style="color: #ff4d79; font-weight: 700;">${k.key}</span></td>
+            <td><span class="mono" style="color: var(--brand-sky); font-weight: 700;">${k.key}</span></td>
             <td>${k.duration_days === -1 ? 'Lifetime' : k.duration_days + 'd'}</td>
             <td><span class="badge badge-${k.status === 'unused' ? 'success' : 'secondary'}">${k.status.toUpperCase()}</span></td>
             <td><span style="color: ${k.used_by !== '-' ? '#38bdf8' : 'var(--text-muted)'}; font-weight: 600;">${k.used_by}</span></td>
@@ -2880,7 +2895,7 @@ function renderActiveAppSettings() {
     if (msgContainer) {
         msgContainer.innerHTML = `
             ${appSelectorHtml}
-            <div class="stat-card spotlight-card" style="padding: 24px; border: 1px solid rgba(225, 29, 72, 0.35);">
+            <div class="stat-card spotlight-card" style="padding: 24px; border: 1px solid var(--border-glow);">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; flex-wrap: wrap; gap: 10px;">
                     <div>
                         <h3 style="font-size: 17px; font-weight: 800; color: #fff; margin: 0; display: flex; align-items: center; gap: 8px;">
@@ -2920,7 +2935,7 @@ function renderActiveAppSettings() {
 
                 <!-- Group 2: Security & Anti-Cheat -->
                 <div style="margin-bottom: 22px;">
-                    <div style="font-size: 12.5px; font-weight: 800; color: #ff2a5f; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 12px; border-bottom: 1px solid var(--border-glass); padding-bottom: 6px;">
+                    <div style="font-size: 12.5px; font-weight: 800; color: var(--brand-scarlet); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 12px; border-bottom: 1px solid var(--border-glass); padding-bottom: 6px;">
                         🛡️ 2. Security & Anti-Cheat Enforcement
                     </div>
                     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px;">
@@ -3012,8 +3027,8 @@ function renderActiveAppSettings() {
     if (secContainer) {
         secContainer.innerHTML = `
             ${appSelectorHtml}
-            <div class="stat-card spotlight-card" style="padding: 24px; border: 1px solid rgba(225, 29, 72, 0.35); margin-bottom: 24px;">
-                <h3 style="font-size: 17px; font-weight: 800; color: #ff4d79; margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
+            <div class="stat-card spotlight-card" style="padding: 24px; border: 1px solid var(--border-glow); margin-bottom: 24px;">
+                <h3 style="font-size: 17px; font-weight: 800; color: var(--brand-sky); margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
                     <span>🔒 Hardware Binding & Anti-Share Protection</span>
                 </h3>
 
@@ -3023,7 +3038,7 @@ function renderActiveAppSettings() {
                             <strong style="color: #fff; font-size: 13.5px;">Force Strict Motherboard HWID Lock</strong>
                             <div style="color: var(--text-muted); font-size: 12px; margin-top: 2px;">Blocks accounts from running on different computer hardware</div>
                         </div>
-                        <input type="checkbox" id="setting-hwid-lock" ${app.hwid_lock_enabled ? 'checked' : ''} style="width: 22px; height: 22px; accent-color: #ff2a5f; cursor: pointer;">
+                        <input type="checkbox" id="setting-hwid-lock" ${app.hwid_lock_enabled ? 'checked' : ''} style="width: 22px; height: 22px; accent-color: var(--brand-scarlet); cursor: pointer;">
                     </label>
 
                     <label style="display: flex; align-items: center; justify-content: space-between; cursor: pointer; background: rgba(0,0,0,0.3); padding: 14px 18px; border-radius: 10px; border: 1px solid var(--border-glass);">
@@ -3031,7 +3046,7 @@ function renderActiveAppSettings() {
                             <strong style="color: #fff; font-size: 13.5px;">Allow User Self HWID Reset</strong>
                             <div style="color: var(--text-muted); font-size: 12px; margin-top: 2px;">Permit users to reset HWID once or require admin reset</div>
                         </div>
-                        <input type="checkbox" id="setting-user-hwid-reset" ${app.allow_user_hwid_reset ? 'checked' : ''} style="width: 22px; height: 22px; accent-color: #ff2a5f; cursor: pointer;">
+                        <input type="checkbox" id="setting-user-hwid-reset" ${app.allow_user_hwid_reset ? 'checked' : ''} style="width: 22px; height: 22px; accent-color: var(--brand-scarlet); cursor: pointer;">
                     </label>
 
                     <label style="display: flex; align-items: center; justify-content: space-between; cursor: pointer; background: rgba(0,0,0,0.3); padding: 14px 18px; border-radius: 10px; border: 1px solid var(--border-glass);">
@@ -3039,7 +3054,7 @@ function renderActiveAppSettings() {
                             <strong style="color: #fff; font-size: 13.5px;">VPN & Proxy Blocker</strong>
                             <div style="color: var(--text-muted); font-size: 12px; margin-top: 2px;">Block connections originating from VPNs, datacenter proxies & Tor</div>
                         </div>
-                        <input type="checkbox" id="setting-vpn-block" ${app.vpn_block_enabled ? 'checked' : ''} style="width: 22px; height: 22px; accent-color: #ff2a5f; cursor: pointer;">
+                        <input type="checkbox" id="setting-vpn-block" ${app.vpn_block_enabled ? 'checked' : ''} style="width: 22px; height: 22px; accent-color: var(--brand-scarlet); cursor: pointer;">
                     </label>
                 </div>
 
@@ -3066,7 +3081,7 @@ function renderActiveAppSettings() {
                         <div style="display: flex; gap: 10px; align-items: center;">
                             <input type="text" id="setting-app-hash" class="form-control mono" value="${escapeHtml(app.app_hash || '')}" placeholder="e.g. 7f8a9b4c...">
                             <label style="display: flex; align-items: center; gap: 8px; font-size: 12px; white-space: nowrap; color: #fff; cursor: pointer;">
-                                <input type="checkbox" id="setting-hash-check-toggle" ${app.hash_check_enabled ? 'checked' : ''} style="width: 17px; height: 17px; accent-color: #ff2a5f;">
+                                <input type="checkbox" id="setting-hash-check-toggle" ${app.hash_check_enabled ? 'checked' : ''} style="width: 17px; height: 17px; accent-color: var(--brand-scarlet);">
                                 Enable Hash Check
                             </label>
                         </div>
@@ -3084,7 +3099,7 @@ function renderActiveAppSettings() {
     if (stateContainer) {
         stateContainer.innerHTML = `
             ${appSelectorHtml}
-            <div class="stat-card spotlight-card" style="padding: 24px; border: 1px solid rgba(225, 29, 72, 0.35);">
+            <div class="stat-card spotlight-card" style="padding: 24px; border: 1px solid var(--border-glow);">
                 <h3 style="font-size: 17px; font-weight: 800; color: #38bdf8; margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
                     <span>⚡ Application State, Killswitch & Tokens</span>
                 </h3>
@@ -3229,7 +3244,7 @@ function renderAllAppsList() {
                     </td>
                     <td>
                         <div style="display: flex; align-items: center; gap: 6px; max-width: 330px;">
-                            <div style="background: rgba(0,0,0,0.55); border: 1px solid var(--border-subtle); border-radius: 7px; padding: 5px 10px; font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #ff4d79; font-weight: 700; flex-grow: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                            <div style="background: rgba(0,0,0,0.55); border: 1px solid var(--border-subtle); border-radius: 7px; padding: 5px 10px; font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--brand-sky); font-weight: 700; flex-grow: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
                                 <span id="app-token-span-${app.id}">••••••••••••••••••••••••••••••••</span>
                             </div>
                             <button class="btn btn-secondary btn-sm" style="padding: 4px 8px; font-size: 11px;" onclick="toggleDirectoryToken(${app.id}, '${app.secret}')" title="Reveal / Hide Token">👁️</button>
@@ -3286,7 +3301,7 @@ function renderAllAppsList() {
                     </div>
 
                     <div style="background: rgba(0,0,0,0.5); border: 1px solid var(--border-subtle); border-radius: 8px; padding: 7px 10px; display: flex; justify-content: space-between; align-items: center; font-family: monospace; font-size: 11.5px; margin-bottom: 12px;">
-                        <span id="app-card-token-${app.id}" style="color: #ff4d79; font-weight: 700;">••••••••••••••••</span>
+                        <span id="app-card-token-${app.id}" style="color: var(--brand-sky); font-weight: 700;">••••••••••••••••</span>
                         <div style="display: flex; gap: 4px;">
                             <button class="btn btn-secondary btn-sm" style="padding: 2px 6px; font-size: 10px;" onclick="toggleDirectoryCardToken(${app.id}, '${app.secret}')">👁️</button>
                             <button class="btn btn-secondary btn-sm" style="padding: 2px 6px; font-size: 10px;" onclick="copyToClipboard('${app.secret}')">📋</button>
@@ -4299,7 +4314,7 @@ function renderAvatarElement(el, username, avatarUrl, isLarge = false) {
     } else {
         const initial = (username || "D").charAt(0).toUpperCase();
         el.innerHTML = initial;
-        el.style.background = "linear-gradient(135deg, #ff2a5f, #7928ca)";
+        el.style.background = "linear-gradient(135deg, var(--brand-scarlet), var(--brand-ruby))";
         el.style.color = "#ffffff";
         el.style.display = "flex";
         el.style.alignItems = "center";
@@ -4742,7 +4757,7 @@ function openManageResellerAppsModal(resellerId, username, allowedApps) {
                 const isChecked = isAll || assignedIds.includes(String(a.id)) || assignedIds.includes(a.name);
                 return `
                     <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; color: #fff; font-size: 13px;">
-                        <input type="checkbox" class="reseller-app-cb-single" value="${a.id}" ${isChecked ? 'checked' : ''} style="width: 16px; height: 16px; accent-color: #ff2a5f;">
+                        <input type="checkbox" class="reseller-app-cb-single" value="${a.id}" ${isChecked ? 'checked' : ''} style="width: 16px; height: 16px; accent-color: var(--brand-scarlet);">
                         <span>📱 <strong>${escapeHtml(a.name)}</strong> (v${a.version || '1.0'})</span>
                     </label>
                 `;

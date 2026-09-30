@@ -23,7 +23,7 @@
             right: 0 !important;
             width: 100% !important;
             height: 72px !important;
-            background: rgba(8, 2, 5, 0.88) !important;
+            background: var(--bg-surface) !important;
             backdrop-filter: blur(30px) !important;
             -webkit-backdrop-filter: blur(30px) !important;
             border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
@@ -58,7 +58,7 @@
 
         .brand-title span {
             font-size: 10.5px !important;
-            color: #ff4d79 !important;
+            color: var(--brand-sky) !important;
             font-weight: 700 !important;
             letter-spacing: 0.4px !important;
         }
@@ -92,7 +92,7 @@
 
         .nav-menu a:hover {
             color: #ffffff !important;
-            text-shadow: 0 0 10px rgba(255, 42, 95, 0.6) !important;
+            text-shadow: 0 0 10px var(--shadow-glow) !important;
         }
 
         .btn {
@@ -112,9 +112,9 @@
         }
 
         .btn-primary {
-            background: linear-gradient(135deg, #ff2a5f, #e11d48) !important;
+            background: var(--gradient-primary) !important;
             color: #ffffff !important;
-            box-shadow: 0 0 18px rgba(255, 42, 95, 0.45) !important;
+            box-shadow: var(--shadow-glow) !important;
         }
 
         .btn-secondary {
@@ -144,8 +144,8 @@
             bottom: 0;
             left: 28px;
             width: 2px;
-            background: linear-gradient(180deg, #ff2a5f 0%, rgba(225, 29, 72, 0.2) 80%, transparent 100%);
-            box-shadow: 0 0 12px rgba(255, 42, 95, 0.5);
+            background: linear-gradient(180deg, var(--brand-scarlet) 0%, var(--bg-glass-card) 80%, transparent 100%);
+            box-shadow: var(--shadow-glow);
         }
 
         .timeline-item {
@@ -162,9 +162,9 @@
             width: 24px;
             height: 24px;
             border-radius: 50%;
-            background: #060204;
-            border: 3px solid #ff2a5f;
-            box-shadow: 0 0 20px #ff2a5f, inset 0 0 8px #ff2a5f;
+            background: var(--bg-main);
+            border: 3px solid var(--brand-scarlet);
+            box-shadow: var(--shadow-glow), inset 0 0 8px var(--brand-scarlet);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -182,7 +182,7 @@
 
         .timeline-card {
             background: rgba(16, 5, 12, 0.78);
-            border: 1px solid rgba(255, 42, 95, 0.25);
+            border: 1px solid var(--border-glow);
             border-top: 1px solid rgba(255, 77, 121, 0.5);
             border-radius: var(--radius-lg);
             padding: 28px 32px;
@@ -193,7 +193,7 @@
         }
 
         .timeline-card:hover {
-            border-color: #ff2a5f;
+            border-color: var(--brand-scarlet);
             transform: translateY(-3px);
             box-shadow: 0 25px 50px rgba(225, 29, 72, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.2);
         }
@@ -221,10 +221,10 @@
         }
 
         .filter-chip:hover, .filter-chip.active {
-            background: rgba(255, 42, 95, 0.15);
-            border-color: #ff2a5f;
+            background: var(--bg-glass-card);
+            border-color: var(--brand-scarlet);
             color: #fff;
-            box-shadow: 0 0 18px rgba(255, 42, 95, 0.35);
+            box-shadow: var(--shadow-glow);
         }
 
         .badge-cat {
@@ -238,7 +238,7 @@
         .cat-Security { background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.4); color: #fca5a5; }
         .cat-Feature { background: rgba(56, 189, 248, 0.15); border: 1px solid rgba(56, 189, 248, 0.4); color: #7dd3fc; }
         .cat-Performance { background: rgba(16, 185, 129, 0.15); border: 1px solid rgba(16, 185, 129, 0.4); color: #6ee7b7; }
-        .cat-UI { background: rgba(244, 63, 94, 0.15); border: 1px solid rgba(244, 63, 94, 0.4); color: #fda4af; }
+        .cat-UI { background: var(--bg-glass-card); border: 1px solid var(--border-glow); color: var(--brand-rose); }
 
         @media (max-width: 768px) {
             .timeline-wrapper::before { left: 16px; }
@@ -256,7 +256,7 @@
     <!-- Top Navigation Bar -->
     <nav class="landing-nav">
         <a href="/" class="brand-wrap">
-            <img src="/static/img/joyst_logo.png" alt="JOYST" style="width: 44px; height: 44px; border-radius: 50%; object-fit: cover; box-shadow: 0 0 20px rgba(225, 29, 72, 0.6); border: 1.5px solid rgba(244, 63, 94, 0.6);">
+            <img src="/static/img/joyst_logo.png" alt="JOYST" style="width: 44px; height: 44px; border-radius: 50%; object-fit: cover; box-shadow: var(--shadow-glow); border: 1.5px solid var(--border-glow);">
             <div class="brand-title">
                 JOYST AUTH
                 <span>Next-Gen Software Protection & HWID Enclave</span>
@@ -268,7 +268,7 @@
             <li><a href="/features">Features</a></li>
             <li><a href="/pricing">Pricing</a></li>
             <li><a href="/docs">Documentation</a></li>
-            <li><a href="/changelog" style="color: #fff; text-shadow: 0 0 10px rgba(255, 42, 95, 0.6);">Changelog</a></li>
+            <li><a href="/changelog" style="color: #fff; text-shadow: 0 0 10px var(--shadow-glow);">Changelog</a></li>
             <li><a href="/discord">Discord Bot</a></li>
             <li><a href="/status">System Status</a></li>
         </ul>
@@ -304,7 +304,7 @@
     <!-- Timeline Content -->
     <main class="timeline-wrapper" id="timeline-container">
         <div style="text-align: center; color: var(--text-muted); padding: 40px;">
-            <div class="spinner" style="width: 32px; height: 32px; border: 3px solid rgba(255,255,255,0.1); border-top-color: #ff2a5f; border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 16px auto;"></div>
+            <div class="spinner" style="width: 32px; height: 32px; border: 3px solid rgba(255,255,255,0.1); border-top-color: var(--brand-scarlet); border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 16px auto;"></div>
             Loading live release timeline...
         </div>
     </main>
@@ -370,7 +370,7 @@
                 const listHtml = lines.map(line => {
                     const cleanLine = line.replace(/^[•\-\*]\s*/, '');
                     return `<li style="margin-bottom: 8px; color: #e2e8f0; font-size: 14px; line-height: 1.6; display: flex; align-items: flex-start; gap: 8px;">
-                        <span style="color: #ff4d79; font-weight: 800; font-size: 16px; line-height: 1.2;">›</span>
+                        <span style="color: var(--brand-sky); font-weight: 800; font-size: 16px; line-height: 1.2;">›</span>
                         <span>${cleanLine}</span>
                     </li>`;
                 }).join('');
@@ -385,7 +385,7 @@
                                 <span class="badge-cat cat-${item.category}">${item.category}</span>
                             </div>
                             <div style="font-size: 12.5px; color: var(--text-muted); font-weight: 600;">
-                                📅 ${item.created_at} • <span style="color: #fda4af;">${item.author}</span>
+                                📅 ${item.created_at} • <span style="color: var(--brand-rose);">${item.author}</span>
                             </div>
                         </div>
                         <h2 style="font-size: 18px; font-weight: 800; color: #fff; margin: 0 0 14px 0; letter-spacing: -0.2px;">

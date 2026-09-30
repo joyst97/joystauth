@@ -169,7 +169,7 @@ function initSdkPlayground() {
                 b.style.borderColor = "transparent";
             });
             btn.classList.add("active");
-            btn.style.background = "rgba(225, 29, 72, 0.25)";
+            btn.style.background = "var(--bg-glass-card-hover)";
             btn.style.color = "#fff";
             btn.style.borderColor = "var(--brand-rose)";
 
@@ -252,7 +252,7 @@ async function triggerClientLaunchDemo() {
         if (progressBox) progressBox.style.display = "none";
         if (progressBar) {
             progressBar.style.width = "0%";
-            progressBar.style.background = "linear-gradient(90deg, #e11d48, #ff4d79)";
+            progressBar.style.background = "var(--gradient-primary)";
         }
         if (statusMsg) {
             statusMsg.style.color = "#fff";
@@ -278,7 +278,7 @@ function generateLandingKey() {
     const badgeEl = document.getElementById("landing-live-key-status");
     if (keyEl) {
         keyEl.textContent = key;
-        keyEl.style.color = "#ff2a5f";
+        keyEl.style.color = "var(--brand-scarlet)";
         setTimeout(() => { keyEl.style.color = "#fff"; }, 300);
     }
     if (badgeEl) {
@@ -302,8 +302,8 @@ function testIntruderBlock() {
     if (!intruderResult) return;
 
     intruderResult.innerHTML = `
-        <div style="background: rgba(225, 29, 72, 0.15); border: 1px solid #e11d48; padding: 14px; border-radius: 10px; margin-top: 14px; animation: pulseGlow 1.5s infinite;">
-            <div style="color: #fb7185; font-weight: 800; font-size: 13.5px; margin-bottom: 4px;">🚨 [SECURITY ALERT TRIGGERED]</div>
+        <div style="background: var(--bg-glass-card); border: 1px solid var(--border-glow); padding: 14px; border-radius: 10px; margin-top: 14px; animation: pulseGlow 1.5s infinite;">
+            <div style="color: var(--brand-rose); font-weight: 800; font-size: 13.5px; margin-bottom: 4px;">🚨 [SECURITY ALERT TRIGGERED]</div>
             <div style="font-size: 12.5px; color: #fff;">Unauthorized PC (HWID: <code class="mono">a9f81...</code>) attempted login. Blocked immediately at gateway.</div>
             <div style="font-size: 11.5px; color: var(--text-muted); margin-top: 6px;">📢 Automated Discord Webhook log dispatched to your admin channel.</div>
         </div>
@@ -356,7 +356,7 @@ function showLandingToast(msg) {
     if (!toast) {
         toast = document.createElement("div");
         toast.id = "landing-toast";
-        toast.style.cssText = "position: fixed; bottom: 30px; right: 30px; background: rgba(18, 4, 8, 0.95); border: 1px solid #e11d48; color: #fff; padding: 14px 22px; border-radius: 12px; font-size: 13.5px; font-weight: 700; z-index: 99999; box-shadow: 0 10px 40px rgba(225, 29, 72, 0.4); display: flex; align-items: center; gap: 10px; transition: all 0.3s ease;";
+        toast.style.cssText = "position: fixed; bottom: 30px; right: 30px; background: var(--bg-surface, rgba(15, 23, 42, 0.95)); border: 1px solid var(--border-glow, rgba(0, 242, 254, 0.5)); color: #fff; padding: 14px 22px; border-radius: 12px; font-size: 13.5px; font-weight: 700; z-index: 99999; box-shadow: var(--shadow-glow, 0 10px 40px rgba(0, 242, 254, 0.3)); display: flex; align-items: center; gap: 10px; transition: all 0.3s ease;";
         document.body.appendChild(toast);
     }
     toast.textContent = msg;
@@ -383,9 +383,9 @@ async function simulateHeroSecurityBlock() {
     }
 
     resultBox.style.display = "block";
-    resultBox.style.background = "rgba(225, 29, 72, 0.15)";
-    resultBox.style.border = "1px solid rgba(244, 63, 94, 0.4)";
-    resultBox.style.color = "#fca5a5";
+    resultBox.style.background = "var(--bg-glass-card, rgba(15, 23, 42, 0.65))";
+    resultBox.style.border = "1px solid var(--border-glow, rgba(0, 242, 254, 0.4))";
+    resultBox.style.color = "var(--text-primary, #f8fafc)";
     resultBox.innerHTML = "⏳ [1/2] Hardware handshake received from foreign PC (UUID: 7A19-9B21-FF88)...";
 
     await sleep(400);

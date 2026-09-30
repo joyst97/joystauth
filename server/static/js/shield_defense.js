@@ -72,11 +72,11 @@
         isLocked = true;
         try {
             document.body.innerHTML = `
-                <div style="position:fixed;top:0;left:0;width:100vw;height:100vh;background:#060205;color:#ff2a5f;display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:system-ui, -apple-system, sans-serif;z-index:99999999;text-align:center;padding:20px;">
-                    <div style="width:70px;height:70px;border-radius:50%;background:rgba(255,42,95,0.15);border:2px solid #ff2a5f;display:flex;align-items:center;justify-content:center;font-size:32px;margin-bottom:20px;box-shadow:0 0 30px rgba(255,42,95,0.5);">🛡️</div>
-                    <h1 style="font-size:26px;font-weight:900;letter-spacing:0.5px;color:#fff;margin-bottom:10px;text-shadow:0 0 20px rgba(255,42,95,0.8);">SECURITY SHIELD • DEVTOOLS DETECTED</h1>
+                <div style="position:fixed;top:0;left:0;width:100vw;height:100vh;background:var(--bg-main, #020617);color:var(--brand-scarlet, #00f2fe);display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:system-ui, -apple-system, sans-serif;z-index:99999999;text-align:center;padding:20px;">
+                    <div style="width:70px;height:70px;border-radius:50%;background:rgba(255,255,255,0.06);border:2px solid var(--brand-scarlet, #00f2fe);display:flex;align-items:center;justify-content:center;font-size:32px;margin-bottom:20px;box-shadow:var(--shadow-glow);">🛡️</div>
+                    <h1 style="font-size:26px;font-weight:900;letter-spacing:0.5px;color:#fff;margin-bottom:10px;text-shadow:0 0 20px var(--shadow-glow);">SECURITY SHIELD • DEVTOOLS DETECTED</h1>
                     <p style="color:#94a3b8;font-size:15px;max-width:500px;line-height:1.6;margin-bottom:25px;">Inspection of Joyst Enclave DOM & source code is strictly prohibited. Please close Developer Tools and reload.</p>
-                    <button onclick="window.location.reload()" style="background:linear-gradient(135deg,#ff2a5f,#e11d48);color:#fff;border:none;padding:12px 28px;border-radius:12px;font-weight:800;cursor:pointer;font-size:14px;box-shadow:0 6px 20px rgba(255,42,95,0.5);">Reload Application</button>
+                    <button onclick="window.location.reload()" style="background:var(--gradient-primary, linear-gradient(135deg,#00f2fe,#0284c7));color:#fff;border:none;padding:12px 28px;border-radius:12px;font-weight:800;cursor:pointer;font-size:14px;box-shadow:var(--shadow-glow);">Reload Application</button>
                 </div>
             `;
         } catch (e) {}

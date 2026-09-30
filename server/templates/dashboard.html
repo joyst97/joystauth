@@ -58,7 +58,7 @@
 
 .brand-text span {
     font-size: 10.5px !important;
-    color: #ff4d79 !important;
+    color: var(--brand-sky) !important;
     font-weight: 700 !important;
     letter-spacing: 0.5px !important;
     text-transform: uppercase !important;
@@ -80,8 +80,8 @@
 }
 
 .collapse-btn:hover {
-    background: rgba(255, 42, 95, 0.15) !important;
-    border-color: #ff2a5f !important;
+    background: var(--bg-glass-card) !important;
+    border-color: var(--brand-scarlet) !important;
     color: #ffffff !important;
 }
 
@@ -127,32 +127,32 @@
     height: 18px !important;
     min-width: 18px !important;
     stroke-width: 2 !important;
-    color: #ff4d79 !important;
+    color: var(--brand-sky) !important;
     opacity: 0.85 !important;
     transition: all 0.2s ease !important;
-    filter: drop-shadow(0 0 5px rgba(255, 42, 95, 0.35)) !important;
+    filter: drop-shadow(0 0 5px var(--brand-scarlet)) !important;
     flex-shrink: 0 !important;
 }
 
 .nav-item:hover {
     color: #ffffff !important;
-    background: rgba(255, 42, 95, 0.09) !important;
-    border-color: rgba(255, 42, 95, 0.22) !important;
+    background: rgba(255, 255, 255, 0.04) !important;
+    border-color: var(--border-highlight) !important;
     transform: translateX(2px) !important;
 }
 
 .nav-item:hover svg {
     opacity: 1 !important;
-    color: #ff2a5f !important;
+    color: var(--brand-scarlet) !important;
     transform: scale(1.08) !important;
-    filter: drop-shadow(0 0 8px rgba(255, 42, 95, 0.6)) !important;
+    filter: drop-shadow(0 0 8px var(--brand-scarlet)) !important;
 }
 
 .nav-item.active {
     color: #ffffff !important;
-    background: rgba(255, 42, 95, 0.16) !important;
-    border: 1px solid rgba(255, 42, 95, 0.42) !important;
-    box-shadow: 0 0 18px rgba(255, 42, 95, 0.25) !important;
+    background: var(--bg-glass-card) !important;
+    border: 1px solid var(--border-glow) !important;
+    box-shadow: var(--shadow-glow) !important;
     font-weight: 700 !important;
 }
 
@@ -163,15 +163,15 @@
     top: 20% !important;
     height: 60% !important;
     width: 3.5px !important;
-    background: #ff2a5f !important;
+    background: var(--brand-scarlet) !important;
     border-radius: 0 3px 3px 0 !important;
-    box-shadow: 0 0 10px #ff2a5f !important;
+    box-shadow: var(--shadow-glow) !important;
 }
 
 .nav-item.active svg {
-    color: #ff2a5f !important;
+    color: var(--brand-scarlet) !important;
     opacity: 1 !important;
-    filter: drop-shadow(0 0 10px #ff2a5f) !important;
+    filter: drop-shadow(0 0 10px var(--brand-scarlet)) !important;
 }
 
 .sidebar-footer {
@@ -206,15 +206,15 @@
     max-width: 36px !important;
     max-height: 36px !important;
     border-radius: 50% !important;
-    background: linear-gradient(135deg, #ff2a5f, #7928ca) !important;
+    background: linear-gradient(135deg, var(--brand-scarlet), var(--brand-ruby)) !important;
     color: #ffffff !important;
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
     font-size: 15px !important;
     font-weight: 800 !important;
-    box-shadow: 0 0 12px rgba(255, 42, 95, 0.4) !important;
-    border: 1.5px solid rgba(255, 42, 95, 0.4) !important;
+    box-shadow: var(--shadow-glow) !important;
+    border: 1.5px solid var(--border-glow) !important;
     overflow: hidden !important;
     flex-shrink: 0 !important;
 }
@@ -336,9 +336,9 @@
 
 
 <!-- Joyst Auth & Cloudflare Edge Verification Gatekeeper -->
-<div id="cf-enclave-gatekeeper" style="position:fixed;top:0;left:0;width:100vw;height:100vh;background:#060205;z-index:99999999;display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:system-ui, -apple-system, sans-serif;transition:opacity 0.45s cubic-bezier(0.4, 0, 0.2, 1);">
+<div id="cf-enclave-gatekeeper" style="position:fixed;top:0;left:0;width:100vw;height:100vh;background: var(--bg-main);z-index:99999999;display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:system-ui, -apple-system, sans-serif;transition:opacity 0.45s cubic-bezier(0.4, 0, 0.2, 1);">
     <div style="text-align:center;padding:40px 30px;width:100%;max-width:460px;display:flex;flex-direction:column;align-items:center;">
-        <img src="/static/img/joyst_logo.png" alt="JOYST AUTH" style="width:76px;height:76px;object-fit:contain;border-radius:18px;margin-bottom:22px;filter:drop-shadow(0 0 25px rgba(255,42,95,0.45));">
+        <img src="/static/img/joyst_logo.png" alt="JOYST AUTH" style="width:76px;height:76px;object-fit:contain;border-radius:18px;margin-bottom:22px;filter: drop-shadow(0 0 25px var(--shadow-glow));">
         <h1 style="color:#ffffff;font-size:26px;font-weight:900;letter-spacing:-0.4px;margin:0 0 10px 0;text-shadow:0 2px 10px rgba(0,0,0,0.5);">JOYST AUTH</h1>
         <p style="color:#94a3b8;font-size:15px;font-weight:500;margin:0 0 28px 0;">Please wait while we validate your connection.</p>
         
@@ -461,6 +461,7 @@
                 <li class="nav-item" data-tab="custom-clients" id="sidebar-tab-custom-clients" data-tooltip="Custom Clients" onclick="switchTab('custom-clients')">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
                     <span>Custom Clients</span>
+                    <span class="badge badge-paid" style="margin-left: auto; font-size: 9px; padding: 2px 6px; border-radius: 4px; background: linear-gradient(135deg, #f59e0b, #d97706); color: #000; font-weight: 800;">PAID</span>
                 </li>
                 <li class="nav-item" data-tab="webhooks" data-tooltip="Discord Bot & Logs" onclick="switchTab('webhooks')">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M22 17H2a3 3 0 0 0 3-3V9a7 7 0 0 1 14 0v5a3 3 0 0 0 3 3zm-8.27 4a2 2 0 0 1-3.46 0"></path></svg>
@@ -580,7 +581,7 @@
                                 <span>Titanium OLED</span>
                             </div>
                             <div class="theme-opt-item" onclick="setDashboardTheme('crimson')" style="display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 8px; cursor: pointer; color: #fff; font-size: 12px; font-weight: 700;">
-                                <span style="width: 12px; height: 12px; border-radius: 50%; background: #ff2a5f; box-shadow: 0 0 8px #ff2a5f; display: inline-block;"></span>
+                                <span style="width: 12px; height: 12px; border-radius: 50%; background: var(--brand-scarlet); box-shadow: 0 0 8px #ff2a5f; display: inline-block;"></span>
                                 <span>Crimson Red</span>
                             </div>
                         </div>
@@ -628,15 +629,15 @@
                 </div>
 
                 <!-- Prominent Application Selector & Credentials Vault Box -->
-                <div class="app-credentials-banner spotlight-card" id="app-credentials-banner" style="background: var(--bg-surface); border: 1px solid rgba(225, 29, 72, 0.35); box-shadow: 0 10px 30px -10px rgba(225, 29, 72, 0.25); border-radius: 16px; padding: 20px 24px; margin-bottom: 22px;">
+                <div class="app-credentials-banner spotlight-card" id="app-credentials-banner" style="background: var(--bg-surface); border: 1px solid var(--border-glow); box-shadow: 0 10px 30px -10px rgba(225, 29, 72, 0.25); border-radius: 16px; padding: 20px 24px; margin-bottom: 22px;">
                     <!-- Big App Selector Header -->
                     <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 14px; margin-bottom: 16px; border-bottom: 1px solid var(--border-glass); padding-bottom: 14px;">
                         <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
                             <div style="width: 38px; height: 38px; border-radius: 10px; background: var(--gradient-primary); display: flex; align-items: center; justify-content: center; font-size: 20px; box-shadow: 0 0 16px rgba(225, 29, 72, 0.5);">⚡</div>
                             <div>
-                                <span style="font-size: 10.5px; color: #ff4d79; font-weight: 800; text-transform: uppercase; letter-spacing: 0.8px; display: block; margin-bottom: 3px;">ACTIVE APPLICATION</span>
+                                <span style="font-size: 10.5px; color: var(--brand-sky); font-weight: 800; text-transform: uppercase; letter-spacing: 0.8px; display: block; margin-bottom: 3px;">ACTIVE APPLICATION</span>
                                 <div style="display: flex; align-items: center; gap: 8px;">
-                                    <select id="overview-app-select" style="background: #120408; color: #fff; border: 1.5px solid rgba(244, 63, 94, 0.5); padding: 7px 14px; border-radius: 8px; font-size: 14.5px; font-weight: 800; outline: none; cursor: pointer; min-width: 220px; box-shadow: 0 0 12px rgba(225, 29, 72, 0.2);">
+                                    <select id="overview-app-select" style="background: var(--bg-surface); color: #fff; border: 1.5px solid var(--border-glow); padding: 7px 14px; border-radius: 8px; font-size: 14.5px; font-weight: 800; outline: none; cursor: pointer; min-width: 220px; box-shadow: 0 0 12px rgba(225, 29, 72, 0.2);">
                                         <option>Loading Applications...</option>
                                     </select>
                                     <button class="btn btn-secondary btn-sm" onclick="openModal('modal-create-app')" title="Create New App" style="padding: 7px 12px; font-size: 12px;">➕ New</button>
@@ -670,7 +671,7 @@
                 <!-- Emergency Live Control Deck (Maintenance & Urgent Broadcast) -->
                 <div class="stat-card spotlight-card" id="overview-emergency-deck" style="padding: 18px 24px; margin-bottom: 22px; background: linear-gradient(135deg, rgba(225, 29, 72, 0.12), rgba(0, 0, 0, 0.4)); border: 1.5px solid rgba(225, 29, 72, 0.35); border-radius: 16px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
                     <div style="display: flex; align-items: center; gap: 14px;">
-                        <div style="width: 44px; height: 44px; border-radius: 12px; background: rgba(225, 29, 72, 0.2); border: 1px solid rgba(225, 29, 72, 0.4); display: flex; align-items: center; justify-content: center; font-size: 24px;">
+                        <div style="width: 44px; height: 44px; border-radius: 12px; background: var(--bg-glass-card); border: 1px solid rgba(225, 29, 72, 0.4); display: flex; align-items: center; justify-content: center; font-size: 24px;">
                             🚨
                         </div>
                         <div>
@@ -690,7 +691,7 @@
                         <button class="btn btn-warning btn-sm" onclick="openModal('modal-create-notif')" style="font-weight: 800; background: linear-gradient(135deg, #f59e0b, #d97706); border: none; color: #000;">
                             <span>⚠️ Send Warning / Notice</span>
                         </button>
-                        <button class="btn btn-danger btn-sm" id="btn-quick-toggle-maintenance" onclick="quickToggleMaintenance()" style="font-weight: 800; box-shadow: 0 0 15px rgba(225, 29, 72, 0.4);">
+                        <button class="btn btn-danger btn-sm" id="btn-quick-toggle-maintenance" onclick="quickToggleMaintenance()" style="font-weight: 800; box-shadow: var(--shadow-glow);">
                             <span>⏸️ Toggle Maintenance Mode</span>
                         </button>
                     </div>
@@ -838,14 +839,14 @@
                             <button class="btn btn-danger btn-sm" onclick="toggleUsersBulkDeleteDropdown(event)" style="font-weight: 800; box-shadow: 0 4px 18px rgba(244, 63, 94, 0.35);">
                                 <span>🗑️ Bulk Delete ▾</span>
                             </button>
-                            <div id="users-bulk-delete-dropdown" class="dropdown-menu-cyber" style="display: none; position: absolute; top: calc(100% + 6px); left: 0; min-width: 220px; background: rgba(18, 5, 10, 0.96); border: 1.5px solid rgba(244, 63, 94, 0.5); backdrop-filter: blur(24px); border-radius: 12px; padding: 6px; z-index: 1000; box-shadow: 0 10px 30px rgba(0,0,0,0.8), 0 0 20px rgba(225, 29, 72, 0.3);">
+                            <div id="users-bulk-delete-dropdown" class="dropdown-menu-cyber" style="display: none; position: absolute; top: calc(100% + 6px); left: 0; min-width: 220px; background: rgba(18, 5, 10, 0.96); border: 1.5px solid var(--border-glow); backdrop-filter: blur(24px); border-radius: 12px; padding: 6px; z-index: 1000; box-shadow: 0 10px 30px rgba(0,0,0,0.8), 0 0 20px rgba(225, 29, 72, 0.3);">
                                 <a href="javascript:void(0)" onclick="batchDeleteSelected(); closeAllDropdowns();" class="dropdown-item-cyber" style="display: flex; align-items: center; gap: 8px; padding: 10px 14px; color: #fff; font-size: 12.5px; font-weight: 700; border-radius: 8px; text-decoration: none;">
                                     <span>🗑️ Delete Selected Users</span>
                                 </a>
-                                <a href="javascript:void(0)" onclick="bulkPurgeExpiredUsersSubmit(); closeAllDropdowns();" class="dropdown-item-cyber" style="display: flex; align-items: center; gap: 8px; padding: 10px 14px; color: #fda4af; font-size: 12.5px; font-weight: 700; border-radius: 8px; text-decoration: none;">
+                                <a href="javascript:void(0)" onclick="bulkPurgeExpiredUsersSubmit(); closeAllDropdowns();" class="dropdown-item-cyber" style="display: flex; align-items: center; gap: 8px; padding: 10px 14px; color: var(--brand-rose); font-size: 12.5px; font-weight: 700; border-radius: 8px; text-decoration: none;">
                                     <span>🧹 Purge All Expired Users</span>
                                 </a>
-                                <a href="javascript:void(0)" onclick="bulkDeleteAllUsersInApp(); closeAllDropdowns();" class="dropdown-item-cyber" style="display: flex; align-items: center; gap: 8px; padding: 10px 14px; color: #ff2a5f; font-size: 12.5px; font-weight: 800; border-radius: 8px; text-decoration: none; border-top: 1px solid rgba(255,255,255,0.08); margin-top: 4px;">
+                                <a href="javascript:void(0)" onclick="bulkDeleteAllUsersInApp(); closeAllDropdowns();" class="dropdown-item-cyber" style="display: flex; align-items: center; gap: 8px; padding: 10px 14px; color: var(--brand-scarlet); font-size: 12.5px; font-weight: 800; border-radius: 8px; text-decoration: none; border-top: 1px solid rgba(255,255,255,0.08); margin-top: 4px;">
                                     <span>⚠️ Wipe ALL Users in App</span>
                                 </a>
                             </div>
@@ -858,9 +859,9 @@
                 </div>
 
                 <!-- Floating Batch Action Bar (Appears when users are checked) -->
-                <div id="users-batch-actions-bar" style="display: none; background: rgba(225, 29, 72, 0.15); border: 1.5px solid rgba(244, 63, 94, 0.5); border-radius: 12px; padding: 12px 20px; margin-bottom: 18px; justify-content: space-between; align-items: center; box-shadow: 0 0 25px rgba(225, 29, 72, 0.3);">
+                <div id="users-batch-actions-bar" style="display: none; background: var(--bg-glass-card); border: 1.5px solid var(--border-glow); border-radius: 12px; padding: 12px 20px; margin-bottom: 18px; justify-content: space-between; align-items: center; box-shadow: 0 0 25px rgba(225, 29, 72, 0.3);">
                     <div style="display: flex; align-items: center; gap: 10px;">
-                        <span style="font-size: 13.5px; font-weight: 800; color: #fff;">Selected: <span id="users-selected-count" style="color: #ff4d79;">0</span> Users</span>
+                        <span style="font-size: 13.5px; font-weight: 800; color: #fff;">Selected: <span id="users-selected-count" style="color: var(--brand-sky);">0</span> Users</span>
                     </div>
                     <div style="display: flex; gap: 8px; flex-wrap: wrap;">
                         <button class="btn btn-secondary btn-sm" onclick="batchResetHwidSelected()">🔒 Reset HWID Selected</button>
@@ -893,7 +894,7 @@
                         <thead>
                             <tr>
                                 <th style="width: 40px; text-align: center;">
-                                    <input type="checkbox" id="users-select-all-chk" onchange="toggleSelectAllUsers(this)" style="width: 16px; height: 16px; accent-color: #ff2a5f; cursor: pointer;">
+                                    <input type="checkbox" id="users-select-all-chk" onchange="toggleSelectAllUsers(this)" style="width: 16px; height: 16px; accent-color: var(--brand-scarlet); cursor: pointer;">
                                 </th>
                                 <th>User / IP / Last Login</th>
                                 <th>HWID & Lock Mode</th>
@@ -1079,7 +1080,7 @@
                                     <div style="color: var(--text-muted); font-size: 11.5px; margin-top: 2px;">Create client user & pass with Interactive App Dropdown</div>
                                 </div>
                                 <div style="background: rgba(0,0,0,0.4); padding: 10px 14px; border-radius: 8px; border: 1px solid var(--border-glass);">
-                                    <strong class="mono" style="color: #fb7185;">/genkey &lt;days&gt; &lt;count&gt; &lt;level&gt;</strong>
+                                    <strong class="mono" style="color: var(--brand-rose);">/genkey &lt;days&gt; &lt;count&gt; &lt;level&gt;</strong>
                                     <div style="color: var(--text-muted); font-size: 11.5px; margin-top: 2px;">Generate license keys with Interactive App Dropdown</div>
                                 </div>
                                 <div style="background: rgba(0,0,0,0.4); padding: 10px 14px; border-radius: 8px; border: 1px solid var(--border-glass);">
@@ -1214,7 +1215,7 @@
                                 <span class="stat-icon">👤</span>
                             </div>
                             <div style="display: flex; align-items: center; gap: 18px; margin: 20px 0;">
-                                <div id="profile-page-avatar-preview" style="width: 72px; height: 72px; min-width: 72px; border-radius: 50%; background: linear-gradient(135deg, #ff2a5f, #7928ca); display: flex; align-items: center; justify-content: center; font-size: 28px; font-weight: 900; color: #fff; border: 2px solid rgba(255, 42, 95, 0.5); box-shadow: 0 0 20px rgba(255, 42, 95, 0.4); overflow: hidden;">
+                                <div id="profile-page-avatar-preview" style="width: 72px; height: 72px; min-width: 72px; border-radius: 50%; background: linear-gradient(135deg, var(--brand-scarlet), var(--brand-ruby)); display: flex; align-items: center; justify-content: center; font-size: 28px; font-weight: 900; color: #fff; border: 2px solid rgba(255, 42, 95, 0.5); box-shadow: 0 0 20px rgba(255, 42, 95, 0.4); overflow: hidden;">
                                     D
                                 </div>
                                 <div style="flex-grow: 1;">
@@ -1372,40 +1373,60 @@
             
             <!-- 14. TAB: CUSTOM CLIENTS / SUB-DEVELOPERS -->
             <section id="page-custom-clients" class="page-container">
-                <div class="page-header">
-                    <div class="page-title">
-                        <h2>Custom Brand Partners & Clients</h2>
-                        <p>Delegate full application management (Maintenance, Keys, Users, Settings) to branded client owners without allowing them to create new apps.</p>
+                <!-- Locked Paywall State (For Free Plan Users) -->
+                <div id="custom-clients-locked-paywall" class="locked-feature-paywall">
+                    <div class="paywall-icon-bubble">🔒</div>
+                    <h2>Custom Clients & Brand Partners (Paid Feature)</h2>
+                    <p>Delegate scoped application management (Maintenance, Keys, Users, Settings) to branded client owners without allowing them to create new applications. This feature is exclusive to the Paid Plan.</p>
+                    <div class="paywall-perks-grid">
+                        <div class="paywall-perk-item">👑 <span>Delegate App Management to Brand Partners</span></div>
+                        <div class="paywall-perk-item">🔐 <span>Dedicated Sub-Developer Portal Login</span></div>
+                        <div class="paywall-perk-item">⚡ <span>Scoped Access to Specific Applications</span></div>
+                        <div class="paywall-perk-item">🛡️ <span>Prevent Client from Creating New Apps</span></div>
                     </div>
-                    <div style="display: flex; gap: 8px;">
-                        <button class="btn btn-secondary btn-sm" onclick="loadCustomClients()">🔄 Refresh</button>
-                        <button class="btn btn-primary btn-sm" onclick="openCreateCustomClientModal()">
-                            <span>➕ Create Custom Client</span>
-                        </button>
+                    <div class="paywall-actions">
+                        <button class="btn btn-primary" onclick="switchTab('settings')">🔑 Redeem Paid Plan Upgrade Key</button>
+                        <a href="/pricing" target="_blank" class="btn btn-secondary">💳 View Paid Plan ($2 (₹200 INR)/mo)</a>
                     </div>
                 </div>
 
-                <div class="table-card spotlight-card">
-                    <div class="table-toolbar" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
-                        <div class="search-input-wrap" style="width: 320px;">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-                            <input type="text" id="custom-clients-search" class="search-input" placeholder="Search custom clients..." oninput="filterCustomClientsTable()" autocomplete="off">
+                <!-- Unlocked Content (For Paid Plan Users) -->
+                <div id="custom-clients-unlocked-content" style="display: none;">
+                    <div class="page-header">
+                        <div class="page-title">
+                            <h2>Custom Brand Partners & Clients</h2>
+                            <p>Delegate full application management (Maintenance, Keys, Users, Settings) to branded client owners without allowing them to create new apps.</p>
                         </div>
-                        <div id="custom-clients-count-badge" class="badge badge-purple" style="font-size: 12px; font-weight: 800;">Loading...</div>
+                        <div style="display: flex; gap: 8px;">
+                            <button class="btn btn-secondary btn-sm" onclick="loadCustomClients()">🔄 Refresh</button>
+                            <button class="btn btn-primary btn-sm" onclick="openCreateCustomClientModal()">
+                                <span>➕ Create Custom Client</span>
+                            </button>
+                        </div>
                     </div>
 
-                    <table class="data-table">
-                        <thead>
-                            <tr>
-                                <th>Client Username</th>
-                                <th>Assigned Applications</th>
-                                <th>Notes</th>
-                                <th>Created Date</th>
-                                <th style="text-align: right;">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody id="custom-clients-table-body"></tbody>
-                    </table>
+                    <div class="table-card spotlight-card">
+                        <div class="table-toolbar" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+                            <div class="search-input-wrap" style="width: 320px;">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                                <input type="text" id="custom-clients-search" class="search-input" placeholder="Search custom clients..." oninput="filterCustomClientsTable()" autocomplete="off">
+                            </div>
+                            <div id="custom-clients-count-badge" class="badge badge-purple" style="font-size: 12px; font-weight: 800;">Loading...</div>
+                        </div>
+
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Client Username</th>
+                                    <th>Assigned Applications</th>
+                                    <th>Notes</th>
+                                    <th>Created Date</th>
+                                    <th style="text-align: right;">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="custom-clients-table-body"></tbody>
+                        </table>
+                    </div>
                 </div>
             </section>
 
@@ -1507,6 +1528,21 @@
                 async function fetchAndRenderClients() {
                     const tbody = document.getElementById("custom-clients-table-body");
                     const countBadge = document.getElementById("custom-clients-count-badge");
+                    const ccLocked = document.getElementById("custom-clients-locked-paywall");
+                    const ccUnlocked = document.getElementById("custom-clients-unlocked-content");
+
+                    const isPaid = (window.currentUserPlan === "Paid" || window.currentUserPlan === "Developer" || window.currentUserPlan === "Pro" || window.currentUserPlan === "Enterprise");
+                    
+                    if (!isPaid && !window.isCustomClientRole) {
+                        if (ccLocked) ccLocked.style.display = "flex";
+                        if (ccUnlocked) ccUnlocked.style.display = "none";
+                        window.customClientsList = [];
+                        return;
+                    } else {
+                        if (ccLocked) ccLocked.style.display = "none";
+                        if (ccUnlocked) ccUnlocked.style.display = "block";
+                    }
+
                     if (!tbody) return;
 
                     const token = localStorage.getItem("auth_admin_token") || localStorage.getItem("token") || "";
@@ -1515,6 +1551,11 @@
 
                     try {
                         const res = await fetch("/api/v1/admin/custom-clients", { headers });
+                        if (res.status === 403) {
+                            if (ccLocked) ccLocked.style.display = "flex";
+                            if (ccUnlocked) ccUnlocked.style.display = "none";
+                            return;
+                        }
                         if (!res.ok) return;
                         const data = await res.json();
                         const list = (data && Array.isArray(data.clients)) ? data.clients : (Array.isArray(data) ? data : []);
@@ -1560,21 +1601,21 @@
                 <!-- 3-Step Visual Quickstart Guide -->
                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; margin-bottom: 24px;">
                     <div class="stat-card spotlight-card" style="padding: 22px;">
-                        <div style="font-size: 22px; font-weight: 900; color: #ff2a5f; margin-bottom: 6px;">STEP 1</div>
+                        <div style="font-size: 22px; font-weight: 900; color: var(--brand-scarlet); margin-bottom: 6px;">STEP 1</div>
                         <h4 style="color: #fff; font-size: 15px; margin-bottom: 6px;">📁 1-Click Download SDK File</h4>
                         <p style="font-size: 12.5px; color: var(--text-secondary); line-height: 1.5;">
                             Download the 1-file standalone SDK below and place it directly into yourject's root folder.
                         </p>
                     </div>
                     <div class="stat-card spotlight-card" style="padding: 22px;">
-                        <div style="font-size: 22px; font-weight: 900; color: #ff2a5f; margin-bottom: 6px;">STEP 2</div>
+                        <div style="font-size: 22px; font-weight: 900; color: var(--brand-scarlet); margin-bottom: 6px;">STEP 2</div>
                         <h4 style="color: #fff; font-size: 15px; margin-bottom: 6px;">⚡ Pre-Filled Credentials</h4>
                         <p style="font-size: 12.5px; color: var(--text-secondary); line-height: 1.5;">
                             The code below is already automatically customized with your active Application parameters!
                         </p>
                     </div>
                     <div class="stat-card spotlight-card" style="padding: 22px;">
-                        <div style="font-size: 22px; font-weight: 900; color: #ff2a5f; margin-bottom: 6px;">STEP 3</div>
+                        <div style="font-size: 22px; font-weight: 900; color: var(--brand-scarlet); margin-bottom: 6px;">STEP 3</div>
                         <h4 style="color: #fff; font-size: 15px; margin-bottom: 6px;">🛡️ Ultra-Safe Authentication</h4>
                         <p style="font-size: 12.5px; color: var(--text-secondary); line-height: 1.5;">
                             Call <code class="mono" style="color: #38bdf8;">auth.login()</code>. AES-256 encryption, HWID lock, & Discord logs happen 100% automatically!
@@ -1830,7 +1871,7 @@
 
                 <div class="form-group" style="margin-bottom: 8px;">
                     <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; color: #fff;">
-                        <input type="checkbox" id="quick-edit-app-hwid" style="width: 18px; height: 18px; accent-color: #ff2a5f;">
+                        <input type="checkbox" id="quick-edit-app-hwid" style="width: 18px; height: 18px; accent-color: var(--brand-scarlet);">
                         <span>Enable Strict Motherboard HWID Locking</span>
                     </label>
                 </div>
@@ -1904,7 +1945,7 @@
                         <div style="font-size: 11px; color: var(--text-muted); margin-top: 2px;">Bind strictly to 1 PC. Uncheck to allow login on any PC (Multi-Device).</div>
                     </div>
                     <label style="cursor: pointer; display: flex; align-items: center; gap: 8px; margin: 0;">
-                        <input type="checkbox" id="manual-user-hwid-lock" checked style="width: 18px; height: 18px; accent-color: #ff2a5f; cursor: pointer;">
+                        <input type="checkbox" id="manual-user-hwid-lock" checked style="width: 18px; height: 18px; accent-color: var(--brand-scarlet); cursor: pointer;">
                     </label>
                 </div>
             </div>
@@ -1949,7 +1990,7 @@
                         <div style="font-size: 11px; color: var(--text-muted); margin-top: 2px;">Locks the key to the first PC that logs in.</div>
                     </div>
                     <label style="cursor: pointer; display: flex; align-items: center; gap: 8px; margin: 0;">
-                        <input type="checkbox" id="gen-hwid-lock" checked style="width: 18px; height: 18px; accent-color: #ff2a5f; cursor: pointer;">
+                        <input type="checkbox" id="gen-hwid-lock" checked style="width: 18px; height: 18px; accent-color: var(--brand-scarlet); cursor: pointer;">
                     </label>
                 </div>
             </div>
@@ -2142,10 +2183,10 @@
                     <label>Allowed Application Access (Select Multiple or All)</label>
                     <div id="reseller-apps-checkbox-list" style="background: rgba(0,0,0,0.4); border: 1px solid var(--border-glass); border-radius: 10px; padding: 12px 14px; max-height: 160px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px;">
                         <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; margin: 0;">
-                            <input type="checkbox" id="reseller-app-all" checked onchange="toggleAllResellerApps(this)" style="width: 16px; height: 16px; accent-color: #ff2a5f;">
-                            <span style="font-weight: 800; color: #ff4d79;">🌐 All Applications (Global Access)</span>
+                            <input type="checkbox" id="reseller-app-all" checked onchange="toggleAllResellerApps(this)" style="width: 16px; height: 16px; accent-color: var(--brand-scarlet);">
+                            <span style="font-weight: 800; color: var(--brand-sky);">🌐 All Applications (Global Access)</span>
                         </label>
-                        <div id="reseller-individual-apps" style="display: flex; flex-direction: column; gap: 8px; margin-top: 4px; padding-left: 10px; border-left: 2px solid rgba(225, 29, 72, 0.3);"></div>
+                        <div id="reseller-individual-apps" style="display: flex; flex-direction: column; gap: 8px; margin-top: 4px; padding-left: 10px; border-left: 2px solid var(--border-glow);"></div>
                     </div>
                 </div>
                 <div class="form-group">
@@ -2189,7 +2230,7 @@
                 <button type="button" class="modal-close" data-close-modal>&times;</button>
             </div>
             <div class="modal-body">
-                <p style="font-size: 13px; margin-bottom: 14px;">Reseller: <strong id="credits-reseller-username" style="color: #ff4d79;"></strong> (Current: <span id="credits-reseller-current" style="color: #10b981; font-weight: 800;">0</span> Credits)</p>
+                <p style="font-size: 13px; margin-bottom: 14px;">Reseller: <strong id="credits-reseller-username" style="color: var(--brand-sky);"></strong> (Current: <span id="credits-reseller-current" style="color: #10b981; font-weight: 800;">0</span> Credits)</p>
                 <input type="hidden" id="credits-reseller-id">
                 
                 <div class="form-group">
@@ -2221,7 +2262,7 @@
                 <button type="button" class="modal-close" data-close-modal>&times;</button>
             </div>
             <div class="modal-body">
-                <p style="font-size: 13px; margin-bottom: 14px;">Keys generated by reseller: <strong id="audit-reseller-username" style="color: #ff4d79;"></strong></p>
+                <p style="font-size: 13px; margin-bottom: 14px;">Keys generated by reseller: <strong id="audit-reseller-username" style="color: var(--brand-sky);"></strong></p>
                 <div style="max-height: 280px; overflow-y: auto; border: 1px solid var(--border-glass); border-radius: 10px;">
                     <table class="data-table" style="font-size: 12px;">
                         <thead>
@@ -2251,7 +2292,7 @@
                 <button type="button" class="modal-close" data-close-modal>&times;</button>
             </div>
             <div class="modal-body">
-                <p style="font-size: 13px; margin-bottom: 14px;">Change password for: <strong id="reset-reseller-user-label" style="color: #ff4d79;"></strong></p>
+                <p style="font-size: 13px; margin-bottom: 14px;">Change password for: <strong id="reset-reseller-user-label" style="color: var(--brand-sky);"></strong></p>
                 <input type="hidden" id="reset-reseller-id-input">
                 <div class="form-group">
                     <label>New Password</label>
@@ -2321,7 +2362,7 @@
                 </div>
                 <div class="form-group">
                     <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; font-size: 13.5px; color: #fff;">
-                        <input type="checkbox" id="notif-show-login-check" checked style="width: 17px; height: 17px; accent-color: #ff2a5f;">
+                        <input type="checkbox" id="notif-show-login-check" checked style="width: 17px; height: 17px; accent-color: var(--brand-scarlet);">
                         <span>Show as Alert Popup on User Login</span>
                     </label>
                 </div>
@@ -2400,7 +2441,7 @@
 
             <div style="padding: 14px 16px;">
                 <!-- Compact Terminal Box -->
-                <div style="background: #060205; border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; overflow: hidden; margin-bottom: 10px; box-shadow: inset 0 2px 8px rgba(0,0,0,0.8);">
+                <div style="background: var(--bg-main); border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; overflow: hidden; margin-bottom: 10px; box-shadow: inset 0 2px 8px rgba(0,0,0,0.8);">
                     <div style="background: #12060d; padding: 5px 10px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.06);">
                         <div style="display: flex; gap: 5px;">
                             <span style="width: 7px; height: 7px; border-radius: 50%; background: #ef4444; display: inline-block;"></span>

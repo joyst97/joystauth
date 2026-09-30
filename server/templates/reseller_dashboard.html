@@ -10,7 +10,7 @@
     <link rel="stylesheet" href="/static/css/dashboard.css?v=3.4.0">
     <style>
         body {
-            background: #060204;
+            background: var(--bg-main);
             color: var(--text-primary);
             min-height: 100vh;
             display: flex;
@@ -62,19 +62,19 @@
             z-index: 90;
         }
         .credit-badge-glow {
-            background: linear-gradient(135deg, rgba(244, 63, 94, 0.18) 0%, rgba(225, 29, 72, 0.3) 100%);
-            border: 1.5px solid rgba(244, 63, 94, 0.6);
+            background: linear-gradient(135deg, var(--bg-glass-card-hover) 0%, var(--bg-glass-card) 100%);
+            border: 1.5px solid var(--border-glow);
             border-radius: var(--radius-full);
             padding: 8px 20px;
             display: inline-flex;
             align-items: center;
             gap: 10px;
-            box-shadow: 0 0 25px rgba(225, 29, 72, 0.4);
+            box-shadow: var(--shadow-glow);
             animation: pulseSubtle 3s infinite ease-in-out;
         }
         @keyframes pulseSubtle {
-            0%, 100% { box-shadow: 0 0 20px rgba(225, 29, 72, 0.3); }
-            50% { box-shadow: 0 0 35px rgba(244, 63, 94, 0.6); }
+            0%, 100% { box-shadow: 0 0 20px var(--shadow-glow); }
+            50% { box-shadow: 0 0 35px var(--shadow-glow); }
         }
         .hud-meter-box {
             background: rgba(0, 0, 0, 0.45);
@@ -88,7 +88,7 @@
             height: 8px;
             background: var(--gradient-primary);
             border-radius: 4px;
-            box-shadow: 0 0 15px rgba(225, 29, 72, 0.7);
+            box-shadow: var(--shadow-glow);
             transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
         }
         .app-token-box {
@@ -105,7 +105,7 @@
         }
         .radar-result-card {
             background: rgba(20, 6, 12, 0.7);
-            border: 1px solid rgba(244, 63, 94, 0.35);
+            border: 1px solid var(--border-glow);
             border-radius: 14px;
             padding: 20px;
             margin-bottom: 14px;
@@ -113,10 +113,11 @@
             transition: all 0.25s ease;
         }
         .radar-result-card:hover {
-            border-color: rgba(244, 63, 94, 0.7);
+            border-color: var(--border-glow);
             transform: translateY(-2px);
         }
     </style>
+    <script src="/static/js/theme.js"></script>
 </head>
 <body>
 
@@ -168,7 +169,7 @@
             <div class="hud-meter-box">
                 <div style="display: flex; justify-content: space-between; font-size: 11px; color: var(--text-muted); font-weight: 700; margin-bottom: 6px;">
                     <span>CREDIT BALANCE</span>
-                    <span id="sidebar-credits-ratio" style="color: #ff4d79;">0 Available</span>
+                    <span id="sidebar-credits-ratio" style="color: var(--brand-sky);">0 Available</span>
                 </div>
                 <div style="background: rgba(255,255,255,0.06); border-radius: 4px; height: 8px; overflow: hidden;">
                     <div id="sidebar-credits-progress" class="hud-meter-bar-fill" style="width: 100%;"></div>
@@ -181,7 +182,7 @@
                 <div class="user-avatar" id="reseller-avatar">R</div>
                 <div class="user-info">
                     <div class="username" id="reseller-username-footer">Reseller</div>
-                    <div class="role" style="color: #ff4d79;">Official Distributor</div>
+                    <div class="role" style="color: var(--brand-sky);">Official Distributor</div>
                 </div>
             </div>
             <button class="btn-logout" onclick="resellerLogout()" title="Sign Out">
@@ -204,7 +205,7 @@
                     <span style="font-size: 15px;">🪙</span>
                     <span style="font-size: 12px; font-weight: 800; color: var(--text-muted); text-transform: uppercase;">Balance:</span>
                     <strong id="top-credit-balance" style="font-size: 17px; font-weight: 900; color: #fff;">0</strong>
-                    <span style="font-size: 11.5px; color: #ff4d79; font-weight: 700;">Credits</span>
+                    <span style="font-size: 11.5px; color: var(--brand-sky); font-weight: 700;">Credits</span>
                 </div>
                 <button class="btn btn-secondary btn-sm" onclick="switchResellerTab('radar')">
                     <span>🔍 Radar Search</span>
@@ -227,12 +228,12 @@
                 </div>
 
                 <!-- Distributor Cyber Banner -->
-                <div class="app-credentials-banner spotlight-card" style="background: var(--bg-surface); border: 1px solid rgba(225, 29, 72, 0.35); box-shadow: 0 12px 35px -10px rgba(225, 29, 72, 0.25); border-radius: 18px; padding: 26px 30px; margin-bottom: 26px;">
+                <div class="app-credentials-banner spotlight-card" style="background: var(--bg-surface); border: 1px solid var(--border-glow); box-shadow: 0 12px 35px -10px rgba(225, 29, 72, 0.25); border-radius: 18px; padding: 26px 30px; margin-bottom: 26px;">
                     <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 18px; margin-bottom: 18px; border-bottom: 1px solid var(--border-glass); padding-bottom: 16px;">
                         <div style="display: flex; align-items: center; gap: 14px;">
                             <div style="width: 44px; height: 44px; border-radius: 12px; background: var(--gradient-primary); display: flex; align-items: center; justify-content: center; font-size: 22px; box-shadow: 0 0 20px rgba(225, 29, 72, 0.5);">🪙</div>
                             <div>
-                                <span style="font-size: 11px; color: #ff4d79; font-weight: 800; text-transform: uppercase; letter-spacing: 0.8px;">AVAILABLE RESELLER BALANCE</span>
+                                <span style="font-size: 11px; color: var(--brand-sky); font-weight: 800; text-transform: uppercase; letter-spacing: 0.8px;">AVAILABLE RESELLER BALANCE</span>
                                 <h3 style="font-size: 24px; font-weight: 900; color: #fff; margin-top: 2px;"><span id="overview-credits-val">0</span> <span style="font-size: 14px; color: var(--text-muted); font-weight: 600;">Credits Remaining</span></h3>
                             </div>
                         </div>
@@ -258,7 +259,7 @@
                             <span>Available Credits</span>
                             <div class="stat-icon">🪙</div>
                         </div>
-                        <div class="stat-number" id="stat-reseller-credits" style="color: #ff2a5f;">0</div>
+                        <div class="stat-number" id="stat-reseller-credits" style="color: var(--brand-scarlet);">0</div>
                         <div class="stat-footer">Ready for user & key creation</div>
                     </div>
 
@@ -401,7 +402,7 @@
                     <div style="background: rgba(0,0,0,0.45); border: 1px solid var(--border-glass); border-radius: 12px; padding: 16px 22px; margin-bottom: 24px; display: flex; justify-content: space-between; align-items: center;">
                         <div>
                             <div style="font-size: 11px; color: var(--text-muted); font-weight: 800; text-transform: uppercase;">Credit Cost</div>
-                            <div style="font-size: 20px; font-weight: 900; color: #ff4d79; margin-top: 2px;">1 Credit</div>
+                            <div style="font-size: 20px; font-weight: 900; color: var(--brand-sky); margin-top: 2px;">1 Credit</div>
                         </div>
                         <div style="font-size: 12.5px; color: var(--text-muted);">Available Reserves: <strong id="user-calc-avail" style="color: #fff; font-size: 15px;">0</strong> Credits</div>
                     </div>
@@ -498,7 +499,7 @@
                     <div style="background: rgba(0,0,0,0.45); border: 1px solid var(--border-glass); border-radius: 12px; padding: 16px 22px; margin-top: 22px; display: flex; justify-content: space-between; align-items: center;">
                         <div>
                             <div style="font-size: 11px; color: var(--text-muted); font-weight: 800; text-transform: uppercase;">Total Credit Cost</div>
-                            <div style="font-size: 20px; font-weight: 900; color: #ff4d79; margin-top: 2px;"><span id="calc-cost-display">1</span> Credits</div>
+                            <div style="font-size: 20px; font-weight: 900; color: var(--brand-sky); margin-top: 2px;"><span id="calc-cost-display">1</span> Credits</div>
                         </div>
                         <div style="font-size: 12.5px; color: var(--text-muted);">Available Reserves: <strong id="calc-avail-display" style="color: #fff; font-size: 15px;">0</strong> Credits</div>
                     </div>
@@ -750,7 +751,7 @@
                     if (appsGrid) {
                         const card = document.createElement("div");
                         card.className = "stat-card spotlight-card";
-                        card.style.cssText = "padding: 24px; border: 1px solid rgba(244, 63, 94, 0.25);";
+                        card.style.cssText = "padding: 24px; border: 1px solid var(--border-glow);";
                         card.innerHTML = `
                             <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px;">
                                 <div>
@@ -763,7 +764,7 @@
                             <div style="margin-bottom: 16px;">
                                 <label style="font-size: 11px; font-weight: 800; color: var(--text-muted); text-transform: uppercase; margin-bottom: 6px; display: block;">SECRET APPLICATION TOKEN</label>
                                 <div class="app-token-box">
-                                    <span id="token-display-${a.id}" style="color: #ff4d79; font-weight: 700;">••••••••••••••••••••••••••••••••</span>
+                                    <span id="token-display-${a.id}" style="color: var(--brand-sky); font-weight: 700;">••••••••••••••••••••••••••••••••</span>
                                     <div style="display: flex; gap: 6px;">
                                         <button class="btn btn-secondary btn-sm" style="padding: 4px 8px;" onclick="toggleTokenReveal(${a.id}, '${a.secret_token}')" title="Reveal Token">👁️</button>
                                         <button class="btn btn-secondary btn-sm" style="padding: 4px 8px;" onclick="copyText('${a.secret_token}')" title="Copy Token">📋</button>
@@ -840,7 +841,7 @@
             tbody.innerHTML = recent.map(l => `
                 <tr>
                     <td><strong style="color: #fff;">${l.app_name}</strong></td>
-                    <td><span class="mono" style="color: #ff4d79; font-weight: 700;">${l.key}</span></td>
+                    <td><span class="mono" style="color: var(--brand-sky); font-weight: 700;">${l.key}</span></td>
                     <td>${l.duration_days === -1 ? 'Lifetime' : l.duration_days + ' Days'}</td>
                     <td><span class="badge badge-secondary" style="font-size: 11px;">${l.notes || '-'}</span></td>
                     <td><span class="badge badge-${l.status === 'unused' ? 'success' : (l.status === 'paused' ? 'warning' : 'cyan')}">${l.status.toUpperCase()}</span></td>
@@ -861,7 +862,7 @@
             tbody.innerHTML = list.map(l => `
                 <tr>
                     <td><strong style="color: #fff;">${l.app_name}</strong></td>
-                    <td><span class="mono" style="color: #ff4d79; font-weight: 700;">${l.key}</span></td>
+                    <td><span class="mono" style="color: var(--brand-sky); font-weight: 700;">${l.key}</span></td>
                     <td>${l.duration_days === -1 ? 'Lifetime' : l.duration_days + ' Days'}</td>
                     <td><span class="badge badge-secondary" style="font-size: 11px;">${l.notes || '-'}</span></td>
                     <td><span class="badge badge-${l.status === 'unused' ? 'success' : (l.status === 'paused' ? 'warning' : 'cyan')}">${l.status.toUpperCase()}</span></td>
@@ -950,7 +951,7 @@
                 return;
             }
 
-            container.innerHTML = `<div style="text-align: center; color: #ff4d79; padding: 30px; font-weight: 700;">📡 Scanning radar database for '${q}'...</div>`;
+            container.innerHTML = `<div style="text-align: center; color: var(--brand-sky); padding: 30px; font-weight: 700;">📡 Scanning radar database for '${q}'...</div>`;
 
             const res = await resellerFetch(`/api/v1/reseller/diagnostics?query=${encodeURIComponent(q)}`);
             if (!res || !res.success) {
@@ -975,7 +976,7 @@
                             <div>
                                 <span class="badge badge-cyan" style="font-size: 10.5px; font-weight: 800;">USER ACCOUNT</span>
                                 <h3 style="font-size: 19px; font-weight: 900; color: #fff; margin: 4px 0 2px 0;">👤 ${u.username}</h3>
-                                <span style="font-size: 12.5px; color: var(--text-muted); font-weight: 600;">App: <strong style="color: #ff4d79;">${u.app_name}</strong> • Customer Tag: <strong style="color: #fff;">${u.notes || 'None'}</strong></span>
+                                <span style="font-size: 12.5px; color: var(--text-muted); font-weight: 600;">App: <strong style="color: var(--brand-sky);">${u.app_name}</strong> • Customer Tag: <strong style="color: #fff;">${u.notes || 'None'}</strong></span>
                             </div>
                             <span class="badge badge-${u.status === 'ACTIVE' ? 'success' : 'danger'}" style="font-weight: 800; font-size: 12px;">${u.status}</span>
                         </div>
@@ -1012,7 +1013,7 @@
                         <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
                             <div>
                                 <span class="badge badge-primary" style="font-size: 10.5px; font-weight: 800;">LICENSE KEY</span>
-                                <h3 style="font-size: 18px; font-weight: 900; color: #ff4d79; margin: 4px 0 2px 0; font-family: monospace;">🔑 ${l.key}</h3>
+                                <h3 style="font-size: 18px; font-weight: 900; color: var(--brand-sky); margin: 4px 0 2px 0; font-family: monospace;">🔑 ${l.key}</h3>
                                 <span style="font-size: 12.5px; color: var(--text-muted); font-weight: 600;">App: <strong style="color: #fff;">${l.app_name}</strong> • Customer Tag: <strong style="color: #fff;">${l.notes || 'None'}</strong></span>
                             </div>
                             <span class="badge badge-${l.status === 'UNUSED' ? 'success' : (l.status === 'PAUSED' ? 'warning' : 'cyan')}" style="font-weight: 800; font-size: 12px;">${l.status}</span>

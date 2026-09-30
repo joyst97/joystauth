@@ -128,10 +128,11 @@ function initVariableProximity() {
                     const scale = 1 + norm * 0.28;
                     const liftY = -norm * 10;
 
+                    const accentColor = getComputedStyle(document.documentElement).getPropertyValue('--brand-scarlet').trim() || '#00f2fe';
                     span.style.fontWeight = weight;
                     span.style.fontVariationSettings = `'wght' ${weight}, 'opsz' 36`;
                     span.style.transform = `scale(${scale}) translateY(${liftY}px)`;
-                    span.style.textShadow = `0 0 ${Math.round(25 * norm)}px rgba(255, 42, 95, ${0.4 + norm * 0.6})`;
+                    span.style.textShadow = `0 0 ${Math.round(25 * norm)}px ${accentColor}`;
                     span.style.color = norm > 0.3 ? '#fff' : '';
                 } else {
                     span.style.fontWeight = fromWeight;
@@ -168,11 +169,12 @@ function initParticleText() {
     if (!containers.length) return;
 
     containers.forEach(container => {
+        const defaultAccent = getComputedStyle(document.documentElement).getPropertyValue('--brand-scarlet').trim() || '#00f2fe';
         const text = container.getAttribute("data-text") || "JOYST AUTH";
         const particleSize = parseFloat(container.getAttribute("data-particle-size") || "2");
         const density = parseFloat(container.getAttribute("data-density") || "3");
         const color = container.getAttribute("data-color") || "#ffffff";
-        const highlightColor = container.getAttribute("data-highlight-color") || "#ff2a5f";
+        const highlightColor = container.getAttribute("data-highlight-color") || defaultAccent;
         const scatter = parseFloat(container.getAttribute("data-scatter") || "180");
         const gatherDuration = parseFloat(container.getAttribute("data-gather-duration") || "1500");
         const stagger = parseFloat(container.getAttribute("data-stagger") || "400");

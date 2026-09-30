@@ -19,9 +19,9 @@
 
 
 <!-- Joyst Auth & Cloudflare Edge Verification Gatekeeper -->
-<div id="cf-enclave-gatekeeper" style="position:fixed;top:0;left:0;width:100vw;height:100vh;background:#060205;z-index:99999999;display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:system-ui, -apple-system, sans-serif;transition:opacity 0.45s cubic-bezier(0.4, 0, 0.2, 1);">
+<div id="cf-enclave-gatekeeper" style="position:fixed;top:0;left:0;width:100vw;height:100vh;background: var(--bg-main);z-index:99999999;display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:system-ui, -apple-system, sans-serif;transition:opacity 0.45s cubic-bezier(0.4, 0, 0.2, 1);">
     <div style="text-align:center;padding:40px 30px;width:100%;max-width:460px;display:flex;flex-direction:column;align-items:center;">
-        <img src="/static/img/joyst_logo.png" alt="JOYST AUTH" style="width:76px;height:76px;object-fit:contain;border-radius:18px;margin-bottom:22px;filter:drop-shadow(0 0 25px rgba(255,42,95,0.45));">
+        <img src="/static/img/joyst_logo.png" alt="JOYST AUTH" style="width:76px;height:76px;object-fit:contain;border-radius:18px;margin-bottom:22px;filter: drop-shadow(0 0 25px var(--shadow-glow));">
         <h1 style="color:#ffffff;font-size:26px;font-weight:900;letter-spacing:-0.4px;margin:0 0 10px 0;text-shadow:0 2px 10px rgba(0,0,0,0.5);">JOYST AUTH</h1>
         <p style="color:#94a3b8;font-size:15px;font-weight:500;margin:0 0 28px 0;">Please wait while we validate your connection.</p>
         
@@ -54,7 +54,7 @@
             right: 0 !important;
             width: 100% !important;
             height: 72px !important;
-            background: rgba(8, 2, 5, 0.88) !important;
+            background: var(--bg-surface) !important;
             backdrop-filter: blur(30px) !important;
             -webkit-backdrop-filter: blur(30px) !important;
             border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
@@ -89,7 +89,7 @@
 
         .brand-title span {
             font-size: 10.5px !important;
-            color: #ff4d79 !important;
+            color: var(--brand-sky) !important;
             font-weight: 700 !important;
             letter-spacing: 0.4px !important;
         }
@@ -123,7 +123,7 @@
 
         .nav-menu a:hover {
             color: #ffffff !important;
-            text-shadow: 0 0 10px rgba(255, 42, 95, 0.6) !important;
+            text-shadow: 0 0 10px var(--shadow-glow) !important;
         }
 
         .btn {
@@ -143,9 +143,9 @@
         }
 
         .btn-primary {
-            background: linear-gradient(135deg, #ff2a5f, #e11d48) !important;
+            background: var(--gradient-primary) !important;
             color: #ffffff !important;
-            box-shadow: 0 0 18px rgba(255, 42, 95, 0.45) !important;
+            box-shadow: var(--shadow-glow) !important;
         }
 
         .btn-secondary {
@@ -210,7 +210,7 @@
     <!-- Top Navigation Bar -->
     <nav class="landing-nav">
         <a href="/" class="brand-wrap">
-            <img src="/static/img/joyst_logo.png" alt="JOYST" style="width: 44px; height: 44px; border-radius: 50%; object-fit: cover; box-shadow: 0 0 20px rgba(225, 29, 72, 0.6); border: 1.5px solid rgba(244, 63, 94, 0.6);">
+            <img src="/static/img/joyst_logo.png" alt="JOYST" style="width: 44px; height: 44px; border-radius: 50%; object-fit: cover; box-shadow: var(--shadow-glow); border: 1.5px solid var(--border-glow);">
             <div class="brand-title">
                 JOYST AUTH
                 <span>Next-Gen Software Protection & HWID Enclave</span>

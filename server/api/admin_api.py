@@ -2777,10 +2777,14 @@ async def list_custom_clients(dev: Developer = Depends(get_current_developer), d
     if getattr(dev, "is_custom_client", False):
         raise HTTPException(status_code=403, detail="Unauthorized")
     
-    # Universal Custom Clients lookup for Developer Console
-    clients = db.query(CustomClient).order_by(CustomClient.id.desc()).all()
+    # 1. Paid Plan Paywall Gating
+    if dev.plan not in ["Paid", "Developer", "Enterprise"] and not getattr(dev, "is_custom_client", False):
+        raise HTTPException(status_code=403, detail="👑 Custom Brand Clients management is an exclusive PAID Plan feature. Please upgrade your plan on joystauth.cc to unlock Custom Client access!")
+    
+    # 2. Strict Multi-Tenant Isolation (Only query this developer's custom clients)
+    clients = db.query(CustomClient).filter(CustomClient.developer_id == dev.id).order_by(CustomClient.id.desc()).all()
             
-    apps = db.query(Application).all()
+    apps = db.query(Application).filter(Application.developer_id == dev.id).all()
     app_map = {str(a.id): a.name for a in apps}
     app_map.update({a.name: a.name for a in apps})
     
@@ -2821,6 +2825,9 @@ async def create_custom_client(data: CreateCustomClientRequest, dev: Developer =
     if getattr(dev, "is_custom_client", False):
         raise HTTPException(status_code=403, detail="Unauthorized")
     
+    if dev.plan not in ["Paid", "Developer", "Enterprise"] and not getattr(dev, "is_custom_client", False):
+        raise HTTPException(status_code=403, detail="👑 Custom Brand Clients management is an exclusive PAID Plan feature. Please upgrade your plan on joystauth.cc to unlock Custom Client access!")
+    
     uname = data.username.strip()
     if not uname:
         raise HTTPException(status_code=400, detail="Username is required")
@@ -2835,7 +2842,8 @@ async def create_custom_client(data: CreateCustomClientRequest, dev: Developer =
 
     existing_cc = db.query(CustomClient).filter(CustomClient.username.ilike(uname)).first()
     if existing_cc:
-        existing_cc.developer_id = dev.id
+        if existing_cc.developer_id != dev.id:
+            raise HTTPException(status_code=400, detail=f"Username '{uname}' is already taken by another account.")
         existing_cc.password_hash = hash_password(data.password)
         existing_cc.allowed_apps = data.allowed_apps.strip()
         existing_cc.notes = data.notes.strip() if data.notes else existing_cc.notes
@@ -2862,7 +2870,10 @@ async def update_custom_client(client_id: int, data: UpdateCustomClientRequest, 
     if getattr(dev, "is_custom_client", False):
         raise HTTPException(status_code=403, detail="Unauthorized")
     
-    client = db.query(CustomClient).filter(CustomClient.id == client_id).first()
+    if dev.plan not in ["Paid", "Developer", "Enterprise"] and not getattr(dev, "is_custom_client", False):
+        raise HTTPException(status_code=403, detail="👑 Custom Brand Clients management is an exclusive PAID Plan feature. Please upgrade your plan on joystauth.cc to unlock Custom Client access!")
+    
+    client = db.query(CustomClient).filter(CustomClient.id == client_id, CustomClient.developer_id == dev.id).first()
     if not client:
         raise HTTPException(status_code=404, detail="Custom client account not found")
     
@@ -2883,7 +2894,10 @@ async def delete_custom_client(client_id: int, dev: Developer = Depends(get_curr
     if getattr(dev, "is_custom_client", False):
         raise HTTPException(status_code=403, detail="Unauthorized")
     
-    client = db.query(CustomClient).filter(CustomClient.id == client_id).first()
+    if dev.plan not in ["Paid", "Developer", "Enterprise"] and not getattr(dev, "is_custom_client", False):
+        raise HTTPException(status_code=403, detail="👑 Custom Brand Clients management is an exclusive PAID Plan feature. Please upgrade your plan on joystauth.cc to unlock Custom Client access!")
+    
+    client = db.query(CustomClient).filter(CustomClient.id == client_id, CustomClient.developer_id == dev.id).first()
     if not client:
         raise HTTPException(status_code=404, detail="Custom client account not found")
     

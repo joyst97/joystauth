@@ -25,7 +25,7 @@
             right: 0 !important;
             width: 100% !important;
             height: 72px !important;
-            background: rgba(8, 2, 5, 0.88) !important;
+            background: var(--bg-surface) !important;
             backdrop-filter: blur(30px) !important;
             -webkit-backdrop-filter: blur(30px) !important;
             border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
@@ -137,8 +137,8 @@
             50% { transform: translateY(-8px); }
         }
         @keyframes pulseGlow {
-            0%, 100% { box-shadow: 0 0 25px rgba(225, 29, 72, 0.35); }
-            50% { box-shadow: 0 0 50px rgba(255, 42, 95, 0.65); }
+            0%, 100% { box-shadow: 0 0 20px var(--shadow-glow); }
+            50% { box-shadow: 0 0 40px var(--shadow-glow); }
         }
         @keyframes borderShine {
             0% { background-position: 0% 50%; }
@@ -188,7 +188,7 @@
             max-width: 1180px;
         }
         .hero-matrix-card {
-            background: rgba(18, 4, 8, 0.65);
+            background: var(--bg-glass-card);
             border: 1px solid var(--border-glass);
             border-radius: var(--radius-lg);
             padding: 24px;
@@ -198,10 +198,10 @@
             position: relative;
         }
         .hero-matrix-card:hover {
-            border-color: #ff2a5f;
+            border-color: var(--brand-scarlet);
             transform: translateY(-4px);
-            background: rgba(225, 29, 72, 0.08);
-            box-shadow: 0 12px 30px rgba(225, 29, 72, 0.2);
+            background: rgba(255, 255, 255, 0.04);
+            box-shadow: var(--shadow-glow);
         }
         .hero-matrix-card .matrix-icon {
             font-size: 26px;
@@ -226,9 +226,9 @@
             margin-top: 36px;
         }
         .pipeline-step {
-            background: linear-gradient(165deg, rgba(32, 8, 18, 0.75) 0%, rgba(12, 3, 6, 0.92) 100%);
+            background: linear-gradient(165deg, var(--bg-surface) 0%, var(--bg-main) 100%);
             border: 1px solid rgba(255, 255, 255, 0.08);
-            border-top: 1px solid rgba(255, 77, 121, 0.35);
+            border-top: 1px solid var(--border-glow);
             border-radius: var(--radius-lg);
             padding: 26px;
             backdrop-filter: blur(28px);
@@ -238,11 +238,11 @@
             overflow: hidden;
         }
         .pipeline-step:hover {
-            border-color: #ff2a5f;
-            border-top-color: #ff7597;
-            background: linear-gradient(165deg, rgba(48, 12, 28, 0.85) 0%, rgba(18, 4, 10, 0.95) 100%);
+            border-color: var(--brand-scarlet);
+            border-top-color: var(--brand-sky);
+            background: linear-gradient(165deg, var(--bg-glass-card-hover) 0%, var(--bg-surface) 100%);
             transform: translateY(-6px);
-            box-shadow: 0 20px 45px rgba(225, 29, 72, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+            box-shadow: var(--shadow-glow), inset 0 1px 0 rgba(255, 255, 255, 0.2);
         }
         .pipeline-num {
             display: inline-flex;
@@ -250,18 +250,18 @@
             gap: 6px;
             padding: 4px 12px;
             border-radius: 20px;
-            background: rgba(225, 29, 72, 0.14);
-            border: 1px solid rgba(225, 29, 72, 0.35);
+            background: var(--bg-glass-card);
+            border: 1px solid var(--border-glow);
             font-size: 11px;
             font-weight: 800;
-            color: #ff4d79;
+            color: var(--brand-sky);
             margin-bottom: 16px;
             letter-spacing: 1px;
         }
         .glass-panel {
-            background: linear-gradient(165deg, rgba(28, 8, 16, 0.75) 0%, rgba(12, 3, 6, 0.92) 100%);
+            background: linear-gradient(165deg, var(--bg-surface) 0%, var(--bg-main) 100%);
             border: 1px solid rgba(255, 255, 255, 0.08);
-            border-top: 1px solid rgba(255, 77, 121, 0.35);
+            border-top: 1px solid var(--border-glow);
             border-radius: var(--radius-lg);
             padding: 32px;
             backdrop-filter: blur(28px);
@@ -271,18 +271,18 @@
             overflow: hidden;
         }
         .glass-panel:hover {
-            border-color: #ff2a5f;
-            border-top-color: #ff7597;
+            border-color: var(--brand-scarlet);
+            border-top-color: var(--brand-sky);
             transform: translateY(-6px);
-            box-shadow: 0 20px 45px rgba(225, 29, 72, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+            box-shadow: var(--shadow-glow), inset 0 1px 0 rgba(255, 255, 255, 0.2);
         }
         .card-icon-pod {
             width: 48px;
             height: 48px;
             border-radius: 14px;
-            background: linear-gradient(135deg, rgba(225, 29, 72, 0.25) 0%, rgba(159, 18, 57, 0.08) 100%);
-            border: 1px solid rgba(244, 63, 94, 0.35);
-            box-shadow: 0 0 20px rgba(225, 29, 72, 0.25);
+            background: linear-gradient(135deg, var(--bg-glass-card-hover) 0%, var(--bg-glass-card) 100%);
+            border: 1px solid var(--border-glow);
+            box-shadow: var(--shadow-glow);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -290,8 +290,8 @@
             margin-bottom: 20px;
         }
         .discord-mock-box {
-            background: #1e0910;
-            border: 1px solid rgba(225, 29, 72, 0.25);
+            background: var(--bg-surface);
+            border: 1px solid var(--border-glow);
             border-radius: 14px;
             padding: 24px;
             font-family: 'Plus Jakarta Sans', sans-serif;
@@ -315,31 +315,31 @@
             font-weight: 900;
             color: #fff;
             flex-shrink: 0;
-            box-shadow: 0 0 15px rgba(225, 29, 72, 0.5);
+            box-shadow: var(--shadow-glow);
         }
         .discord-embed {
-            background: #120408;
-            border-left: 4px solid #e11d48;
+            background: var(--bg-glass-card);
+            border-left: 4px solid var(--brand-primary);
             border-radius: 6px;
             padding: 16px 20px;
             margin-top: 8px;
         }
         .interactive-widget-card {
-            background: rgba(18, 4, 8, 0.75);
-            border: 1px solid rgba(225, 29, 72, 0.3);
+            background: var(--bg-glass-card);
+            border: 1px solid var(--border-glow);
             border-radius: var(--radius-lg);
             padding: 28px;
             backdrop-filter: blur(28px);
             transition: all 0.3s ease;
         }
         .interactive-widget-card:hover {
-            border-color: #ff2a5f;
-            box-shadow: 0 0 35px rgba(225, 29, 72, 0.25);
+            border-color: var(--brand-scarlet);
+            box-shadow: var(--shadow-glow);
         }
         /* Mega Footer */
         .mega-footer {
             border-top: 1px solid var(--border-glass);
-            background: rgba(6, 2, 4, 0.96);
+            background: var(--bg-main);
             backdrop-filter: blur(32px);
             padding: 70px 48px 40px 48px;
             position: relative;
@@ -374,7 +374,7 @@
             transition: color 0.2s;
         }
         .footer-col ul a:hover {
-            color: #ff4d79;
+            color: var(--brand-sky);
         }
         .footer-bottom {
             max-width: 1400px;
@@ -393,13 +393,13 @@
             display: inline-flex;
             align-items: center;
             gap: 8px;
-            background: rgba(225, 29, 72, 0.08);
-            border: 1px solid rgba(225, 29, 72, 0.25);
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid var(--border-glow);
             border-radius: var(--radius-full);
             padding: 6px 14px;
             font-size: 11.5px;
             font-weight: 700;
-            color: #fda4af;
+            color: var(--brand-rose);
         }
         @media (max-width: 1024px) {
             .hero-clean-grid { grid-template-columns: 1fr; padding-top: 100px; }
@@ -439,9 +439,9 @@
 
 
 <!-- Joyst Auth & Cloudflare Edge Verification Gatekeeper -->
-<div id="cf-enclave-gatekeeper" style="position:fixed;top:0;left:0;width:100vw;height:100vh;background:#060205;z-index:99999999;display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:system-ui, -apple-system, sans-serif;transition:opacity 0.45s cubic-bezier(0.4, 0, 0.2, 1);">
+<div id="cf-enclave-gatekeeper" style="position:fixed;top:0;left:0;width:100vw;height:100vh;background: var(--bg-main);z-index:99999999;display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:system-ui, -apple-system, sans-serif;transition:opacity 0.45s cubic-bezier(0.4, 0, 0.2, 1);">
     <div style="text-align:center;padding:40px 30px;width:100%;max-width:460px;display:flex;flex-direction:column;align-items:center;">
-        <img src="/static/img/joyst_logo.png" alt="JOYST AUTH" style="width:76px;height:76px;object-fit:contain;border-radius:18px;margin-bottom:22px;filter:drop-shadow(0 0 25px rgba(255,42,95,0.45));">
+        <img src="/static/img/joyst_logo.png" alt="JOYST AUTH" style="width:76px;height:76px;object-fit:contain;border-radius:18px;margin-bottom:22px;filter:drop-shadow(0 0 25px var(--shadow-glow));">
         <h1 style="color:#ffffff;font-size:26px;font-weight:900;letter-spacing:-0.4px;margin:0 0 10px 0;text-shadow:0 2px 10px rgba(0,0,0,0.5);">JOYST AUTH</h1>
         <p style="color:#94a3b8;font-size:15px;font-weight:500;margin:0 0 28px 0;">Please wait while we validate your connection.</p>
         
@@ -526,7 +526,7 @@
     <!-- Top Navigation Bar -->
     <nav class="landing-nav">
         <a href="/" class="brand-wrap">
-            <img src="/static/img/joyst_logo.png" alt="JOYST" style="width: 44px; height: 44px; border-radius: 50%; object-fit: cover; box-shadow: 0 0 20px rgba(225, 29, 72, 0.6); border: 1.5px solid rgba(244, 63, 94, 0.6);">
+            <img src="/static/img/joyst_logo.png" alt="JOYST" style="width: 44px; height: 44px; border-radius: 50%; object-fit: cover; box-shadow: var(--shadow-glow); border: 1.5px solid var(--border-glow);">
             <div class="brand-title">
                 JOYST AUTH
                 <span>Next-Gen Software Protection & HWID Enclave</span>
@@ -574,7 +574,7 @@
                         <span>Titanium OLED</span>
                     </div>
                     <div class="theme-opt-item" onclick="setDashboardTheme('crimson')" style="display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 8px; cursor: pointer; color: #fff; font-size: 12px; font-weight: 700;">
-                        <span style="width: 12px; height: 12px; border-radius: 50%; background: #ff2a5f; box-shadow: 0 0 8px #ff2a5f; display: inline-block;"></span>
+                        <span style="width: 12px; height: 12px; border-radius: 50%; background: var(--brand-scarlet); box-shadow: 0 0 8px #ff2a5f; display: inline-block;"></span>
                         <span>Crimson Red</span>
                     </div>
                 </div>
@@ -591,7 +591,7 @@
         </div>
 
         <h1 class="hero-heading-centered" style="font-size: 72px; font-weight: 900; line-height: 1.05; letter-spacing: -2px; margin-bottom: 24px;">
-            <span class="shiny-text" style="font-size: 80px; font-weight: 950; display: block; margin-bottom: 8px; text-shadow: 0 0 50px rgba(225, 29, 72, 0.55); letter-spacing: 2px;">
+            <span class="shiny-text" style="font-size: 80px; font-weight: 950; display: block; margin-bottom: 8px; text-shadow: var(--shadow-glow); letter-spacing: 2px;">
                 JOYST AUTH
             </span>
             <span style="font-size: 32px; font-weight: 700; color: var(--text-secondary); letter-spacing: -0.5px; display: block; margin-top: 4px;">Next-Gen HWID Protection & Licensing Infrastructure</span>
@@ -625,7 +625,7 @@
         </div>
 
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 24px;">
-            <div class="glare-hover" style="padding: 32px; --gh-bg: rgba(26, 8, 15, 0.65); --gh-br: 18px; --gh-border: rgba(255, 255, 255, 0.12); --gh-rgba: rgba(255, 255, 255, 0.28); --gh-duration: 700ms;">
+            <div class="glare-hover" style="padding: 32px; --gh-bg: var(--bg-glass-card); --gh-br: 18px; --gh-border: rgba(255, 255, 255, 0.12); --gh-rgba: rgba(255, 255, 255, 0.28); --gh-duration: 700ms;">
                 <div style="font-size: 30px; margin-bottom: 16px;">🔒</div>
                 <h3 style="font-size: 19px; font-weight: 800; color: #fff; margin-bottom: 8px;">Motherboard HWID Lock</h3>
                 <p style="font-size: 13.5px; color: var(--text-secondary); line-height: 1.6;">
@@ -633,7 +633,7 @@
                 </p>
             </div>
 
-            <div class="glare-hover" style="padding: 32px; --gh-bg: rgba(26, 8, 15, 0.65); --gh-br: 18px; --gh-border: rgba(255, 255, 255, 0.12); --gh-rgba: rgba(244, 63, 94, 0.35); --gh-duration: 700ms;">
+            <div class="glare-hover" style="padding: 32px; --gh-bg: var(--bg-glass-card); --gh-br: 18px; --gh-border: rgba(255, 255, 255, 0.12); --gh-rgba: var(--border-glow); --gh-duration: 700ms;">
                 <div style="font-size: 30px; margin-bottom: 16px;">🛡️</div>
                 <h3 style="font-size: 19px; font-weight: 800; color: #fff; margin-bottom: 8px;">Dynamic AES-256 Session</h3>
                 <p style="font-size: 13.5px; color: var(--text-secondary); line-height: 1.6;">
@@ -641,7 +641,7 @@
                 </p>
             </div>
 
-            <div class="glare-hover" style="padding: 32px; --gh-bg: rgba(26, 8, 15, 0.65); --gh-br: 18px; --gh-border: rgba(255, 255, 255, 0.12); --gh-rgba: rgba(255, 255, 255, 0.28); --gh-duration: 700ms;">
+            <div class="glare-hover" style="padding: 32px; --gh-bg: var(--bg-glass-card); --gh-br: 18px; --gh-border: rgba(255, 255, 255, 0.12); --gh-rgba: rgba(255, 255, 255, 0.28); --gh-duration: 700ms;">
                 <div style="font-size: 30px; margin-bottom: 16px;">🤖</div>
                 <h3 style="font-size: 19px; font-weight: 800; color: #fff; margin-bottom: 8px;">Discord Bot Automation</h3>
                 <p style="font-size: 13.5px; color: var(--text-secondary); line-height: 1.6;">
@@ -654,43 +654,43 @@
     <!-- 3. Complete Features Command Center Grid -->
     <section class="section-wrapper" style="max-width: 1400px; margin: 0 auto; padding: 20px 32px 70px 32px; position: relative; z-index: 10;">
         <div style="text-align: center; max-width: 760px; margin: 0 auto 40px auto;">
-            <span style="font-size: 12px; font-weight: 800; letter-spacing: 1.5px; text-transform: uppercase; color: #ff2a5f; display: block; margin-bottom: 12px;">COMPLETE CAPABILITIES</span>
+            <span style="font-size: 12px; font-weight: 800; letter-spacing: 1.5px; text-transform: uppercase; color: var(--brand-scarlet); display: block; margin-bottom: 12px;">COMPLETE CAPABILITIES</span>
             <h2 style="font-size: 36px; font-weight: 900; color: #fff; letter-spacing: -1px; margin-bottom: 12px;">Engineered for Total Application Security</h2>
             <p style="font-size: 15.5px; color: var(--text-secondary);">Manage users, generate license keys, and distribute protected binaries with complete control.</p>
         </div>
 
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 24px;">
-            <div class="glare-hover" style="padding: 28px; --gh-bg: rgba(26, 8, 15, 0.65); --gh-br: 16px; --gh-border: rgba(255, 255, 255, 0.1); --gh-rgba: rgba(255, 255, 255, 0.22); --gh-duration: 700ms;">
+            <div class="glare-hover" style="padding: 28px; --gh-bg: var(--bg-glass-card); --gh-br: 16px; --gh-border: rgba(255, 255, 255, 0.1); --gh-rgba: rgba(255, 255, 255, 0.22); --gh-duration: 700ms;">
                 <div class="card-icon-pod">💻</div>
                 <h3 style="font-size: 18px; font-weight: 800; color: #fff; margin-bottom: 8px;">Strict HWID Locking</h3>
                 <p style="font-size: 13.5px; color: var(--text-secondary); line-height: 1.5;">Locks client licenses to unique motherboard hardware with 1-click resets.</p>
             </div>
 
-            <div class="glare-hover" style="padding: 28px; --gh-bg: rgba(26, 8, 15, 0.65); --gh-br: 16px; --gh-border: rgba(255, 255, 255, 0.1); --gh-rgba: rgba(255, 255, 255, 0.22); --gh-duration: 700ms;">
+            <div class="glare-hover" style="padding: 28px; --gh-bg: var(--bg-glass-card); --gh-br: 16px; --gh-border: rgba(255, 255, 255, 0.1); --gh-rgba: rgba(255, 255, 255, 0.22); --gh-duration: 700ms;">
                 <div class="card-icon-pod">🔒</div>
                 <h3 style="font-size: 18px; font-weight: 800; color: #fff; margin-bottom: 8px;">Dynamic AES-256</h3>
                 <p style="font-size: 13.5px; color: var(--text-secondary); line-height: 1.5;">Dynamic session keys with HMAC-SHA256 anti-tamper packet verification.</p>
             </div>
 
-            <div class="glare-hover" style="padding: 28px; --gh-bg: rgba(26, 8, 15, 0.65); --gh-br: 16px; --gh-border: rgba(255, 255, 255, 0.1); --gh-rgba: rgba(255, 255, 255, 0.22); --gh-duration: 700ms;">
+            <div class="glare-hover" style="padding: 28px; --gh-bg: var(--bg-glass-card); --gh-br: 16px; --gh-border: rgba(255, 255, 255, 0.1); --gh-rgba: rgba(255, 255, 255, 0.22); --gh-duration: 700ms;">
                 <div class="card-icon-pod">🤖</div>
                 <h3 style="font-size: 18px; font-weight: 800; color: #fff; margin-bottom: 8px;">Discord Bot Controller</h3>
                 <p style="font-size: 13.5px; color: var(--text-secondary); line-height: 1.5;">Generate keys, reset HWIDs, and ban users directly inside Discord.</p>
             </div>
 
-            <div class="glare-hover" style="padding: 28px; --gh-bg: rgba(26, 8, 15, 0.65); --gh-br: 16px; --gh-border: rgba(255, 255, 255, 0.1); --gh-rgba: rgba(255, 255, 255, 0.22); --gh-duration: 700ms;">
+            <div class="glare-hover" style="padding: 28px; --gh-bg: var(--bg-glass-card); --gh-br: 16px; --gh-border: rgba(255, 255, 255, 0.1); --gh-rgba: rgba(255, 255, 255, 0.22); --gh-duration: 700ms;">
                 <div class="card-icon-pod">☁️</div>
                 <h3 style="font-size: 18px; font-weight: 800; color: #fff; margin-bottom: 8px;">Cloud Variables & Files</h3>
                 <p style="font-size: 13.5px; color: var(--text-secondary); line-height: 1.5;">Host encrypted memory offsets and secure binaries in the cloud.</p>
             </div>
 
-            <div class="glare-hover" style="padding: 28px; --gh-bg: rgba(26, 8, 15, 0.65); --gh-br: 16px; --gh-border: rgba(255, 255, 255, 0.1); --gh-rgba: rgba(255, 255, 255, 0.22); --gh-duration: 700ms;">
+            <div class="glare-hover" style="padding: 28px; --gh-bg: var(--bg-glass-card); --gh-br: 16px; --gh-border: rgba(255, 255, 255, 0.1); --gh-rgba: rgba(255, 255, 255, 0.22); --gh-duration: 700ms;">
                 <div class="card-icon-pod">🔑</div>
                 <h3 style="font-size: 18px; font-weight: 800; color: #fff; margin-bottom: 8px;">Pattern License Generator</h3>
                 <p style="font-size: 13.5px; color: var(--text-secondary); line-height: 1.5;">Generate custom formatted bulk license keys with custom expiry ranks.</p>
             </div>
 
-            <div class="glare-hover" style="padding: 28px; --gh-bg: rgba(26, 8, 15, 0.65); --gh-br: 16px; --gh-border: rgba(255, 255, 255, 0.1); --gh-rgba: rgba(255, 255, 255, 0.22); --gh-duration: 700ms;">
+            <div class="glare-hover" style="padding: 28px; --gh-bg: var(--bg-glass-card); --gh-br: 16px; --gh-border: rgba(255, 255, 255, 0.1); --gh-rgba: rgba(255, 255, 255, 0.22); --gh-duration: 700ms;">
                 <div class="card-icon-pod">🚫</div>
                 <h3 style="font-size: 18px; font-weight: 800; color: #fff; margin-bottom: 8px;">IP & HWID Blacklists</h3>
                 <p style="font-size: 13.5px; color: var(--text-secondary); line-height: 1.5;">Instantly ban malicious actors and chargebackers at gateway level.</p>
@@ -701,14 +701,14 @@
     <!-- 3.5. Interactive Glassmorphic Cyber Labs Section -->
     <section class="section-wrapper" style="max-width: 1400px; margin: 0 auto; padding: 20px 32px 70px 32px; position: relative; z-index: 10;">
         <div style="text-align: center; max-width: 760px; margin: 0 auto 36px auto;">
-            <span style="font-size: 12px; font-weight: 800; letter-spacing: 1.5px; text-transform: uppercase; color: #ff2a5f; display: block; margin-bottom: 12px;">INTERACTIVE LIVE DEMO LAB</span>
+            <span style="font-size: 12px; font-weight: 800; letter-spacing: 1.5px; text-transform: uppercase; color: var(--brand-scarlet); display: block; margin-bottom: 12px;">INTERACTIVE LIVE DEMO LAB</span>
             <h2 style="font-size: 36px; font-weight: 900; color: #fff; letter-spacing: -1px; margin-bottom: 12px;">Test Drive Joyst Security Engine</h2>
             <p style="font-size: 15.5px; color: var(--text-secondary);">Simulate live entropy-verified license generation and instantaneous HWID violation containment in real-time.</p>
         </div>
 
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap: 28px;">
             <!-- Lab Widget 1: Interactive License Key Generator -->
-            <div class="glare-hover" style="padding: 32px; --gh-bg: rgba(26, 8, 16, 0.75); --gh-br: 20px; --gh-border: rgba(244, 63, 94, 0.35); --gh-rgba: rgba(255, 255, 255, 0.3); --gh-duration: 700ms; box-shadow: 0 20px 50px rgba(0,0,0,0.8);">
+            <div class="glare-hover" style="padding: 32px; --gh-bg: var(--bg-glass-card); --gh-br: 20px; --gh-border: var(--border-glow); --gh-rgba: rgba(255, 255, 255, 0.3); --gh-duration: 700ms; box-shadow: 0 20px 50px rgba(0,0,0,0.8);">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
                     <div style="display: flex; align-items: center; gap: 10px;">
                         <span style="font-size: 24px;">🔑</span>
@@ -719,7 +719,7 @@
                 <p style="font-size: 13px; color: var(--text-secondary); line-height: 1.6; margin-bottom: 18px;">
                     Test how Joyst generates mathematically unique, entropy-verified license keys ready for instant client activation:
                 </p>
-                <div style="background: rgba(0,0,0,0.65); padding: 16px 20px; border-radius: 12px; border: 1px solid rgba(225, 29, 72, 0.35); display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px;">
+                <div style="background: rgba(0,0,0,0.65); padding: 16px 20px; border-radius: 12px; border: 1px solid var(--border-glow); display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px;">
                     <strong class="mono" id="landing-live-key-val" style="font-size: 16px; color: #fff; letter-spacing: 1.5px;">JOYST-PRO-8Y9X-2K9L-A99B</strong>
                     <button class="btn btn-secondary btn-sm" onclick="copyLandingGeneratedKey()">📋 Copy</button>
                 </div>
@@ -729,7 +729,7 @@
             </div>
 
             <!-- Lab Widget 2: Motherboard Sentinel & Threat Radar -->
-            <div class="glare-hover" style="padding: 32px; --gh-bg: rgba(26, 8, 16, 0.75); --gh-br: 20px; --gh-border: rgba(244, 63, 94, 0.35); --gh-rgba: rgba(244, 63, 94, 0.35); --gh-duration: 700ms; box-shadow: 0 20px 50px rgba(0,0,0,0.8);">
+            <div class="glare-hover" style="padding: 32px; --gh-bg: var(--bg-glass-card); --gh-br: 20px; --gh-border: var(--border-glow); --gh-rgba: var(--border-glow); --gh-duration: 700ms; box-shadow: 0 20px 50px rgba(0,0,0,0.8);">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
                     <div style="display: flex; align-items: center; gap: 10px;">
                         <span style="font-size: 24px;">🛡️</span>
@@ -751,7 +751,7 @@
     <!-- 4. Security Pipeline Section -->
     <section class="section-wrapper" id="architecture" style="max-width: 1400px; margin: 0 auto; padding: 30px 32px 70px 32px; position: relative; z-index: 10;">
         <div style="text-align: center; max-width: 760px; margin: 0 auto 30px auto;">
-            <span style="font-size: 12px; font-weight: 800; letter-spacing: 1.5px; text-transform: uppercase; color: #ff2a5f; display: block; margin-bottom: 12px;">SECURITY PIPELINE</span>
+            <span style="font-size: 12px; font-weight: 800; letter-spacing: 1.5px; text-transform: uppercase; color: var(--brand-scarlet); display: block; margin-bottom: 12px;">SECURITY PIPELINE</span>
             <h2 style="font-size: 36px; font-weight: 900; color: #fff; letter-spacing: -1px; margin-bottom: 12px;">5-Step Zero-Leak Authentication Flow</h2>
             <p style="font-size: 15.5px; color: var(--text-secondary);">How Joyst Auth validates and locks each client session in milliseconds.</p>
         </div>
@@ -800,16 +800,16 @@
                 </p>
                 <div style="display: flex; flex-direction: column; gap: 12px; margin-bottom: 28px;">
                     <div style="display: flex; align-items: center; gap: 10px; font-size: 13.5px; color: #fff;">
-                        <span style="color: #ff4d79; font-weight: 900;">/genkeys</span> Generate custom license keys with expiry days
+                        <span style="color: var(--brand-sky); font-weight: 900;">/genkeys</span> Generate custom license keys with expiry days
                     </div>
                     <div style="display: flex; align-items: center; gap: 10px; font-size: 13.5px; color: #fff;">
-                        <span style="color: #ff4d79; font-weight: 900;">/resethwid</span> Reset user HWID hardware lock in 1 second
+                        <span style="color: var(--brand-sky); font-weight: 900;">/resethwid</span> Reset user HWID hardware lock in 1 second
                     </div>
                     <div style="display: flex; align-items: center; gap: 10px; font-size: 13.5px; color: #fff;">
-                        <span style="color: #ff4d79; font-weight: 900;">/userinfo</span> Inspect user expiry date, level, and IP history
+                        <span style="color: var(--brand-sky); font-weight: 900;">/userinfo</span> Inspect user expiry date, level, and IP history
                     </div>
                     <div style="display: flex; align-items: center; gap: 10px; font-size: 13.5px; color: #fff;">
-                        <span style="color: #ff4d79; font-weight: 900;">/banuser</span> Instantly ban compromised user accounts
+                        <span style="color: var(--brand-sky); font-weight: 900;">/banuser</span> Instantly ban compromised user accounts
                     </div>
                 </div>
                 <div style="display: flex; gap: 14px; flex-wrap: wrap;">
@@ -831,7 +831,7 @@
                             <span style="color: #64748b; font-size: 11px;">Today at 23:45</span>
                         </div>
                         <div class="discord-embed">
-                            <div style="font-size: 12px; font-weight: 800; color: #ff2a5f; margin-bottom: 6px;">
+                            <div style="font-size: 12px; font-weight: 800; color: var(--brand-scarlet); margin-bottom: 6px;">
                                 🛡️ SECURITY AUDIT • HWID MISMATCH BLOCKED
                             </div>
                             <div style="font-size: 13px; color: #e2e8f0; line-height: 1.5; margin-bottom: 12px;">
@@ -840,7 +840,7 @@
                             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 11.5px;">
                                 <div><span style="color: #64748b;">APPLICATION:</span> <strong style="color: #fff;">SuperCheatPro</strong></div>
                                 <div><span style="color: #64748b;">IP ADDRESS:</span> <strong class="mono" style="color: #38bdf8;">185.220.101.4</strong></div>
-                                <div><span style="color: #64748b;">STATUS:</span> <strong style="color: #fb7185;">SESSION TERMINATED</strong></div>
+                                <div><span style="color: #64748b;">STATUS:</span> <strong style="color: var(--brand-rose);">SESSION TERMINATED</strong></div>
                                 <div><span style="color: #64748b;">GATEWAY:</span> <strong style="color: #34d399;">SUB-5MS AES-256</strong></div>
                             </div>
                         </div>
@@ -853,13 +853,13 @@
     <!-- 5. Multi-Language SDK Interactive Code Studio -->
     <section class="section-wrapper" id="sdks" style="max-width: 1400px; margin: 0 auto; padding: 40px 32px 70px 32px; position: relative; z-index: 10;">
         <div style="text-align: center; max-width: 760px; margin: 0 auto 36px auto;">
-            <span style="font-size: 12px; font-weight: 800; letter-spacing: 1.5px; text-transform: uppercase; color: #ff2a5f; display: block; margin-bottom: 12px;">CLIENT INTEGRATION</span>
+            <span style="font-size: 12px; font-weight: 800; letter-spacing: 1.5px; text-transform: uppercase; color: var(--brand-scarlet); display: block; margin-bottom: 12px;">CLIENT INTEGRATION</span>
             <h2 style="font-size: 38px; font-weight: 900; color: #fff; letter-spacing: -1px; margin-bottom: 12px;">Drop-in SDKs in 6 Languages</h2>
             <p style="font-size: 15.5px; color: var(--text-secondary);">Zero bloated dependencies. Add 1 file to your project and start authenticating in 3 lines.</p>
         </div>
 
         <div class="code-container spotlight-card">
-            <div style="display: flex; justify-content: space-between; align-items: center; padding: 14px 20px; background: #120408; border-bottom: 1px solid var(--border-glass); flex-wrap: wrap; gap: 10px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; padding: 14px 20px; background: var(--bg-glass-card); border-bottom: 1px solid var(--border-glass); flex-wrap: wrap; gap: 10px;">
                 <div style="display: flex; gap: 8px; flex-wrap: wrap;">
                     <button class="btn btn-secondary btn-sm lang-pill-btn active" data-lang="cpp" style="padding: 6px 14px; font-size: 12px;">⚡ C++</button>
                     <button class="btn btn-secondary btn-sm lang-pill-btn" data-lang="python" style="padding: 6px 14px; font-size: 12px;">🐍 Python</button>
@@ -877,9 +877,9 @@
     <!-- 5.5. Reseller Management & Sub-Account Enclave Section -->
     <section class="section-wrapper" style="max-width: 1400px; margin: 0 auto; padding: 30px 32px 70px 32px; position: relative; z-index: 10;">
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap: 40px; align-items: center;">
-            <div class="glare-hover" style="padding: 36px; --gh-bg: rgba(26, 8, 16, 0.75); --gh-br: 20px; --gh-border: rgba(244, 63, 94, 0.4); --gh-rgba: rgba(255, 255, 255, 0.3); --gh-duration: 700ms; box-shadow: 0 25px 60px rgba(0,0,0,0.85);">
+            <div class="glare-hover" style="padding: 36px; --gh-bg: var(--bg-glass-card); --gh-br: 20px; --gh-border: var(--border-glow); --gh-rgba: rgba(255, 255, 255, 0.3); --gh-duration: 700ms; box-shadow: 0 25px 60px rgba(0,0,0,0.85);">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px;">
-                    <div style="font-size: 13px; font-weight: 800; color: #ff2a5f; text-transform: uppercase; letter-spacing: 1px;">💼 RESELLER CONTROL PANEL</div>
+                    <div style="font-size: 13px; font-weight: 800; color: var(--brand-scarlet); text-transform: uppercase; letter-spacing: 1px;">💼 RESELLER CONTROL PANEL</div>
                     <span class="badge badge-cyan" style="font-size: 11px;">MULTI-TENANT</span>
                 </div>
                 <div style="background: rgba(0,0,0,0.5); padding: 16px 20px; border-radius: 12px; border: 1px solid var(--border-glass); margin-bottom: 16px;">
@@ -894,7 +894,7 @@
                 </div>
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; font-size: 12.5px;">
                     <div style="background: rgba(0,0,0,0.4); padding: 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.06);">
-                        <span style="color: #ff4d79; font-weight: 800;">🔒 Scoped Access:</span>
+                        <span style="color: var(--brand-sky); font-weight: 800;">🔒 Scoped Access:</span>
                         <p style="color: var(--text-secondary); margin-top: 4px; font-size: 11.5px;">Resellers can only generate keys from their allotted balance.</p>
                     </div>
                     <div style="background: rgba(0,0,0,0.4); padding: 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.06);">
@@ -944,18 +944,18 @@
                 </p>
                 <div style="display: flex; flex-direction: column; gap: 12px;">
                     <div style="display: flex; align-items: center; gap: 10px; font-size: 13.5px; color: #fff;">
-                        <span style="color: #ff4d79; font-weight: 900;">⚡</span> <strong>WinAPI Debugger Traps:</strong> <code>IsDebuggerPresent</code>, <code>CheckRemoteDebuggerPresent</code>, and PEB stealth scanning.
+                        <span style="color: var(--brand-sky); font-weight: 900;">⚡</span> <strong>WinAPI Debugger Traps:</strong> <code>IsDebuggerPresent</code>, <code>CheckRemoteDebuggerPresent</code>, and PEB stealth scanning.
                     </div>
                     <div style="display: flex; align-items: center; gap: 10px; font-size: 13.5px; color: #fff;">
-                        <span style="color: #ff4d79; font-weight: 900;">⚡</span> <strong>Memory Scanner Blacklist:</strong> Instant termination upon detecting Cheat Engine, Scylla, or HTTP debugger proxies.
+                        <span style="color: var(--brand-sky); font-weight: 900;">⚡</span> <strong>Memory Scanner Blacklist:</strong> Instant termination upon detecting Cheat Engine, Scylla, or HTTP debugger proxies.
                     </div>
                     <div style="display: flex; align-items: center; gap: 10px; font-size: 13.5px; color: #fff;">
-                        <span style="color: #ff4d79; font-weight: 900;">⚡</span> <strong>Session Watchdog Daemon:</strong> Heartbeat thread silently terminates process if session token is altered in memory.
+                        <span style="color: var(--brand-sky); font-weight: 900;">⚡</span> <strong>Session Watchdog Daemon:</strong> Heartbeat thread silently terminates process if session token is altered in memory.
                     </div>
                 </div>
             </div>
 
-            <div class="glare-hover" style="padding: 36px; --gh-bg: rgba(26, 8, 16, 0.75); --gh-br: 20px; --gh-border: rgba(244, 63, 94, 0.4); --gh-rgba: rgba(244, 63, 94, 0.35); --gh-duration: 700ms; box-shadow: 0 25px 60px rgba(0,0,0,0.85);">
+            <div class="glare-hover" style="padding: 36px; --gh-bg: var(--bg-glass-card); --gh-br: 20px; --gh-border: var(--border-glow); --gh-rgba: var(--border-glow); --gh-duration: 700ms; box-shadow: 0 25px 60px rgba(0,0,0,0.85);">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px;">
                     <div style="font-size: 13px; font-weight: 800; color: #34d399; text-transform: uppercase; letter-spacing: 1px;">🛡️ REAL-TIME THREAT SENTINEL</div>
                     <span class="badge badge-success" style="font-size: 11px;">0.001ms SCAN</span>
@@ -985,7 +985,7 @@
     <!-- 6. Competitive Comparison Matrix -->
     <section class="section-wrapper" style="max-width: 1200px; margin: 0 auto; padding: 40px 32px 70px 32px; position: relative; z-index: 10;">
         <div style="text-align: center; max-width: 760px; margin: 0 auto 36px auto;">
-            <span style="font-size: 12px; font-weight: 800; letter-spacing: 1.5px; text-transform: uppercase; color: #ff2a5f; display: block; margin-bottom: 12px;">TECHNICAL COMPARISON</span>
+            <span style="font-size: 12px; font-weight: 800; letter-spacing: 1.5px; text-transform: uppercase; color: var(--brand-scarlet); display: block; margin-bottom: 12px;">TECHNICAL COMPARISON</span>
             <h2 style="font-size: 36px; font-weight: 900; color: #fff; letter-spacing: -1px; margin-bottom: 12px;">Why Developers Switch to Joyst Auth</h2>
             <p style="font-size: 15.5px; color: var(--text-secondary);">Compare how Joyst architecture outperforms legacy licensing systems.</p>
         </div>
@@ -993,9 +993,9 @@
         <div class="glass-panel" style="padding: 0; overflow-x: auto;">
             <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 14px; min-width: 650px;">
                 <thead>
-                    <tr style="background: rgba(225, 29, 72, 0.12); border-bottom: 1px solid var(--border-glass);">
+                    <tr style="background: rgba(255, 255, 255, 0.05); border-bottom: 1px solid var(--border-glass);">
                         <th style="padding: 18px 24px; color: #fff; font-weight: 800;">Feature Capability</th>
-                        <th style="padding: 18px 24px; color: #ff4d79; font-weight: 900;">⚡ Joyst Auth</th>
+                        <th style="padding: 18px 24px; color: var(--brand-sky); font-weight: 900;">⚡ Joyst Auth</th>
                         <th style="padding: 18px 24px; color: var(--text-muted); font-weight: 600;">Legacy Auth Providers</th>
                         <th style="padding: 18px 24px; color: var(--text-muted); font-weight: 600;">Custom Self-Built Auth</th>
                     </tr>
@@ -1039,14 +1039,14 @@
     <!-- 7. Simplified 2-Tier Pricing Section -->
     <section class="section-wrapper" id="pricing" style="max-width: 1200px; margin: 0 auto; padding: 40px 32px 70px 32px; position: relative; z-index: 10;">
         <div style="text-align: center; max-width: 760px; margin: 0 auto 40px auto;">
-            <span style="font-size: 12px; font-weight: 800; letter-spacing: 1.5px; text-transform: uppercase; color: #ff2a5f; display: block; margin-bottom: 12px;">CLEAR & TRANSPARENT PRICING</span>
+            <span style="font-size: 12px; font-weight: 800; letter-spacing: 1.5px; text-transform: uppercase; color: var(--brand-scarlet); display: block; margin-bottom: 12px;">CLEAR & TRANSPARENT PRICING</span>
             <h2 style="font-size: 38px; font-weight: 900; color: #fff; letter-spacing: -1px; margin-bottom: 12px;">Simple 2-Tier Subscription Model</h2>
             <p style="font-size: 15.5px; color: var(--text-secondary);">Start for free on our default trial or unlock unlimited scale with our Paid tier.</p>
         </div>
 
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 28px;">
             <!-- Free Plan -->
-            <div class="glare-hover" style="padding: 36px; --gh-bg: rgba(26, 8, 15, 0.65); --gh-br: 20px; --gh-border: rgba(255, 255, 255, 0.12); --gh-rgba: rgba(255, 255, 255, 0.25); --gh-duration: 700ms;">
+            <div class="glare-hover" style="padding: 36px; --gh-bg: var(--bg-glass-card); --gh-br: 20px; --gh-border: rgba(255, 255, 255, 0.12); --gh-rgba: rgba(255, 255, 255, 0.25); --gh-duration: 700ms;">
                 <div>
                     <span class="badge badge-purple" style="margin-bottom: 14px;">FREE TRIAL (DEFAULT)</span>
                     <h3 style="font-size: 32px; font-weight: 900; color: #fff;">$0 <span style="font-size: 14px; color: var(--text-muted); font-weight: 500;">/ forever</span></h3>
@@ -1065,7 +1065,7 @@
             </div>
 
             <!-- Paid Tier -->
-            <div class="glare-hover" style="padding: 36px; --gh-bg: rgba(26, 8, 15, 0.85); --gh-br: 20px; --gh-border: rgba(244, 63, 94, 0.55); --gh-rgba: rgba(244, 63, 94, 0.4); --gh-duration: 700ms; box-shadow: 0 0 50px rgba(225, 29, 72, 0.25);">
+            <div class="glare-hover" style="padding: 36px; --gh-bg: var(--bg-glass-card); --gh-br: 20px; --gh-border: var(--border-glow); --gh-rgba: var(--border-glow); --gh-duration: 700ms; box-shadow: var(--shadow-glow);">
                 <div>
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
                         <span class="badge badge-success">PAID TIER</span>
@@ -1091,7 +1091,7 @@
     <!-- 8. Frequently Asked Questions (Accordion) -->
     <section class="section-wrapper" id="faq" style="max-width: 1000px; margin: 0 auto; padding: 40px 32px 70px 32px; position: relative; z-index: 10;">
         <div style="text-align: center; max-width: 760px; margin: 0 auto 36px auto;">
-            <span style="font-size: 12px; font-weight: 800; letter-spacing: 1.5px; text-transform: uppercase; color: #ff2a5f; display: block; margin-bottom: 12px;">FREQUENTLY ASKED QUESTIONS</span>
+            <span style="font-size: 12px; font-weight: 800; letter-spacing: 1.5px; text-transform: uppercase; color: var(--brand-scarlet); display: block; margin-bottom: 12px;">FREQUENTLY ASKED QUESTIONS</span>
             <h2 style="font-size: 36px; font-weight: 900; color: #fff; letter-spacing: -1px; margin-bottom: 12px;">Everything You Need to Know</h2>
             <p style="font-size: 15.5px; color: var(--text-secondary);">Got questions about setup, HWID locking, or SDK support? We have answers.</p>
         </div>
@@ -1100,7 +1100,7 @@
             <div class="glass-panel" style="padding: 20px 24px;">
                 <div class="faq-question" style="display: flex; justify-content: space-between; align-items: center; cursor: pointer; font-weight: 800; font-size: 16px; color: #fff;">
                     <span>How does Joyst prevent users from sharing software licenses?</span>
-                    <span class="faq-icon" style="color: #ff4d79; font-size: 20px;">+</span>
+                    <span class="faq-icon" style="color: var(--brand-sky); font-size: 20px;">+</span>
                 </div>
                 <div class="faq-answer" style="display: none; margin-top: 14px; font-size: 14px; color: var(--text-secondary); line-height: 1.6; border-top: 1px solid rgba(255,255,255,0.06); padding-top: 12px;">
                     Joyst SDK extracts hardware hashes directly from the user's Motherboard SMBIOS and CPU registers on initial login. Subsequent logins from any other device are automatically blocked at the server gateway.
@@ -1110,7 +1110,7 @@
             <div class="glass-panel" style="padding: 20px 24px;">
                 <div class="faq-question" style="display: flex; justify-content: space-between; align-items: center; cursor: pointer; font-weight: 800; font-size: 16px; color: #fff;">
                     <span>Can I integrate Joyst Auth with my Discord server?</span>
-                    <span class="faq-icon" style="color: #ff4d79; font-size: 20px;">+</span>
+                    <span class="faq-icon" style="color: var(--brand-sky); font-size: 20px;">+</span>
                 </div>
                 <div class="faq-answer" style="display: none; margin-top: 14px; font-size: 14px; color: var(--text-secondary); line-height: 1.6; border-top: 1px solid rgba(255,255,255,0.06); padding-top: 12px;">
                     Yes! Our Discord Bot allows admins and resellers to generate license keys, reset user HWIDs, ban users, and view subscription details using native Discord slash commands.
@@ -1120,7 +1120,7 @@
             <div class="glass-panel" style="padding: 20px 24px;">
                 <div class="faq-question" style="display: flex; justify-content: space-between; align-items: center; cursor: pointer; font-weight: 800; font-size: 16px; color: #fff;">
                     <span>Which programming languages are officially supported?</span>
-                    <span class="faq-icon" style="color: #ff4d79; font-size: 20px;">+</span>
+                    <span class="faq-icon" style="color: var(--brand-sky); font-size: 20px;">+</span>
                 </div>
                 <div class="faq-answer" style="display: none; margin-top: 14px; font-size: 14px; color: var(--text-secondary); line-height: 1.6; border-top: 1px solid rgba(255,255,255,0.06); padding-top: 12px;">
                     We offer drop-in SDKs for C++ (Native Windows with anti-debug), Python 3, C# (.NET 8), Node.js, Java, and Rust, as well as a raw REST API for any other stack.
@@ -1130,7 +1130,7 @@
             <div class="glass-panel" style="padding: 20px 24px;">
                 <div class="faq-question" style="display: flex; justify-content: space-between; align-items: center; cursor: pointer; font-weight: 800; font-size: 16px; color: #fff;">
                     <span>Is the Free plan really free forever?</span>
-                    <span class="faq-icon" style="color: #ff4d79; font-size: 20px;">+</span>
+                    <span class="faq-icon" style="color: var(--brand-sky); font-size: 20px;">+</span>
                 </div>
                 <div class="faq-answer" style="display: none; margin-top: 14px; font-size: 14px; color: var(--text-secondary); line-height: 1.6; border-top: 1px solid rgba(255,255,255,0.06); padding-top: 12px;">
                     Yes. You can protect up to 3 applications with up to 1,000 active users per application without ever entering a credit card.
@@ -1141,11 +1141,11 @@
 
     <!-- 9. Final Call To Action Banner -->
     <section class="section-wrapper" style="max-width: 1200px; margin: 0 auto; padding: 20px 32px 90px 32px; position: relative; z-index: 10;">
-        <div class="glare-hover" style="padding: 50px 40px; text-align: center; --gh-bg: linear-gradient(135deg, rgba(225, 29, 72, 0.25) 0%, rgba(18, 6, 11, 0.9) 100%); --gh-br: 24px; --gh-border: rgba(244, 63, 94, 0.5); --gh-rgba: rgba(255, 255, 255, 0.35); --gh-duration: 700ms; box-shadow: 0 20px 60px rgba(225, 29, 72, 0.3);">
+        <div class="glare-hover" style="padding: 50px 40px; text-align: center; --gh-bg: linear-gradient(135deg, var(--bg-glass-card-hover) 0%, var(--bg-surface) 100%); --gh-br: 24px; --gh-border: var(--border-glow); --gh-rgba: rgba(255, 255, 255, 0.35); --gh-duration: 700ms; box-shadow: var(--shadow-glow);">
             <h2 style="font-size: 40px; font-weight: 900; color: #fff; letter-spacing: -1.5px; margin-bottom: 16px;">
                 Ready to Secure Your Software?
             </h2>
-            <p style="font-size: 16.5px; color: #fecdd3; max-width: 600px; margin: 0 auto 32px auto; line-height: 1.6;">
+            <p style="font-size: 16.5px; color: var(--text-secondary); max-width: 600px; margin: 0 auto 32px auto; line-height: 1.6;">
                 Get started in less than 3 minutes. Zero configuration required, integrate seamlessly into any codebase.
             </p>
             <div style="display: flex; gap: 16px; justify-content: center; flex-wrap: wrap;">
@@ -1164,7 +1164,7 @@
         <div class="footer-grid">
             <div class="footer-col">
                 <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px;">
-                    <img src="/static/img/joyst_logo.png" alt="JOYST" style="width: 38px; height: 38px; border-radius: 50%; object-fit: cover; box-shadow: 0 0 16px rgba(225, 29, 72, 0.6); border: 1.5px solid rgba(244, 63, 94, 0.6);">
+                    <img src="/static/img/joyst_logo.png" alt="JOYST" style="width: 38px; height: 38px; border-radius: 50%; object-fit: cover; box-shadow: var(--shadow-glow); border: 1.5px solid var(--border-glow);">
                     <span style="font-size: 17px; font-weight: 900; color: #fff; letter-spacing: 0.5px;">JOYST AUTH</span>
                 </div>
                 <p style="font-size: 13.5px; color: var(--text-secondary); line-height: 1.6; margin-bottom: 20px; max-width: 320px;">
