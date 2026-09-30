@@ -574,6 +574,7 @@ async function loadUserProfile() {
         }
 
         window.currentUserPlan = activePlan;
+        try { localStorage.setItem("user_plan", activePlan); } catch (e) {}
         window.isCustomClientRole = Boolean(data.is_custom_client || data.role === "custom_client");
         if (planBadge) planBadge.textContent = `${activePlan} Plan`;
 
@@ -4398,26 +4399,10 @@ async function loadCustomClients() {
     const ccLocked = document.getElementById("custom-clients-locked-paywall");
     const ccUnlocked = document.getElementById("custom-clients-unlocked-content");
 
-    const isPaid = (window.currentUserPlan === "Paid" || window.currentUserPlan === "Developer" || window.currentUserPlan === "Pro" || window.currentUserPlan === "Enterprise");
-
-    if (!isPaid && !window.isCustomClientRole) {
-        if (ccLocked) ccLocked.style.display = "flex";
-        if (ccUnlocked) ccUnlocked.style.display = "none";
-        customClientsList = [];
-        window.customClientsList = [];
-        return;
-    } else {
-        if (ccLocked) ccLocked.style.display = "none";
-        if (ccUnlocked) ccUnlocked.style.display = "block";
-    }
-
     if (!tableBody) return;
 
-    if (window.tabDataCache && window.tabDataCache.custom_clients && window.tabDataCache.custom_clients.length > 0) {
-        customClientsList = window.tabDataCache.custom_clients;
-        window.customClientsList = customClientsList;
-        renderCustomClientsTable();
-    } else if (!customClientsList || customClientsList.length === 0) {
+    // Show initial loading spinner if table is empty
+    if (!customClientsList || customClientsList.length === 0) {
         tableBody.innerHTML = `
             <tr>
                 <td colspan="5" style="text-align: center; padding: 40px 20px;">
@@ -4431,17 +4416,35 @@ async function loadCustomClients() {
     }
 
     try {
-        const data = await apiFetch("/api/v1/admin/custom-clients");
+        const token = getAuthToken();
+        const headers = { "Content-Type": "application/json" };
+        if (token) headers["Authorization"] = `Bearer ${token}`;
+
+        const res = await fetch("/api/v1/admin/custom-clients", { headers });
+
+        if (res.status === 403) {
+            if (ccLocked) ccLocked.style.display = "flex";
+            if (ccUnlocked) ccUnlocked.style.display = "none";
+            if (countBadge) countBadge.textContent = "Locked (Paid Plan)";
+            customClientsList = [];
+            window.customClientsList = [];
+            return;
+        }
+
+        if (ccLocked) ccLocked.style.display = "none";
+        if (ccUnlocked) ccUnlocked.style.display = "block";
+
+        const data = await res.json().catch(() => null);
         if (data && (data.success || Array.isArray(data.clients) || Array.isArray(data))) {
             const list = Array.isArray(data) ? data : (data.clients || data.custom_clients || []);
             customClientsList = list;
             window.customClientsList = list;
-            if (window.tabDataCache) window.tabDataCache.custom_clients = customClientsList;
+            if (window.tabDataCache) window.tabDataCache.custom_clients = list;
             if (countBadge) {
                 countBadge.textContent = `${list.length} Brand Client${list.length === 1 ? '' : 's'}`;
             }
             renderCustomClientsTable();
-        } else if (!window.tabDataCache?.custom_clients) {
+        } else {
             customClientsList = [];
             window.customClientsList = [];
             if (countBadge) countBadge.textContent = "0 Brand Clients";
@@ -4451,6 +4454,7 @@ async function loadCustomClients() {
         console.error("loadCustomClients error:", e);
         customClientsList = [];
         window.customClientsList = [];
+        if (countBadge) countBadge.textContent = "0 Brand Clients";
         tableBody.innerHTML = `
             <tr>
                 <td colspan="5" style="text-align: center; padding: 40px 20px;">
