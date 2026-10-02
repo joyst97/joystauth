@@ -2778,7 +2778,8 @@ async def list_custom_clients(dev: Developer = Depends(get_current_developer), d
         raise HTTPException(status_code=403, detail="Unauthorized")
     
     # 1. Paid Plan Paywall Gating
-    if dev.plan not in ["Paid", "Developer", "Enterprise"] and not getattr(dev, "is_custom_client", False):
+    plan_str = str(getattr(dev, "plan", "")).strip().lower()
+    if plan_str in ["free", "trial"] and not getattr(dev, "is_custom_client", False):
         raise HTTPException(status_code=403, detail="👑 Custom Brand Clients management is an exclusive PAID Plan feature. Please upgrade your plan on joystauth.cc to unlock Custom Client access!")
     
     # 2. Strict Multi-Tenant Isolation (Only query this developer's custom clients)
@@ -2825,7 +2826,8 @@ async def create_custom_client(data: CreateCustomClientRequest, dev: Developer =
     if getattr(dev, "is_custom_client", False):
         raise HTTPException(status_code=403, detail="Unauthorized")
     
-    if dev.plan not in ["Paid", "Developer", "Enterprise"] and not getattr(dev, "is_custom_client", False):
+    plan_str = str(getattr(dev, "plan", "")).strip().lower()
+    if plan_str in ["free", "trial"] and not getattr(dev, "is_custom_client", False):
         raise HTTPException(status_code=403, detail="👑 Custom Brand Clients management is an exclusive PAID Plan feature. Please upgrade your plan on joystauth.cc to unlock Custom Client access!")
     
     uname = data.username.strip()
@@ -2870,7 +2872,8 @@ async def update_custom_client(client_id: int, data: UpdateCustomClientRequest, 
     if getattr(dev, "is_custom_client", False):
         raise HTTPException(status_code=403, detail="Unauthorized")
     
-    if dev.plan not in ["Paid", "Developer", "Enterprise"] and not getattr(dev, "is_custom_client", False):
+    plan_str = str(getattr(dev, "plan", "")).strip().lower()
+    if plan_str in ["free", "trial"] and not getattr(dev, "is_custom_client", False):
         raise HTTPException(status_code=403, detail="👑 Custom Brand Clients management is an exclusive PAID Plan feature. Please upgrade your plan on joystauth.cc to unlock Custom Client access!")
     
     client = db.query(CustomClient).filter(CustomClient.id == client_id, CustomClient.developer_id == dev.id).first()
@@ -2894,7 +2897,8 @@ async def delete_custom_client(client_id: int, dev: Developer = Depends(get_curr
     if getattr(dev, "is_custom_client", False):
         raise HTTPException(status_code=403, detail="Unauthorized")
     
-    if dev.plan not in ["Paid", "Developer", "Enterprise"] and not getattr(dev, "is_custom_client", False):
+    plan_str = str(getattr(dev, "plan", "")).strip().lower()
+    if plan_str in ["free", "trial"] and not getattr(dev, "is_custom_client", False):
         raise HTTPException(status_code=403, detail="👑 Custom Brand Clients management is an exclusive PAID Plan feature. Please upgrade your plan on joystauth.cc to unlock Custom Client access!")
     
     client = db.query(CustomClient).filter(CustomClient.id == client_id, CustomClient.developer_id == dev.id).first()

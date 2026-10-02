@@ -311,23 +311,34 @@ function showDiscordOutputModal(optionsOrTitle, jsonPayload) {
         if (copyBtn) {
             copyBtn.onclick = async () => {
                 try {
-                    await navigator.clipboard.writeText(rawText);
-                    showToast("Copied to clipboard!", "success");
-                } catch (e) {
+                    if (navigator.clipboard && navigator.clipboard.writeText) {
+                        await navigator.clipboard.writeText(rawText);
+                        showToast("Copied to clipboard!", "success");
+                        return;
+                    }
+                } catch (e) {}
+                try {
                     const ta = document.createElement("textarea");
                     ta.value = rawText;
+                    ta.style.position = "fixed";
+                    ta.style.opacity = "0";
                     document.body.appendChild(ta);
+                    ta.focus();
                     ta.select();
                     document.execCommand("copy");
                     document.body.removeChild(ta);
                     showToast("Copied to clipboard!", "success");
+                } catch (e) {
+                    showToast("Please copy credentials manually from the box", "info");
                 }
             };
         }
 
-        // Auto copy to clipboard
+        // Auto copy to clipboard silently
         try {
-            navigator.clipboard.writeText(rawText);
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(rawText).catch(() => {});
+            }
         } catch (e) {}
 
         openModal("modal-discord-output");
@@ -4416,25 +4427,7 @@ async function loadCustomClients() {
     }
 
     try {
-        const token = getAuthToken();
-        const headers = { "Content-Type": "application/json" };
-        if (token) headers["Authorization"] = `Bearer ${token}`;
-
-        const res = await fetch("/api/v1/admin/custom-clients", { headers });
-
-        if (res.status === 403) {
-            if (ccLocked) ccLocked.style.display = "flex";
-            if (ccUnlocked) ccUnlocked.style.display = "none";
-            if (countBadge) countBadge.textContent = "Locked (Paid Plan)";
-            customClientsList = [];
-            window.customClientsList = [];
-            return;
-        }
-
-        if (ccLocked) ccLocked.style.display = "none";
-        if (ccUnlocked) ccUnlocked.style.display = "block";
-
-        const data = await res.json().catch(() => null);
+        const data = await apiFetch("/api/v1/admin/custom-clients");
         if (data && (data.success || Array.isArray(data.clients) || Array.isArray(data))) {
             const list = Array.isArray(data) ? data : (data.clients || data.custom_clients || []);
             customClientsList = list;
@@ -4443,11 +4436,19 @@ async function loadCustomClients() {
             if (countBadge) {
                 countBadge.textContent = `${list.length} Brand Client${list.length === 1 ? '' : 's'}`;
             }
+            if (ccLocked) ccLocked.style.display = "none";
+            if (ccUnlocked) ccUnlocked.style.display = "block";
             renderCustomClientsTable();
+        } else if (data && data.detail && (data.detail.includes("PAID") || data.detail.includes("exclusive") || data.detail.includes("upgrade"))) {
+            if (ccLocked) ccLocked.style.display = "flex";
+            if (ccUnlocked) ccUnlocked.style.display = "none";
+            if (countBadge) countBadge.textContent = "Locked (Paid Plan)";
         } else {
             customClientsList = [];
             window.customClientsList = [];
             if (countBadge) countBadge.textContent = "0 Brand Clients";
+            if (ccLocked) ccLocked.style.display = "none";
+            if (ccUnlocked) ccUnlocked.style.display = "block";
             renderCustomClientsTable();
         }
     } catch (e) {
@@ -4553,6 +4554,7 @@ function renderCustomClientsTable() {
         }
 
         const initial = (String(c.username || 'C')).charAt(0).toUpperCase();
+        const clientId = escapeHtml(String(c.id));
 
         return `
             <tr>
@@ -4576,9 +4578,9 @@ function renderCustomClientsTable() {
                 <td style="font-size: 12px; color: var(--text-muted);">${dateStr}</td>
                 <td style="text-align: right;">
                     <div style="display: flex; gap: 6px; justify-content: flex-end; flex-wrap: wrap;">
-                        <button type="button" class="btn btn-secondary btn-sm" style="padding: 5px 10px; font-size: 11.5px; font-weight: 700;" onclick="openEditCustomClientModal(${c.id})" title="Add/Remove Apps or Edit Password">📱 Apps & Pass</button>
-                        <button type="button" class="btn btn-secondary btn-sm" style="padding: 5px 10px; font-size: 11.5px; font-weight: 700;" onclick="convertCustomClientToReseller(${c.id})" title="Convert to Reseller">🔄 Convert to Reseller</button>
-                        <button type="button" class="btn btn-danger btn-sm" style="padding: 5px 10px; font-size: 11.5px;" onclick="deleteCustomClient(${c.id})">🗑️</button>
+                        <button type="button" class="btn btn-secondary btn-sm" style="padding: 5px 10px; font-size: 11.5px; font-weight: 700;" onclick="openEditCustomClientModal('${clientId}')" title="Add/Remove Apps or Edit Password">📱 Apps & Pass</button>
+                        <button type="button" class="btn btn-secondary btn-sm" style="padding: 5px 10px; font-size: 11.5px; font-weight: 700;" onclick="convertCustomClientToReseller('${clientId}')" title="Convert to Reseller">🔄 Convert to Reseller</button>
+                        <button type="button" class="btn btn-danger btn-sm" style="padding: 5px 10px; font-size: 11.5px;" onclick="deleteCustomClient('${clientId}')">🗑️</button>
                     </div>
                 </td>
             </tr>
@@ -4648,6 +4650,15 @@ async function submitCreateCustomClient() {
         return;
     }
 
+    // Capture app names BEFORE closing modal
+    const appNames = (checkedBoxes.length > 0)
+        ? checkedBoxes.map(cb => {
+            const appId = cb.value;
+            const a = availableApps.find(x => String(x.id) === String(appId));
+            return a ? a.name : ('App #' + appId);
+        }).join(", ")
+        : (availableApps.find(x => String(x.id) === String(allowedAppIds))?.name || 'All Applications');
+
     try {
         const res = await apiFetch("/api/v1/admin/custom-clients", {
             method: "POST",
@@ -4662,15 +4673,9 @@ async function submitCreateCustomClient() {
         if (res && res.success) {
             showToast(res.message || "Custom client created!", "success");
             closeModal("modal-create-custom-client");
+
             const searchInput = document.getElementById("custom-clients-search");
             if (searchInput) searchInput.value = "";
-            if (typeof loadCustomClients === 'function') await loadCustomClients();
-
-            const appNames = checkedBoxes.map(cb => {
-                const appId = cb.value;
-                const a = availableApps.find(x => String(x.id) === String(appId));
-                return a ? a.name : ('App #' + appId);
-            }).join(", ");
 
             const nowStr = new Date().toLocaleString();
             const rawDiscordText = `**JOYST CORPORATION AUTH**\n` +
@@ -4683,11 +4688,25 @@ async function submitCreateCustomClient() {
                 `🔗 **Panel Login URL:** https://joystauth.cc/login\n` +
                 `🤖 **Discord Bot Link:** \`/link email_or_username:${username}\``;
 
-            showDiscordOutputModal("Custom Client Account Created!", rawDiscordText);
+            showDiscordOutputModal({
+                header: "JOYST CORPORATION",
+                title: "CUSTOM CLIENT ACCOUNT CREATED",
+                rawText: rawDiscordText
+            });
+
+            // Reload table in background safely
+            try {
+                if (typeof loadCustomClients === 'function') {
+                    await loadCustomClients();
+                }
+            } catch (loadErr) {
+                console.warn("Background loadCustomClients error:", loadErr);
+            }
         } else {
             showToast(res?.detail || res?.message || "Failed to create client", "error");
         }
     } catch (e) {
+        console.error("submitCreateCustomClient error:", e);
         showToast("Error creating client", "error");
     }
 }
