@@ -598,6 +598,15 @@ async function loadUserProfile() {
             document.getElementById("plan-card-free")?.classList.add("active-plan");
         }
 
+        // Re-evaluate active tab content once user plan is resolved
+        const curNav = document.querySelector(".nav-item.active");
+        if (curNav) {
+            const curTab = curNav.getAttribute("data-tab");
+            if (curTab === "custom-clients" || curTab === "resellers" || curTab === "webhooks") {
+                loadTabContent(curTab);
+            }
+        }
+
         // Dynamic Plan Buttons
         const freeBtnContainer = document.getElementById("plan-btn-container-free");
         const paidBtnContainer = document.getElementById("plan-btn-container-paid");
@@ -723,14 +732,22 @@ function loadActiveTab() {
     }
 }
 
+function checkIsPaidPlan() {
+    const raw = (window.currentUserPlan || localStorage.getItem("user_plan") || "").toString().trim().toLowerCase();
+    if (!raw) return true; // Default permissive so backend validates
+    if (window.isCustomClientRole === true) return true;
+    return !["free", "trial"].includes(raw);
+}
+
 function loadTabContent(tabId) {
-    const isPaid = (window.currentUserPlan === "Paid" || window.currentUserPlan === "Developer" || window.currentUserPlan === "Pro" || window.currentUserPlan === "Enterprise" || window.isCustomClientRole === true);
+    const isPaid = checkIsPaidPlan();
+    const isCustomClientUser = Boolean(window.isCustomClientRole);
 
     // Manage Resellers Locked vs Unlocked visibility
     const resLocked = document.getElementById("resellers-locked-paywall");
     const resUnlocked = document.getElementById("resellers-unlocked-content");
     if (resLocked && resUnlocked) {
-        if (isPaid) {
+        if (isPaid || isCustomClientUser) {
             resLocked.style.display = "none";
             resUnlocked.style.display = "block";
         } else {
@@ -743,7 +760,7 @@ function loadTabContent(tabId) {
     const hookLocked = document.getElementById("webhooks-locked-paywall");
     const hookUnlocked = document.getElementById("webhooks-unlocked-content");
     if (hookLocked && hookUnlocked) {
-        if (isPaid) {
+        if (isPaid || isCustomClientUser) {
             hookLocked.style.display = "none";
             hookUnlocked.style.display = "block";
         } else {
@@ -756,7 +773,7 @@ function loadTabContent(tabId) {
     const ccLocked = document.getElementById("custom-clients-locked-paywall");
     const ccUnlocked = document.getElementById("custom-clients-unlocked-content");
     if (ccLocked && ccUnlocked) {
-        if (isPaid && !window.isCustomClientRole) {
+        if (isPaid && !isCustomClientUser) {
             ccLocked.style.display = "none";
             ccUnlocked.style.display = "block";
         } else {
@@ -781,7 +798,7 @@ function loadTabContent(tabId) {
     } else if (tabId === "blacklists") {
         loadBlacklists();
     } else if (tabId === "resellers") {
-        if (isPaid) loadResellers();
+        if (isPaid || isCustomClientUser) loadResellers();
     } else if (tabId === "webhooks") {
         // Unlocked for paid users
     } else if (tabId === "notifications") {
@@ -795,7 +812,7 @@ function loadTabContent(tabId) {
     } else if (tabId === "sdk") {
         updateSdkSnippets();
     } else if (tabId === "custom-clients") {
-        if (isPaid && !window.isCustomClientRole) {
+        if (!isCustomClientUser) {
             loadCustomClients();
         }
     }
@@ -4481,9 +4498,7 @@ function renderCustomClientsTable() {
 
     const searchInput = document.getElementById("custom-clients-search");
     const query = (searchInput ? searchInput.value : "").toLowerCase().trim();
-    let list = (typeof customClientsList !== 'undefined' && customClientsList && customClientsList.length > 0)
-        ? customClientsList
-        : (window.customClientsList || []);
+    let list = Array.isArray(customClientsList) ? customClientsList : (Array.isArray(window.customClientsList) ? window.customClientsList : []);
 
     if (countBadge && (!query || query === "")) {
         countBadge.textContent = `${list.length} Brand Client${list.length === 1 ? '' : 's'}`;

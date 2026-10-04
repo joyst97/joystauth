@@ -1429,7 +1429,14 @@ async def convert_client_to_reseller(client_id: int, dev: Developer = Depends(ge
     if getattr(dev, "is_custom_client", False):
         raise HTTPException(status_code=403, detail="Unauthorized")
     
-    cc = db.query(CustomClient).filter(CustomClient.id == client_id, CustomClient.developer_id == dev.id).first()
+    from .auth_api import is_master_admin_account
+    is_admin = is_master_admin_account(dev)
+    from sqlalchemy import or_
+    
+    query = db.query(CustomClient).filter(CustomClient.id == client_id)
+    if not is_admin:
+        query = query.filter(or_(CustomClient.developer_id == dev.id, CustomClient.developer_id.is_(None)))
+    cc = query.first()
     if not cc:
         raise HTTPException(status_code=404, detail="Custom Client account not found")
     
@@ -2777,15 +2784,35 @@ async def list_custom_clients(dev: Developer = Depends(get_current_developer), d
     if getattr(dev, "is_custom_client", False):
         raise HTTPException(status_code=403, detail="Unauthorized")
     
-    # 1. Paid Plan Paywall Gating
+    # 1. Paid Plan Paywall Gating (Master Admin bypass)
+    from .auth_api import is_master_admin_account
+    is_admin = is_master_admin_account(dev)
     plan_str = str(getattr(dev, "plan", "")).strip().lower()
-    if plan_str in ["free", "trial"] and not getattr(dev, "is_custom_client", False):
+    if plan_str in ["free", "trial"] and not is_admin:
         raise HTTPException(status_code=403, detail="👑 Custom Brand Clients management is an exclusive PAID Plan feature. Please upgrade your plan on joystauth.cc to unlock Custom Client access!")
     
-    # 2. Strict Multi-Tenant Isolation (Only query this developer's custom clients)
-    clients = db.query(CustomClient).filter(CustomClient.developer_id == dev.id).order_by(CustomClient.id.desc()).all()
+    # 2. Query developer's custom clients
+    from sqlalchemy import or_
+    if is_admin:
+        clients = db.query(CustomClient).order_by(CustomClient.id.desc()).all()
+    else:
+        clients = db.query(CustomClient).filter(
+            or_(CustomClient.developer_id == dev.id, CustomClient.developer_id.is_(None), CustomClient.developer_id == 0)
+        ).order_by(CustomClient.id.desc()).all()
+
+    # Automatically claim any unassigned clients for this developer
+    needs_commit = False
+    for c in clients:
+        if c.developer_id is None or c.developer_id == 0:
+            c.developer_id = dev.id
+            needs_commit = True
+    if needs_commit:
+        try:
+            db.commit()
+        except Exception:
+            db.rollback()
             
-    apps = db.query(Application).filter(Application.developer_id == dev.id).all()
+    apps = db.query(Application).all()
     app_map = {str(a.id): a.name for a in apps}
     app_map.update({a.name: a.name for a in apps})
     
@@ -2798,7 +2825,7 @@ async def list_custom_clients(dev: Developer = Depends(get_current_developer), d
                 app_names.append(app_map[item])
             elif item.isdigit():
                 app_names.append(f"App #{item}")
-            elif item == "all":
+            elif item.lower() == "all":
                 app_names.append("All Applications")
             else:
                 app_names.append(item)
@@ -2806,9 +2833,12 @@ async def list_custom_clients(dev: Developer = Depends(get_current_developer), d
         created_str = None
         c_date = getattr(c, "created_at", None)
         if c_date:
-            if hasattr(c_date, "isoformat"):
-                created_str = c_date.isoformat()
-            else:
+            try:
+                if hasattr(c_date, "isoformat"):
+                    created_str = c_date.isoformat()
+                else:
+                    created_str = str(c_date)
+            except Exception:
                 created_str = str(c_date)
 
         result.append({
@@ -2826,8 +2856,10 @@ async def create_custom_client(data: CreateCustomClientRequest, dev: Developer =
     if getattr(dev, "is_custom_client", False):
         raise HTTPException(status_code=403, detail="Unauthorized")
     
+    from .auth_api import is_master_admin_account
+    is_admin = is_master_admin_account(dev)
     plan_str = str(getattr(dev, "plan", "")).strip().lower()
-    if plan_str in ["free", "trial"] and not getattr(dev, "is_custom_client", False):
+    if plan_str in ["free", "trial"] and not is_admin:
         raise HTTPException(status_code=403, detail="👑 Custom Brand Clients management is an exclusive PAID Plan feature. Please upgrade your plan on joystauth.cc to unlock Custom Client access!")
     
     uname = data.username.strip()
@@ -2844,8 +2876,9 @@ async def create_custom_client(data: CreateCustomClientRequest, dev: Developer =
 
     existing_cc = db.query(CustomClient).filter(CustomClient.username.ilike(uname)).first()
     if existing_cc:
-        if existing_cc.developer_id != dev.id:
+        if existing_cc.developer_id != dev.id and not is_admin and existing_cc.developer_id is not None:
             raise HTTPException(status_code=400, detail=f"Username '{uname}' is already taken by another account.")
+        existing_cc.developer_id = dev.id
         existing_cc.password_hash = hash_password(data.password)
         existing_cc.allowed_apps = data.allowed_apps.strip()
         existing_cc.notes = data.notes.strip() if data.notes else existing_cc.notes
@@ -2872,14 +2905,23 @@ async def update_custom_client(client_id: int, data: UpdateCustomClientRequest, 
     if getattr(dev, "is_custom_client", False):
         raise HTTPException(status_code=403, detail="Unauthorized")
     
+    from .auth_api import is_master_admin_account
+    is_admin = is_master_admin_account(dev)
     plan_str = str(getattr(dev, "plan", "")).strip().lower()
-    if plan_str in ["free", "trial"] and not getattr(dev, "is_custom_client", False):
+    if plan_str in ["free", "trial"] and not is_admin:
         raise HTTPException(status_code=403, detail="👑 Custom Brand Clients management is an exclusive PAID Plan feature. Please upgrade your plan on joystauth.cc to unlock Custom Client access!")
     
-    client = db.query(CustomClient).filter(CustomClient.id == client_id, CustomClient.developer_id == dev.id).first()
+    from sqlalchemy import or_
+    query = db.query(CustomClient).filter(CustomClient.id == client_id)
+    if not is_admin:
+        query = query.filter(or_(CustomClient.developer_id == dev.id, CustomClient.developer_id.is_(None)))
+    client = query.first()
     if not client:
         raise HTTPException(status_code=404, detail="Custom client account not found")
     
+    if client.developer_id is None or client.developer_id == 0:
+        client.developer_id = dev.id
+
     if data.password is not None and len(data.password.strip()) >= 6:
         client.password_hash = hash_password(data.password.strip())
     
@@ -2897,11 +2939,17 @@ async def delete_custom_client(client_id: int, dev: Developer = Depends(get_curr
     if getattr(dev, "is_custom_client", False):
         raise HTTPException(status_code=403, detail="Unauthorized")
     
+    from .auth_api import is_master_admin_account
+    is_admin = is_master_admin_account(dev)
     plan_str = str(getattr(dev, "plan", "")).strip().lower()
-    if plan_str in ["free", "trial"] and not getattr(dev, "is_custom_client", False):
+    if plan_str in ["free", "trial"] and not is_admin:
         raise HTTPException(status_code=403, detail="👑 Custom Brand Clients management is an exclusive PAID Plan feature. Please upgrade your plan on joystauth.cc to unlock Custom Client access!")
     
-    client = db.query(CustomClient).filter(CustomClient.id == client_id, CustomClient.developer_id == dev.id).first()
+    from sqlalchemy import or_
+    query = db.query(CustomClient).filter(CustomClient.id == client_id)
+    if not is_admin:
+        query = query.filter(or_(CustomClient.developer_id == dev.id, CustomClient.developer_id.is_(None)))
+    client = query.first()
     if not client:
         raise HTTPException(status_code=404, detail="Custom client account not found")
     
