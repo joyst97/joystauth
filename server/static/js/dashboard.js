@@ -119,11 +119,64 @@ async function apiFetch(url, options = {}) {
             return null;
         }
 
-        const data = await res.json().catch(() => null);
-        return data;
+        let data = null;
+        const text = await res.text().catch(() => "");
+        if (text) {
+            try {
+                data = JSON.parse(text);
+            } catch (e) {
+                data = null;
+            }
+        }
+
+        if (!res.ok) {
+            let errorMsg = "An unexpected error occurred.";
+            if (data) {
+                if (typeof data === "string") {
+                    errorMsg = data;
+                } else if (Array.isArray(data.detail)) {
+                    errorMsg = data.detail.map(d => (d.loc ? `${d.loc.slice(1).join('.')}: ` : "") + (d.msg || JSON.stringify(d))).join("; ");
+                } else if (data.detail && typeof data.detail === "string") {
+                    errorMsg = data.detail;
+                } else if (data.message) {
+                    errorMsg = data.message;
+                } else if (data.msg) {
+                    errorMsg = data.msg;
+                } else if (data.error) {
+                    errorMsg = data.error;
+                }
+            } else if (text && text.length < 250) {
+                errorMsg = text;
+            } else {
+                errorMsg = `Server error (HTTP ${res.status}: ${res.statusText || 'Operation Failed'})`;
+            }
+
+            if (!options.silent && !options.suppressToast) {
+                showToast(errorMsg, "error");
+            }
+
+            return {
+                success: false,
+                status: "error",
+                detail: errorMsg,
+                message: errorMsg,
+                ...(data && typeof data === "object" ? data : {})
+            };
+        }
+
+        return data !== null ? data : { success: true };
     } catch (err) {
         console.error(`API Fetch Error on ${url}:`, err);
-        return null;
+        const errMsg = err.message ? `Network/Connection Error: ${err.message}` : "Network error. Please check your internet connection.";
+        if (!options.silent && !options.suppressToast) {
+            showToast(errMsg, "error");
+        }
+        return {
+            success: false,
+            status: "error",
+            detail: errMsg,
+            message: errMsg
+        };
     } finally {
         if (!isBackground) trackApiEnd();
     }
@@ -178,15 +231,33 @@ function formatRelativeTime(dateStr) {
     }
 }
 
+let lastToastMessage = "";
+let lastToastTime = 0;
+
 function showToast(messageOrOpts, typeArg = "info") {
     let message = "";
     let type = typeArg;
     if (typeof messageOrOpts === "object" && messageOrOpts !== null) {
-        message = messageOrOpts.message || messageOrOpts.msg || messageOrOpts.detail || JSON.stringify(messageOrOpts);
-        type = messageOrOpts.type || typeArg || "info";
+        if (Array.isArray(messageOrOpts.detail)) {
+            message = messageOrOpts.detail.map(d => (d.loc ? `${d.loc.slice(1).join('.')}: ` : "") + (d.msg || JSON.stringify(d))).join("; ");
+        } else {
+            message = messageOrOpts.detail || messageOrOpts.message || messageOrOpts.msg || messageOrOpts.error || JSON.stringify(messageOrOpts);
+        }
+        type = messageOrOpts.type || (messageOrOpts.success === false ? "error" : (messageOrOpts.success === true ? "success" : typeArg || "info"));
     } else {
         message = String(messageOrOpts || "");
     }
+
+    if (!message || message === "null" || message === "undefined" || message === "{}") {
+        return;
+    }
+
+    const now = Date.now();
+    if (message === lastToastMessage && (now - lastToastTime) < 800) {
+        return;
+    }
+    lastToastMessage = message;
+    lastToastTime = now;
 
     let container = document.getElementById("toast-container");
     if (!container) {
@@ -196,6 +267,7 @@ function showToast(messageOrOpts, typeArg = "info") {
         document.body.appendChild(container);
     }
     const toast = document.createElement("div");
+    if (type === "danger") type = "error";
     toast.className = `toast toast-${type}`;
     
     let icon = "⚡";
@@ -204,14 +276,16 @@ function showToast(messageOrOpts, typeArg = "info") {
     if (type === "warning") icon = "⚠️";
     if (type === "info") icon = "🛡️";
 
-    toast.innerHTML = `<span style="font-size: 16px;">${icon}</span> <span>${escapeHtml(message)}</span>`;
+    toast.innerHTML = `<span style="font-size: 16px; flex-shrink: 0;">${icon}</span> <span style="word-break: break-word; line-height: 1.4;">${escapeHtml(message)}</span>`;
     container.appendChild(toast);
 
+    const duration = (type === "error" || type === "warning") ? 5500 : 3500;
     setTimeout(() => {
+        toast.style.transition = "opacity 0.3s ease, transform 0.3s ease";
         toast.style.opacity = "0";
         toast.style.transform = "translateX(100%)";
         setTimeout(() => toast.remove(), 300);
-    }, 3500);
+    }, duration);
 }
 
 function showConfirmDialog(optsOrTitle, messageArg, confirmBtnTextArg = "Confirm", isDangerArg = false) {
@@ -3581,13 +3655,53 @@ async function regenerateSecret(appId) {
 }
 
 async function deleteApp(appId) {
-    if (!await showConfirmDialog({ title: 'Delete Application', message: 'DANGER: Deleting this app will delete ALL associated users, keys, variables, and logs permanently!', icon: '🚨', okText: 'Delete App', isDanger: true })) return;
-    const res = await apiFetch(`/api/v1/admin/apps/${appId}`, { method: "DELETE" });
-    if (res && res.success) {
-        showToast(res.message, "success");
-        await loadApps();
-        renderAppsPage();
-        loadGlobalStats();
+    if (!appId) return;
+    const target = (typeof appsList !== 'undefined' && appsList) ? appsList.find(a => String(a.id) === String(appId)) : null;
+    const appName = target ? target.name : `App #${appId}`;
+
+    const confirmed = await showConfirmDialog({
+        title: 'Delete Application',
+        message: `DANGER: Are you sure you want to permanently delete '${escapeHtml(appName)}'?\n\nAll associated client users, license keys, cloud variables, files, and logs will be permanently deleted! This action is irreversible.`,
+        icon: '🚨',
+        okText: 'Delete Application',
+        isDanger: true
+    });
+    if (!confirmed) return;
+
+    try {
+        showToast(`Deleting application '${appName}'...`, "info");
+        const res = await apiFetch(`/api/v1/admin/apps/${appId}`, { method: "DELETE" });
+        if (res && res.success) {
+            showToast(res.message || `Application '${appName}' deleted successfully!`, "success");
+
+            // Clean up cache for deleted app
+            if (window.tabDataCache) {
+                delete window.tabDataCache.users[appId];
+                delete window.tabDataCache.licenses[appId];
+                delete window.tabDataCache.tiers[appId];
+                delete window.tabDataCache.variables[appId];
+                delete window.tabDataCache.files[appId];
+                delete window.tabDataCache.blacklists[appId];
+                delete window.tabDataCache.notifications[appId];
+                delete window.tabDataCache.logs[appId];
+            }
+
+            // Reset currentAppId if this was the active app
+            if (String(currentAppId) === String(appId)) {
+                currentAppId = null;
+                localStorage.removeItem("selected_app_id");
+            }
+
+            await loadApps();
+            renderAppsPage();
+            loadGlobalStats();
+            updateBannerCredentials();
+        } else {
+            showToast((res && (res.detail || res.message)) || `Failed to delete application '${appName}'`, "error");
+        }
+    } catch (e) {
+        console.error("deleteApp error:", e);
+        showToast(`Error deleting application '${appName}'`, "error");
     }
 }
 
@@ -4976,4 +5090,5 @@ window.openModal = typeof openModal !== 'undefined' ? openModal : (id) => { cons
 window.closeModal = typeof closeModal !== 'undefined' ? closeModal : (id) => { if (!id) { document.querySelectorAll('.modal-overlay.active').forEach(m => m.classList.remove('active')); } else { const m = document.getElementById(id); if (m) m.classList.remove('active'); } };
 window.setDashboardTheme = typeof setDashboardTheme !== 'undefined' ? setDashboardTheme : () => {};
 window.toggleThemeDropdown = typeof toggleThemeDropdown !== 'undefined' ? toggleThemeDropdown : () => {};
+window.deleteApp = typeof deleteApp !== 'undefined' ? deleteApp : () => {};
 

@@ -62,7 +62,7 @@ def get_current_developer(authorization: Optional[str] = Header(None), db: Sessi
             except Exception:
                 pass
         if not client and payload.get("sub"):
-            client = db.query(CustomClient).filter(CustomClient.username == payload.get("sub")).first()
+            client = db.query(CustomClient).filter(func.lower(CustomClient.username) == str(payload.get("sub")).lower()).first()
         
         if client:
             dev = db.query(Developer).filter(Developer.id == client.developer_id).first()
@@ -89,11 +89,11 @@ def get_current_developer(authorization: Optional[str] = Header(None), db: Sessi
         
     # 3. Try finding by sub / username
     if not dev and payload.get("sub"):
-        dev = db.query(Developer).filter(Developer.username == payload["sub"]).first()
+        dev = db.query(Developer).filter(func.lower(Developer.username) == str(payload["sub"]).lower()).first()
 
     # 4. Try finding by email
     if not dev and payload.get("email"):
-        dev = db.query(Developer).filter(Developer.email == payload["email"]).first()
+        dev = db.query(Developer).filter(func.lower(Developer.email) == str(payload["email"]).lower()).first()
 
     # 5. Fallback auto-recovery: If user was authenticated via JWT but database instance reset (e.g. Vercel serverless cold start), auto-recreate developer
     if not dev and (payload.get("sub") or payload.get("owner_id")):
@@ -117,7 +117,7 @@ def get_current_developer(authorization: Optional[str] = Header(None), db: Sessi
             db.refresh(dev)
         except Exception:
             db.rollback()
-            dev = db.query(Developer).filter(Developer.username == username).first()
+            dev = db.query(Developer).filter(func.lower(Developer.username) == username.lower()).first()
         
     if not dev:
         raise HTTPException(status_code=401, detail="Account workspace not found")
@@ -135,11 +135,11 @@ async def developer_register(data: DeveloperRegisterRequest, db: Session = Depen
     if not email or "@" not in email or "." not in email:
         raise HTTPException(status_code=400, detail="A valid, real Email Address is strictly required to register.")
 
-    existing_email = db.query(Developer).filter(Developer.email == email).first()
+    existing_email = db.query(Developer).filter(func.lower(Developer.email) == email.lower()).first()
     if existing_email:
         raise HTTPException(status_code=400, detail="This email address is already registered. Please sign in.")
 
-    existing = db.query(Developer).filter(Developer.username == username).first()
+    existing = db.query(Developer).filter(func.lower(Developer.username) == username.lower()).first()
     if existing:
         raise HTTPException(status_code=400, detail="Username is already taken")
 
@@ -219,8 +219,11 @@ async def developer_register(data: DeveloperRegisterRequest, db: Session = Depen
 async def developer_login(data: DeveloperLoginRequest, db: Session = Depends(get_db)):
     username = data.username.strip()
     
-    # 1. Check Developer Account
-    dev = db.query(Developer).filter(Developer.username.ilike(username)).first()
+    # 1. Check Developer Account (Username or Email)
+    dev = db.query(Developer).filter(
+        (func.lower(Developer.username) == username.lower()) |
+        (func.lower(Developer.email) == username.lower())
+    ).first()
     if dev and verify_password(data.password, dev.password_hash):
         token = create_access_token({
             "sub": dev.username,
@@ -240,7 +243,7 @@ async def developer_login(data: DeveloperLoginRequest, db: Session = Depends(get
         }
     
     # 2. Check Custom Client Account (Branded Partner / Scoped Manager)
-    client = db.query(CustomClient).filter(CustomClient.username.ilike(username)).first()
+    client = db.query(CustomClient).filter(func.lower(CustomClient.username) == username.lower()).first()
     if client and verify_password(data.password, client.password_hash):
         dev = db.query(Developer).filter(Developer.id == client.developer_id).first()
         token = create_access_token({
@@ -262,7 +265,8 @@ async def developer_login(data: DeveloperLoginRequest, db: Session = Depends(get
         }
 
     # 3. Check Reseller Account (Smart Auto-Detection)
-    reseller = db.query(Reseller).filter(Reseller.username.ilike(username)).first()
+    from ..database import Reseller
+    reseller = db.query(Reseller).filter(func.lower(Reseller.username) == username.lower()).first()
     if reseller and verify_password(data.password, reseller.password_hash):
         token = create_access_token({
             "sub": str(reseller.id),
@@ -311,12 +315,12 @@ async def google_auth(data: GoogleAuthRequest, db: Session = Depends(get_db)):
         raise HTTPException(status_code=400, detail="Google authentication did not provide a valid email.")
 
     # 1. Find developer by email
-    dev = db.query(Developer).filter(Developer.email == email).first()
+    dev = db.query(Developer).filter(func.lower(Developer.email) == email.lower()).first()
 
     # 2. If not found by email, try by name
     if not dev and name:
         clean_user = "".join(c for c in name if c.isalnum() or c in ("_", "-"))[:30]
-        dev = db.query(Developer).filter(Developer.username == clean_user).first()
+        dev = db.query(Developer).filter(func.lower(Developer.username) == clean_user.lower()).first()
 
     if dev:
         if picture:

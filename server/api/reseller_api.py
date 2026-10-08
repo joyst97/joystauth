@@ -1,6 +1,7 @@
 import datetime
 from typing import Optional, List
 from fastapi import APIRouter, Depends, HTTPException, Header, Request, Query
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from jose import JWTError, jwt
@@ -82,7 +83,7 @@ def check_app_access(reseller: Reseller, app_id: int, db: Session) -> Applicatio
 
 @router.post("/login")
 async def reseller_login(data: ResellerLoginRequest, db: Session = Depends(get_db)):
-    reseller = db.query(Reseller).filter(Reseller.username == data.username.strip()).first()
+    reseller = db.query(Reseller).filter(func.lower(Reseller.username) == data.username.strip().lower()).first()
     if not reseller or not verify_password(data.password, reseller.password_hash):
         raise HTTPException(status_code=400, detail="Invalid reseller username or password")
     
@@ -140,7 +141,7 @@ async def list_reseller_licenses(
     reseller: Reseller = Depends(get_current_reseller),
     db: Session = Depends(get_db)
 ):
-    query = db.query(License).filter(License.created_by_reseller == reseller.username)
+    query = db.query(License).filter(func.lower(License.created_by_reseller) == reseller.username.lower())
     if app_id:
         query = query.filter(License.app_id == app_id)
     keys = query.order_by(License.created_at.desc()).all()
@@ -180,7 +181,7 @@ async def reseller_generate_keys(data: ResellerGenKeysRequest, reseller: Reselle
 
     for _ in range(data.count):
         raw_key = generate_license_key(mask)
-        while db.query(License).filter(License.app_id == app.id, License.license_key == raw_key).first():
+        while db.query(License).filter(License.app_id == app.id, func.lower(License.license_key) == raw_key.lower()).first():
             raw_key = generate_license_key(mask)
 
         lic = License(
@@ -220,7 +221,7 @@ async def reseller_generate_keys(data: ResellerGenKeysRequest, reseller: Reselle
 
 @router.post("/licenses/{license_id}/toggle-pause")
 async def toggle_license_pause(license_id: int, reseller: Reseller = Depends(get_current_reseller), db: Session = Depends(get_db)):
-    lic = db.query(License).filter(License.id == license_id, License.created_by_reseller == reseller.username).first()
+    lic = db.query(License).filter(License.id == license_id, func.lower(License.created_by_reseller) == reseller.username.lower()).first()
     if not lic:
         raise HTTPException(status_code=404, detail="License not found or not owned by your reseller profile")
 
@@ -235,7 +236,7 @@ async def toggle_license_pause(license_id: int, reseller: Reseller = Depends(get
 
 @router.delete("/licenses/{license_id}")
 async def delete_reseller_license(license_id: int, reseller: Reseller = Depends(get_current_reseller), db: Session = Depends(get_db)):
-    lic = db.query(License).filter(License.id == license_id, License.created_by_reseller == reseller.username).first()
+    lic = db.query(License).filter(License.id == license_id, func.lower(License.created_by_reseller) == reseller.username.lower()).first()
     if not lic:
         raise HTTPException(status_code=404, detail="License not found or not owned by your reseller profile")
 
@@ -248,7 +249,7 @@ async def delete_reseller_license(license_id: int, reseller: Reseller = Depends(
 async def bulk_delete_reseller_licenses(data: ResellerBulkDeleteLicensesRequest, reseller: Reseller = Depends(get_current_reseller), db: Session = Depends(get_db)):
     app = check_app_access(reseller, data.app_id, db)
     
-    query = db.query(License).filter(License.app_id == app.id, License.created_by_reseller == reseller.username)
+    query = db.query(License).filter(License.app_id == app.id, func.lower(License.created_by_reseller) == reseller.username.lower())
     if data.delete_type == "unused":
         query = query.filter(License.status == "unused")
     elif data.delete_type == "used":
@@ -346,7 +347,7 @@ async def reseller_create_user(data: ResellerCreateUserRequest, reseller: Resell
     if len(clean_password) < 4:
         raise HTTPException(status_code=400, detail="Password must be at least 4 characters long")
 
-    existing_user = db.query(User).filter(User.app_id == app.id, User.username == clean_username).first()
+    existing_user = db.query(User).filter(User.app_id == app.id, func.lower(User.username) == clean_username.lower()).first()
     if existing_user:
         raise HTTPException(status_code=400, detail=f"Username '{clean_username}' already exists in this application!")
 
@@ -529,7 +530,7 @@ async def bulk_delete_reseller_users(data: ResellerBulkDeleteUsersRequest, resel
 @router.post("/reset-hwid")
 async def reseller_reset_hwid(data: ResellerHwidResetRequest, reseller: Reseller = Depends(get_current_reseller), db: Session = Depends(get_db)):
     app = check_app_access(reseller, data.app_id, db)
-    user = db.query(User).filter(User.app_id == app.id, User.username == data.username.strip()).first()
+    user = db.query(User).filter(User.app_id == app.id, func.lower(User.username) == data.username.strip().lower()).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found in this application")
 

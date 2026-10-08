@@ -2,6 +2,7 @@ import json
 import datetime
 from typing import Optional
 from fastapi import APIRouter, Depends, Request, HTTPException
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 
@@ -81,7 +82,7 @@ def check_and_record_failure(db: Session, app_id: int, app_name: str, ip: str, h
 
             # If an existing user matches, mark them banned too
             if attempted_input:
-                user_match = db.query(User).filter(User.app_id == app_id, User.username == attempted_input).first()
+                user_match = db.query(User).filter(User.app_id == app_id, func.lower(User.username) == attempted_input.strip().lower()).first()
                 if user_match:
                     user_match.is_banned = True
                     user_match.ban_reason = f"Brute Force Security Auto-Ban ({MAX_FAILED_ATTEMPTS} invalid attempts)"
@@ -300,7 +301,7 @@ async def client_gateway(req_data: EncryptedPayloadRequest, request: Request, db
         username = data.get("username", "").strip()
         password = data.get("password", "")
 
-        user = db.query(User).filter(User.app_id == app.id, User.username == username).first()
+        user = db.query(User).filter(User.app_id == app.id, func.lower(User.username) == username.lower()).first()
         if not user:
             is_banned = check_and_record_failure(db, app.id, app.name, ip, hwid, username, "User not found")
             if is_banned:
@@ -401,16 +402,16 @@ async def client_gateway(req_data: EncryptedPayloadRequest, request: Request, db
     elif action == "register":
         username = data.get("username", "").strip()
         password = data.get("password", "")
-        license_key = data.get("key") or data.get("license_key", "").strip()
+        license_key = (data.get("key") or data.get("license_key", "")).strip()
 
         if not username or not password or not license_key:
             response_data = {"success": False, "message": "Username, password, and license key are all required."}
         else:
-            existing_user = db.query(User).filter(User.app_id == app.id, User.username == username).first()
+            existing_user = db.query(User).filter(User.app_id == app.id, func.lower(User.username) == username.lower()).first()
             if existing_user:
                 response_data = {"success": False, "message": "Username is already registered."}
             else:
-                license_obj = db.query(License).filter(License.app_id == app.id, License.license_key == license_key).first()
+                license_obj = db.query(License).filter(License.app_id == app.id, func.lower(License.license_key) == license_key.lower()).first()
                 if not license_obj:
                     is_banned = check_and_record_failure(db, app.id, app.name, ip, hwid, f"RegKey:{license_key}", "Invalid register license key")
                     if is_banned:
@@ -474,11 +475,11 @@ async def client_gateway(req_data: EncryptedPayloadRequest, request: Request, db
     # ---------------- LICENSE ONLY LOGIN (KeyAuth License Login) ----------------
     elif action == "license":
         license_key = (data.get("key") or data.get("license_key", "")).strip()
-        license_obj = db.query(License).filter(License.app_id == app.id, License.license_key == license_key).first()
+        license_obj = db.query(License).filter(License.app_id == app.id, func.lower(License.license_key) == license_key.lower()).first()
 
         if not license_obj:
             # Smart Single-Box Login Fallback: Check if license_key matches a registered Username directly
-            direct_user = db.query(User).filter(User.app_id == app.id, User.username == license_key).first()
+            direct_user = db.query(User).filter(User.app_id == app.id, func.lower(User.username) == license_key.lower()).first()
             if direct_user:
                 if direct_user.is_banned:
                     ban_prefix = getattr(app, "banned_user_message", "") or "Account is banned!"
@@ -532,9 +533,11 @@ async def client_gateway(req_data: EncryptedPayloadRequest, request: Request, db
             revoked_msg = getattr(app, "revoked_license_message", "") or "This license key has been revoked."
             response_data = {"success": False, "message": revoked_msg}
         elif license_obj.status == "used":
-            user = db.query(User).filter(User.app_id == app.id, User.username == license_obj.used_by_username).first()
+            user = db.query(User).filter(User.app_id == app.id, func.lower(User.username) == (license_obj.used_by_username or "").strip().lower()).first()
             if not user:
-                user = db.query(User).filter(User.app_id == app.id, User.key_used == license_key).first()
+                user = db.query(User).filter(User.app_id == app.id, func.lower(User.key_used) == license_key.lower()).first()
+            if not user:
+                user = db.query(User).filter(User.app_id == app.id, func.lower(User.username) == license_key.lower()).first()
 
             if not user:
                 response_data = {"success": False, "message": "License was used but user profile is missing."}
@@ -789,9 +792,9 @@ def resolve_app_for_client(db: Session, app_name: str, app_token: str):
         app = db.query(Application).filter(Application.secret == app_token.strip()).first()
     if not app and app_name:
         if app_token:
-            app = db.query(Application).filter(Application.name == app_name.strip(), Application.secret == app_token.strip()).first()
+            app = db.query(Application).filter(func.lower(Application.name) == app_name.strip().lower(), Application.secret == app_token.strip()).first()
         else:
-            app = db.query(Application).filter(Application.name == app_name.strip()).first()
+            app = db.query(Application).filter(func.lower(Application.name) == app_name.strip().lower()).first()
     return app
 
 @router.post("/login")
@@ -805,7 +808,7 @@ async def client_direct_login(data: ClientLoginRequest, request: Request, db: Se
     username = data.username.strip()
     password = data.password
 
-    user = db.query(User).filter(User.app_id == app.id, User.username == username).first()
+    user = db.query(User).filter(User.app_id == app.id, func.lower(User.username) == username.lower()).first()
     if not user:
         is_banned = check_and_record_failure(db, app.id, app.name, ip, hwid, username, "User not found")
         if is_banned:
@@ -882,11 +885,11 @@ async def client_direct_register(data: ClientRegisterRequest, request: Request, 
     if len(password) < 4:
         return {"success": False, "message": "Password must be at least 4 characters long."}
 
-    existing_user = db.query(User).filter(User.app_id == app.id, User.username == username).first()
+    existing_user = db.query(User).filter(User.app_id == app.id, func.lower(User.username) == username.lower()).first()
     if existing_user:
         return {"success": False, "message": f"Username '{username}' is already taken. Please choose another username."}
 
-    license_obj = db.query(License).filter(License.app_id == app.id, License.license_key == license_key).first()
+    license_obj = db.query(License).filter(License.app_id == app.id, func.lower(License.license_key) == license_key.lower()).first()
     if not license_obj:
         log_audit(db, app.id, "REGISTER_FAIL", username=username, ip_address=ip, hwid=hwid, details=f"Invalid key: {license_key}", status="WARNING")
         return {"success": False, "message": getattr(app, "invalid_license_message", "") or "License key is invalid or does not exist."}
@@ -951,10 +954,10 @@ async def client_direct_license(data: ClientLicenseRequest, request: Request, db
     if not license_key:
         return {"success": False, "message": "License key is required."}
 
-    license_obj = db.query(License).filter(License.app_id == app.id, License.license_key == license_key).first()
+    license_obj = db.query(License).filter(License.app_id == app.id, func.lower(License.license_key) == license_key.lower()).first()
     if not license_obj:
         # Smart Single-Box Login Fallback: Check if license_key matches a registered Username directly
-        direct_user = db.query(User).filter(User.app_id == app.id, User.username == license_key).first()
+        direct_user = db.query(User).filter(User.app_id == app.id, func.lower(User.username) == license_key.lower()).first()
         if direct_user:
             if direct_user.is_banned:
                 return {"success": False, "message": f"{getattr(app, 'banned_user_message', '') or 'Account is banned!'} Reason: {direct_user.ban_reason or 'None'}"}
@@ -1003,11 +1006,11 @@ async def client_direct_license(data: ClientLicenseRequest, request: Request, db
         return {"success": False, "message": getattr(app, "revoked_license_message", "") or "This license key has been revoked."}
 
     if license_obj.status == "used":
-        user = db.query(User).filter(User.app_id == app.id, User.username == license_obj.used_by_username).first()
+        user = db.query(User).filter(User.app_id == app.id, func.lower(User.username) == (license_obj.used_by_username or "").strip().lower()).first()
         if not user:
-            user = db.query(User).filter(User.app_id == app.id, User.key_used == license_key).first()
+            user = db.query(User).filter(User.app_id == app.id, func.lower(User.key_used) == license_key.lower()).first()
         if not user:
-            user = db.query(User).filter(User.app_id == app.id, User.username == license_key).first()
+            user = db.query(User).filter(User.app_id == app.id, func.lower(User.username) == license_key.lower()).first()
 
         if not user:
             return {"success": False, "message": "License was used but user profile is missing."}
@@ -1095,11 +1098,11 @@ async def client_direct_upgrade(data: ClientUpgradeRequest, request: Request, db
     username = data.username.strip()
     license_key = (data.license_key or data.key or "").strip()
 
-    user = db.query(User).filter(User.app_id == app.id, User.username == username).first()
+    user = db.query(User).filter(User.app_id == app.id, func.lower(User.username) == username.lower()).first()
     if not user:
         return {"success": False, "message": "User does not exist."}
 
-    license_obj = db.query(License).filter(License.app_id == app.id, License.license_key == license_key).first()
+    license_obj = db.query(License).filter(License.app_id == app.id, func.lower(License.license_key) == license_key.lower()).first()
     if not license_obj or license_obj.status != "unused":
         return {"success": False, "message": "Invalid or already used license key."}
 
@@ -1132,7 +1135,7 @@ async def client_direct_var(data: ClientVarRequest, request: Request, db: Sessio
         return {"success": False, "message": "Application not found."}
 
     var_name = (data.var_name or data.varid or "").strip()
-    var_obj = db.query(AppVariable).filter(AppVariable.app_id == app.id, AppVariable.name == var_name).first()
+    var_obj = db.query(AppVariable).filter(AppVariable.app_id == app.id, func.lower(AppVariable.name) == var_name.lower()).first()
     if not var_obj:
         return {"success": False, "message": f"Variable '{var_name}' not found."}
 
@@ -1179,7 +1182,7 @@ async def client_realtime_heartbeat(data: ClientHeartbeatRequest, request: Reque
 
     # 3. Real-time User Account Ban & Expiry Check
     if data.username:
-        user = db.query(User).filter(User.app_id == app.id, User.username == data.username.strip()).first()
+        user = db.query(User).filter(User.app_id == app.id, func.lower(User.username) == data.username.strip().lower()).first()
         if user:
             if user.is_banned:
                 return {"success": False, "is_banned": True, "message": f"🚨 Account Banned: {user.ban_reason or 'Access revoked by administrator'}"}

@@ -551,12 +551,71 @@ async def regenerate_app_secret(app_id: int, dev: Developer = Depends(get_curren
 
 @router.delete("/apps/{app_id}")
 async def delete_app(app_id: int, dev: Developer = Depends(get_current_developer), db: Session = Depends(get_db)):
-    app = db.query(Application).filter(Application.id == app_id, Application.developer_id == dev.id).first()
+    from .auth_api import is_master_admin_account
+    is_admin = is_master_admin_account(dev)
+
+    query = db.query(Application).filter(Application.id == app_id)
+    if not is_admin and not getattr(dev, "is_custom_client", False):
+        query = query.filter(Application.developer_id == dev.id)
+    app = query.first()
     if not app:
-        raise HTTPException(status_code=404, detail="Application not found")
-    db.delete(app)
-    db.commit()
-    return {"success": True, "message": "Application and all associated data deleted"}
+        raise HTTPException(status_code=404, detail="Application not found or access denied")
+    
+    app_name = app.name
+    target_app_id = app.id
+
+    try:
+        from ..database import Session as ClientSession
+        
+        # 1. Delete all user active sessions
+        db.query(ClientSession).filter(ClientSession.app_id == target_app_id).delete(synchronize_session=False)
+
+        # 2. Delete all client users
+        db.query(User).filter(User.app_id == target_app_id).delete(synchronize_session=False)
+
+        # 3. Delete all licenses
+        db.query(License).filter(License.app_id == target_app_id).delete(synchronize_session=False)
+
+        # 4. Delete all subscription tiers
+        db.query(SubscriptionTier).filter(SubscriptionTier.app_id == target_app_id).delete(synchronize_session=False)
+
+        # 5. Delete all app cloud variables
+        db.query(AppVariable).filter(AppVariable.app_id == target_app_id).delete(synchronize_session=False)
+
+        # 6. Delete all hosted files
+        db.query(AppFile).filter(AppFile.app_id == target_app_id).delete(synchronize_session=False)
+
+        # 7. Delete all blacklists (HWID & IP)
+        db.query(Blacklist).filter(Blacklist.app_id == target_app_id).delete(synchronize_session=False)
+
+        # 8. Delete all notifications & notices
+        db.query(AppNotification).filter(AppNotification.app_id == target_app_id).delete(synchronize_session=False)
+
+        # 9. Delete all audit logs
+        db.query(AuditLog).filter(AuditLog.app_id == target_app_id).delete(synchronize_session=False)
+
+        # 10. Clean up references in Resellers & Custom Clients allowed_apps
+        resellers = db.query(Reseller).filter(Reseller.developer_id == dev.id).all()
+        for r in resellers:
+            if r.allowed_apps and r.allowed_apps != "all":
+                apps_list = [x.strip() for x in r.allowed_apps.split(",") if x.strip() and x.strip() != str(target_app_id) and x.strip() != app_name]
+                r.allowed_apps = ",".join(apps_list) if apps_list else ""
+
+        custom_clients = db.query(CustomClient).filter(CustomClient.developer_id == dev.id).all()
+        for cc in custom_clients:
+            if cc.allowed_apps:
+                apps_list = [x.strip() for x in cc.allowed_apps.split(",") if x.strip() and x.strip() != str(target_app_id) and x.strip() != app_name]
+                cc.allowed_apps = ",".join(apps_list) if apps_list else ""
+
+        # 11. Delete the Application record
+        db.query(Application).filter(Application.id == target_app_id).delete(synchronize_session=False)
+        db.commit()
+
+        log_audit(db, None, "APP_DELETED", details=f"Application '{app_name}' (ID: #{target_app_id}) and all associated records permanently deleted by @{dev.username}", status="DANGER")
+        return {"success": True, "message": f"Application '{app_name}' and all associated keys, users, variables, and data have been permanently deleted."}
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Failed to delete application: {str(e)}")
 
 # ==================== 2. LICENSES ====================
 @router.get("/licenses")
@@ -753,9 +812,9 @@ async def reset_license_hwid(license_id: int, dev: Developer = Depends(get_curre
     # Find user associated with this license
     user = None
     if lic.used_by_username:
-        user = db.query(User).filter(User.app_id == lic.app_id, User.username == lic.used_by_username).first()
+        user = db.query(User).filter(User.app_id == lic.app_id, func.lower(User.username) == lic.used_by_username.strip().lower()).first()
     if not user:
-        user = db.query(User).filter(User.app_id == lic.app_id, (User.key_used == lic.license_key) | (User.username == lic.license_key)).first()
+        user = db.query(User).filter(User.app_id == lic.app_id, (func.lower(User.key_used) == lic.license_key.strip().lower()) | (func.lower(User.username) == lic.license_key.strip().lower())).first()
     
     if user:
         user.hwid = None
@@ -776,9 +835,9 @@ async def toggle_license_hwid_lock(license_id: int, dev: Developer = Depends(get
     
     user = None
     if lic.used_by_username:
-        user = db.query(User).filter(User.app_id == lic.app_id, User.username == lic.used_by_username).first()
+        user = db.query(User).filter(User.app_id == lic.app_id, func.lower(User.username) == lic.used_by_username.strip().lower()).first()
     if not user:
-        user = db.query(User).filter(User.app_id == lic.app_id, (User.key_used == lic.license_key) | (User.username == lic.license_key)).first()
+        user = db.query(User).filter(User.app_id == lic.app_id, (func.lower(User.key_used) == lic.license_key.strip().lower()) | (func.lower(User.username) == lic.license_key.strip().lower())).first()
     
     if user:
         current_state = True if user.hwid_lock_override is None else user.hwid_lock_override
@@ -851,7 +910,7 @@ async def create_user_manual(data: CreateUserManualRequest, dev: Developer = Dep
     if not app:
         raise HTTPException(status_code=404, detail="Application not found")
     
-    existing = db.query(User).filter(User.app_id == data.app_id, User.username == data.username.strip()).first()
+    existing = db.query(User).filter(User.app_id == data.app_id, func.lower(User.username) == data.username.strip().lower()).first()
     if existing:
         raise HTTPException(status_code=400, detail="A user with this username already exists in this app")
     
@@ -878,7 +937,7 @@ async def create_user_manual(data: CreateUserManualRequest, dev: Developer = Dep
     db.add(new_user)
 
     if is_same_key:
-        global_lic = db.query(License).filter(License.license_key == uname).first()
+        global_lic = db.query(License).filter(func.lower(License.license_key) == uname.lower()).first()
         if not global_lic:
             new_lic = License(
                 app_id=data.app_id,
@@ -1303,7 +1362,7 @@ async def list_resellers(dev: Developer = Depends(get_current_developer), db: Se
 
 @router.post("/resellers")
 async def create_reseller(data: CreateResellerRequest, dev: Developer = Depends(get_current_developer), db: Session = Depends(get_db)):
-    existing = db.query(Reseller).filter(Reseller.developer_id == dev.id, Reseller.username == data.username.strip()).first()
+    existing = db.query(Reseller).filter(Reseller.developer_id == dev.id, func.lower(Reseller.username) == data.username.strip().lower()).first()
     if existing:
         raise HTTPException(status_code=400, detail="Reseller username already exists")
     
@@ -1405,7 +1464,7 @@ async def convert_reseller_to_client(reseller_id: int, dev: Developer = Depends(
         raise HTTPException(status_code=404, detail="Reseller not found")
     
     uname = reseller.username
-    existing_cc = db.query(CustomClient).filter(CustomClient.username == uname).first()
+    existing_cc = db.query(CustomClient).filter(func.lower(CustomClient.username) == uname.lower()).first()
     if existing_cc:
         raise HTTPException(status_code=400, detail=f"A Custom Client account with username '{uname}' already exists.")
     
@@ -1441,7 +1500,7 @@ async def convert_client_to_reseller(client_id: int, dev: Developer = Depends(ge
         raise HTTPException(status_code=404, detail="Custom Client account not found")
     
     uname = cc.username
-    existing_reseller = db.query(Reseller).filter(Reseller.username == uname).first()
+    existing_reseller = db.query(Reseller).filter(func.lower(Reseller.username) == uname.lower()).first()
     if existing_reseller:
         raise HTTPException(status_code=400, detail=f"A Reseller account with username '{uname}' already exists.")
     
@@ -1787,7 +1846,7 @@ async def bot_auto_genkey(data: BotGenKeyRequest, db: Session = Depends(get_db))
     created_keys = []
     custom_k = data.custom_key.strip() if data.custom_key else None
     if custom_k:
-        existing_lic = db.query(License).filter(License.app_id == app.id, License.license_key == custom_k).first()
+        existing_lic = db.query(License).filter(License.app_id == app.id, func.lower(License.license_key) == custom_k.lower()).first()
         if existing_lic:
             raise HTTPException(status_code=400, detail=f"License key '{custom_k}' already exists in application '{app.name}'.")
         
@@ -1805,7 +1864,7 @@ async def bot_auto_genkey(data: BotGenKeyRequest, db: Session = Depends(get_db))
         count = min(max(1, data.count), 50)
         for _ in range(count):
             k = generate_license_key(data.mask)
-            while db.query(License).filter(License.app_id == app.id, License.license_key == k).first():
+            while db.query(License).filter(License.app_id == app.id, func.lower(License.license_key) == k.lower()).first():
                 k = generate_license_key(data.mask)
             lic = License(
                 app_id=app.id,
@@ -1918,7 +1977,7 @@ async def bot_add_user(data: BotCreateUserRequest, db: Session = Depends(get_db)
     if not app:
         raise HTTPException(status_code=404, detail="No application found in your workspace or permission denied.")
 
-    existing = db.query(User).filter(User.app_id == app.id, User.username == data.username.strip()).first()
+    existing = db.query(User).filter(User.app_id == app.id, func.lower(User.username) == data.username.strip().lower()).first()
     if existing:
         raise HTTPException(status_code=400, detail=f"User '{data.username}' already exists in application '{app.name}'.")
 
@@ -1943,7 +2002,7 @@ async def bot_add_user(data: BotCreateUserRequest, db: Session = Depends(get_db)
     db.add(new_user)
 
     if is_same_key:
-        lic_existing = db.query(License).filter(License.app_id == app.id, License.license_key == uname).first()
+        lic_existing = db.query(License).filter(License.app_id == app.id, func.lower(License.license_key) == uname.lower()).first()
         if not lic_existing:
             try:
                 new_lic = License(
@@ -2199,7 +2258,7 @@ async def bot_create_reseller(data: BotAddResellerRequest, db: Session = Depends
         raise HTTPException(status_code=403, detail="💎 Discord Bot integration is an exclusive PAID Plan feature.")
 
     u_name = data.reseller_username.strip()
-    existing = db.query(Reseller).filter(Reseller.developer_id == dev.id, Reseller.username == u_name).first()
+    existing = db.query(Reseller).filter(Reseller.developer_id == dev.id, func.lower(Reseller.username) == u_name.lower()).first()
     if existing:
         raise HTTPException(status_code=400, detail=f"Reseller '{u_name}' already exists in your workspace.")
 
@@ -2243,7 +2302,7 @@ async def bot_add_reseller_balance(data: BotAddBalanceRequest, db: Session = Dep
         raise HTTPException(status_code=403, detail="💎 Discord Bot integration is an exclusive PAID Plan feature.")
 
     u_name = data.reseller_username.strip()
-    reseller = db.query(Reseller).filter(Reseller.developer_id == dev.id, Reseller.username == u_name).first()
+    reseller = db.query(Reseller).filter(Reseller.developer_id == dev.id, func.lower(Reseller.username) == u_name.lower()).first()
     if not reseller:
         raise HTTPException(status_code=404, detail=f"Reseller '{u_name}' not found.")
 
@@ -2272,7 +2331,7 @@ async def bot_get_reseller_info(data: BotResellerInfoRequest, db: Session = Depe
         raise HTTPException(status_code=404, detail="No linked Developer account found. Run `/link [email_or_username]` first.")
 
     u_name = data.reseller_username.strip()
-    reseller = db.query(Reseller).filter(Reseller.developer_id == dev.id, Reseller.username == u_name).first()
+    reseller = db.query(Reseller).filter(Reseller.developer_id == dev.id, func.lower(Reseller.username) == u_name.lower()).first()
     if not reseller:
         raise HTTPException(status_code=404, detail=f"Reseller '{u_name}' not found.")
 
@@ -2296,8 +2355,8 @@ class BotRedeemRequest(BaseModel):
 @router.post("/bot/redeem")
 async def bot_redeem_license_key(data: BotRedeemRequest, db: Session = Depends(get_db)):
     """Customer License Key Redemption on Discord to auto-assign role and activate subscription."""
-    raw_key = data.license_key.strip().upper()
-    lic = db.query(License).filter(License.license_key == raw_key).first()
+    raw_key = data.license_key.strip()
+    lic = db.query(License).filter(func.lower(License.license_key) == raw_key.lower()).first()
     if not lic:
         raise HTTPException(status_code=404, detail="Invalid license key. Please verify and try again.")
 
@@ -2310,7 +2369,7 @@ async def bot_redeem_license_key(data: BotRedeemRequest, db: Session = Depends(g
 
     # Check if a user with this discord_id already exists in this app
     u_name = data.discord_username.strip()
-    user = db.query(User).filter(User.app_id == app.id, (User.discord_id == data.discord_id) | (User.username == u_name)).first()
+    user = db.query(User).filter(User.app_id == app.id, (User.discord_id == data.discord_id) | (func.lower(User.username) == u_name.lower())).first()
 
     now = datetime.datetime.utcnow()
     duration = lic.duration_days
@@ -2617,7 +2676,7 @@ async def bot_delete_key(data: BotDeleteKeyRequest, db: Session = Depends(get_db
     if not app_ids:
         raise HTTPException(status_code=404, detail="No accessible applications found.")
 
-    lic = db.query(License).filter(License.app_id.in_(app_ids), License.license_key == data.target_key.strip()).first()
+    lic = db.query(License).filter(License.app_id.in_(app_ids), func.lower(License.license_key) == data.target_key.strip().lower()).first()
     if not lic:
         raise HTTPException(status_code=404, detail=f"License key '{data.target_key}' not found.")
 
@@ -2868,13 +2927,13 @@ async def create_custom_client(data: CreateCustomClientRequest, dev: Developer =
     if len(data.password) < 6:
         raise HTTPException(status_code=400, detail="Password must be at least 6 characters")
     
-    if db.query(Developer).filter(Developer.username == uname).first():
+    if db.query(Developer).filter(func.lower(Developer.username) == uname.lower()).first():
         raise HTTPException(status_code=400, detail=f"Username '{uname}' is already taken by a developer account.")
     
-    if db.query(Reseller).filter(Reseller.username == uname).first():
+    if db.query(Reseller).filter(func.lower(Reseller.username) == uname.lower()).first():
         raise HTTPException(status_code=400, detail=f"Username '{uname}' is already taken by a reseller.")
 
-    existing_cc = db.query(CustomClient).filter(CustomClient.username.ilike(uname)).first()
+    existing_cc = db.query(CustomClient).filter(func.lower(CustomClient.username) == uname.lower()).first()
     if existing_cc:
         if existing_cc.developer_id != dev.id and not is_admin and existing_cc.developer_id is not None:
             raise HTTPException(status_code=400, detail=f"Username '{uname}' is already taken by another account.")
